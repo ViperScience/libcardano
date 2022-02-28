@@ -1,6 +1,6 @@
 # Cardano++
 
-A blazingly fast library Cardano blockchain tools written in modern C++.
+A blazingly fast library of Cardano blockchain tools written in modern C++.
 
 ## Getting started
 
