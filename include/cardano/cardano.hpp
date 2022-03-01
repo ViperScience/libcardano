@@ -18,24 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef _CARDANO_ENCODINGS_HPP_
-#define _CARDANO_ENCODINGS_HPP_
+#ifndef _CARDANO_CARDANO_HPP_
+#define _CARDANO_CARDANO_HPP_
 
-#include <vector>
-#include <tuple>
+#include <cardano/encodings.hpp>
 
-namespace cardano {
-
-class BECH32 {
-  private:
-    BECH32() {}
-  public:
-    static std::string encode(const std::string& hrp, const std::vector<uint8_t>& values);
-    static std::string encode_hex(const std::string& hrp, const std::string& hex_values);
-    static std::tuple<std::string, std::vector<uint8_t>> decode(std::string str);
-    static std::tuple<std::string, std::string> decode_hex(std::string str);
-}; // BECH32
-
-} // namespace cardano
-
-#endif // _CARDANO_ENCODINGS_HPP_
+#endif // _CARDANO_CARDANO_HPP_
