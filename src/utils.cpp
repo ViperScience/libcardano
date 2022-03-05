@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Viper Science LLC
+// Copyright (c) 2022 Viper Science LLC
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,33 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef _CARDANO_ENCODINGS_HPP_
-#define _CARDANO_ENCODINGS_HPP_
+#include "utils.hpp"
 
-#include <span>
-#include <tuple>
-#include <vector>
-
-namespace cardano {
-
-class BECH32 {
-  private:
-    BECH32() {}
-  public:
-    static std::string encode(const std::string& hrp, const std::vector<uint8_t>& values);
-    static std::string encode_hex(const std::string& hrp, const std::string& hex_values);
-    static std::tuple<std::string, std::vector<uint8_t>> decode(std::string str);
-    static std::tuple<std::string, std::string> decode_hex(std::string str);
-}; // BECH32
-
-class BASE16 {
-  private:
-    BASE16() {}
-  public:
-    static std::string encode(std::span<const uint8_t> bytes);
-    static std::vector<uint8_t> decode(std::string str);
-}; // BASE16
-
-} // namespace cardano
-
-#endif // _CARDANO_ENCODINGS_HPP_
+std::string cardano::str_tolower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c){ return std::tolower(c); }
+                  );
+    return s;
+} // str_tolower

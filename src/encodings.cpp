@@ -25,8 +25,10 @@
 #include <stdexcept>
 #include <sstream>
 #include <string>
+#include <map>
 
 #include <cardano/encodings.hpp>
+#include "utils.hpp"
 
 using namespace cardano;
 
@@ -44,13 +46,6 @@ static constexpr int8_t CHARSET_REV[128] = {
     -1, 29, -1, 24, 13, 25,  9,  8, 23, -1, 18, 22, 31, 27, 19, -1,
      1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, -1, -1, -1, -1, -1
 };
-
-std::string str_tolower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c){ return std::tolower(c); }
-                  );
-    return s;
-}
 
 /** Concatenate two byte arrays. */
 std::vector<uint8_t> cat(std::vector<uint8_t> x, const std::vector<uint8_t>& y) {
@@ -264,3 +259,37 @@ std::tuple<std::string, std::string> BECH32::decode_hex(std::string bech32_str) 
     auto hex_values = bytes2hex(data);
     return std::make_tuple(hrp, hex_values);
 }
+
+std::string BASE16::encode(std::span<const uint8_t> bytes) {
+    auto byte_iter = bytes.begin();
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < bytes.size(); i++)
+        ss << std::setw(2) << static_cast<int>(*byte_iter++);
+    return ss.str();
+} // base16_encode
+
+std::vector<uint8_t> BASE16::decode(std::string hex) {
+    // Ensure an even number of characters in the string
+    if (hex.size() % 2 != 0)
+        throw std::invalid_argument("Not a valid hexadecimal string.");
+    // Normalize to lowercase
+    std::transform(hex.begin(), hex.end(), hex.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    // Verify only hexadecimal characters
+    if (hex.find_first_not_of("0123456789abcdef") != std::string::npos)
+        throw std::invalid_argument("Not a valid hexadecimal string.");
+
+    std::vector<uint8_t> ret;
+    ret.reserve(hex.size() / 2);
+    std::map<char, uint8_t> char2hex = {
+        {'0', 0x0}, {'1', 0x1}, {'2', 0x2}, {'3', 0x3}, {'4', 0x4}, {'5', 0x5},
+        {'6', 0x6}, {'7', 0x7}, {'8', 0x8}, {'9', 0x9}, {'a', 0xa}, {'b', 0xb},
+        {'c', 0xc}, {'d', 0xd}, {'e', 0xe}, {'f', 0xf}};
+    for (size_t i = 0; i < hex.length() / 2; i++) {
+        uint8_t high_bits = char2hex[hex[2 * i]];
+        uint8_t low_bits = char2hex[hex[2 * i + 1]];
+        ret.insert(ret.end(), (high_bits << 4) | low_bits);
+    }
+    return ret;
+} // base16_decode

@@ -15,6 +15,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Additional packages
 ########################################################################
 
+# Add the submodules
+add_subdirectory(${CMAKE_SOURCE_DIR}/libs)
+
 ########################################################################
 # Include directories
 ########################################################################
@@ -22,6 +25,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src
+        ${CARDANO_CRYPTO_CBITS_INCLUDE}
+        ${CRYPTONITE_CBITS_INCLUDE}
     PUBLIC
         ${CMAKE_SOURCE_DIR}/include
 )
@@ -43,6 +49,12 @@ ADD_SUBDIRECTORY( test build )
 # specify the source files
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
+    ${CMAKE_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils.cpp
+    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${CARDANO_CRYPTO_CBITS_SOURCES}
+    ${CRYPTONITE_CBITS_SOURCES}
 )
 
 # add the library to build
@@ -64,5 +76,7 @@ install(TARGETS ${PROJECT_NAME} DESTINATION lib)
 set(HEADERS
     ${CMAKE_SOURCE_DIR}/include/cardano/cardano.hpp
     ${CMAKE_SOURCE_DIR}/include/cardano/encodings.hpp
+    ${CMAKE_SOURCE_DIR}/include/cardano/crypto.hpp
+    ${CMAKE_SOURCE_DIR}/include/cardano/address.hpp
 )
 install(FILES ${HEADERS} DESTINATION "include/cardano")

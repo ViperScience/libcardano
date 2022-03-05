@@ -1,0 +1,24 @@
+set(CARDANO_CRYPTO_CBITS_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/cardano-crypto/cbits/ed25519/ed25519.c
+    PARENT_SCOPE
+)
+set(CARDANO_CRYPTO_CBITS_INCLUDE
+    ${CMAKE_CURRENT_LIST_DIR}/cardano-crypto/cbits
+    ${CMAKE_CURRENT_LIST_DIR}/cardano-crypto/cbits/ed25519
+    PARENT_SCOPE
+)
+set(CRYPTONITE_CBITS_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits/cryptonite_chacha.c
+    ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits/cryptonite_sha1.c
+    ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits/cryptonite_sha256.c
+    ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits/cryptonite_sha512.c
+    ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits/cryptonite_pbkdf2.c
+    ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits/cryptonite_blake2b.c
+    ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits/blake2/ref/blake2b-ref.c
+    PARENT_SCOPE
+)
+set(CRYPTONITE_CBITS_INCLUDE
+    ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits
+    ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits/blake2/ref
+    PARENT_SCOPE
+)

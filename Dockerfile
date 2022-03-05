@@ -2,12 +2,8 @@ FROM debian:bullseye-slim
 
 RUN apt-get update && apt-get install -y \
     build-essential \
-    git \
-    vim \
     curl \
-    sqlite3 \
     libssl-dev \
-    libsqlite3-dev \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -26,9 +22,6 @@ COPY . /opt
 WORKDIR /opt
 RUN mkdir build && cd build \
  && /usr/local/bin/cmake -DCMAKE_BUILD_TYPE=Release .. \
- && make -j4 \
+ && make -j16 \
  && make test \
  && make install
-
-# Set the cruncher executable as the container entrypoint.
-#ENTRYPOINT [ "cruncher" ]

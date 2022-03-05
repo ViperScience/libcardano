@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Viper Science LLC
+// Copyright (c) 2022 Viper Science LLC
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,33 +18,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef _CARDANO_ENCODINGS_HPP_
-#define _CARDANO_ENCODINGS_HPP_
-
-#include <span>
-#include <tuple>
+#include <algorithm>
+#include <string>
 #include <vector>
+
+#ifndef _CARDANO_UTILS_HPP_
+#define _CARDANO_UTILS_HPP_
 
 namespace cardano {
 
-class BECH32 {
-  private:
-    BECH32() {}
-  public:
-    static std::string encode(const std::string& hrp, const std::vector<uint8_t>& values);
-    static std::string encode_hex(const std::string& hrp, const std::string& hex_values);
-    static std::tuple<std::string, std::vector<uint8_t>> decode(std::string str);
-    static std::tuple<std::string, std::string> decode_hex(std::string str);
-}; // BECH32
+template <class SizedRange1, class SizedRange2>
+auto concat_bytes(SizedRange1 const &r1, SizedRange2 const &r2) {
+    std::vector<typename SizedRange1::value_type> ret;
+    ret.reserve(r1.size() + r2.size());
+    ret.insert(ret.end(), begin(r1), end(r1));
+    ret.insert(ret.end(), begin(r2), end(r2));
+    return ret;
+} // concat_bytes
 
-class BASE16 {
-  private:
-    BASE16() {}
-  public:
-    static std::string encode(std::span<const uint8_t> bytes);
-    static std::vector<uint8_t> decode(std::string str);
-}; // BASE16
+std::string str_tolower(std::string s);
 
 } // namespace cardano
 
-#endif // _CARDANO_ENCODINGS_HPP_
+#endif // _CARDANO_UTILS_HPP_
