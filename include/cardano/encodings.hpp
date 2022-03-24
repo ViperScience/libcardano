@@ -37,6 +37,16 @@ class BECH32 {
     static std::tuple<std::string, std::string> decode_hex(std::string str);
 }; // BECH32
 
+class BASE58 {
+  private:
+    BASE58() {}
+  public:
+    static std::string encode(const std::vector<uint8_t>& values);
+    static std::string encode_hex(const std::string& hex_values);
+    static std::vector<uint8_t> decode(std::string str);
+    static std::string decode_hex(std::string str);
+}; // BASE58
+
 class BASE16 {
   private:
     BASE16() {}

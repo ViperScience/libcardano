@@ -32,11 +32,15 @@
 
 using namespace cardano;
 
+////////////////
+//// BECH32 ////
+////////////////
+
 /** The Bech32 character set for encoding. */
-const char* CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+const char* B32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 
 /** The Bech32 character set for decoding. */
-static constexpr int8_t CHARSET_REV[128] = {
+static constexpr int8_t B32_CHARSET_REV[128] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -189,7 +193,7 @@ std::string BECH32::encode(const std::string& hrp, const std::vector<uint8_t>& v
     std::string ret = hrp + '1';
     ret.reserve(ret.size() + combined.size());
     for (const auto c : combined) {
-        ret += CHARSET[c];
+        ret += B32_CHARSET[c];
     }
     return ret;
 }
@@ -210,7 +214,7 @@ std::tuple<std::string, std::vector<uint8_t>> BECH32::decode(std::string bech32_
     std::vector<uint8_t> values(bech32_str_size - 1 - pos);
     for (size_t i = 0; i < bech32_str_size - 1 - pos; ++i) {
         unsigned char c = bech32_str[i + pos + 1];
-        int8_t rev = CHARSET_REV[c];
+        int8_t rev = B32_CHARSET_REV[c];
         if (rev == -1) {
             throw std::invalid_argument("Invalid bech32 character found.");
         }
@@ -259,6 +263,141 @@ std::tuple<std::string, std::string> BECH32::decode_hex(std::string bech32_str) 
     auto hex_values = bytes2hex(data);
     return std::make_tuple(hrp, hex_values);
 }
+
+
+////////////////
+//// BASE58 ////
+////////////////
+
+/** The Base58 character set for encoding. */
+inline static constexpr const uint8_t B58_CHARSET[] = {
+	'1', '2', '3', '4', '5', '6', '7', '8',
+	'9', 'A', 'B', 'C', 'D', 'E', 'F', 'G',
+	'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q',
+	'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',
+	'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
+	'h', 'i', 'j', 'k', 'm', 'n', 'o', 'p',
+	'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
+	'y', 'z' };
+
+const char B58_CHARSET_REV[128] = {
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, -1, -1, -1, -1, -1, -1,
+    -1, 9, 10, 11, 12, 13, 14, 15, 16, -1, 17, 18, 19, 20, 21, -1,
+    22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, -1, -1, -1, -1, -1,
+    -1, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, -1, 44, 45, 46,
+    47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1
+};
+
+std::string BASE58::encode(const std::vector<uint8_t>& values)
+{
+	std::vector<uint8_t> digits((values.size() * 138 / 100) + 1);
+	size_t digitslen = 1;
+	for (size_t i = 0; i < values.size(); i++)
+	{
+		uint32_t carry = static_cast<uint32_t>(values[i]);
+		for (size_t j = 0; j < digitslen; j++)
+		{
+			carry = carry + static_cast<uint32_t>(digits[j] << 8);
+			digits[j] = static_cast<uint8_t>(carry % 58);
+			carry /= 58;
+		}
+		for (; carry; carry /= 58)
+			digits[digitslen++] = static_cast<uint8_t>(carry % 58);
+	}
+	std::string result;
+	for (size_t i = 0; i < (values.size() - 1) && !values[i]; i++)
+		result.push_back(B58_CHARSET[0]);
+	for (size_t i = 0; i < digitslen; i++)
+		result.push_back(B58_CHARSET[digits[digitslen - 1 - i]]);
+	return result;
+}
+
+std::vector<uint8_t> BASE58::decode(std::string bech32_str) {
+    unsigned char const* str = (unsigned const char*)(bech32_str.c_str());
+    std::vector<uint8_t> result;
+    result.push_back(0);
+    int resultlen = 1;
+    int encoded_len = bech32_str.length();
+    for (int i = 0; i < encoded_len; i++) {
+        unsigned int carry = (unsigned int)B58_CHARSET_REV[str[i]];
+        for (int j = 0; j < resultlen; j++) {
+            carry += (unsigned int)(result[j]) * 58;
+            result[j] = (unsigned char)(carry & 0xff);
+            carry >>= 8;
+        }
+        while (carry > 0) {
+            resultlen++;
+            result.push_back((unsigned int)(carry & 0xff));
+            carry >>= 8;
+        }
+    }
+
+    for (int i = 0; i < encoded_len && str[i] == '1'; i++) {
+        resultlen++;
+        result.push_back(0);
+    }
+
+    for (int i = resultlen - 1, z = (resultlen >> 1) + (resultlen & 1); i >= z; i--) {
+        int k = result[i];
+        result[i] = result[resultlen - i - 1];
+        result[resultlen - i - 1] = k;
+    }
+    return result;
+}
+
+// std::vector<uint8_t> BASE58::decode(std::string bech32_str) {
+//     // How long is the input string?
+//     size_t bech32_str_size = bech32_str.size();
+
+//     // Ensure the string characters are all lower case.
+//     bech32_str = str_tolower(bech32_str);
+
+//     // Find the separator.
+//     size_t pos = bech32_str.rfind('1');
+//     if (pos == bech32_str.npos || pos == 0 || pos + 7 > bech32_str_size)
+//         throw std::invalid_argument("The given string is not valid bech32 format.");
+
+//     // Extract the data values.
+//     std::vector<uint8_t> values(bech32_str_size - 1 - pos);
+//     for (size_t i = 0; i < bech32_str_size - 1 - pos; ++i) {
+//         unsigned char c = bech32_str[i + pos + 1];
+//         int8_t rev = B32_CHARSET_REV[c];
+//         if (rev == -1) {
+//             throw std::invalid_argument("Invalid bech32 character found.");
+//         }
+//         values[i] = rev;
+//     }
+
+//     // Save the HRP
+//     auto hrp = std::string(bech32_str.begin(), bech32_str.begin() + pos);
+
+//     // Verify the checksum of the data
+//     if (!verify_checksum(hrp, values))
+//         throw std::invalid_argument("Invalid bech32 checksum found.");
+
+//     // Pack the bits (cardano needs to pack the bits...)
+//     values.resize(values.size() - 6); // trim the checksum
+//     auto packed_values = convertbits(values, 5, 8, false);
+//     return std::make_tuple(hrp, packed_values);
+// }
+
+std::string BASE58::encode_hex(const std::string& hex_values) {
+    auto values_bytes = hex2bytes(hex_values);
+    return BASE58::encode(values_bytes);
+}
+
+std::string BASE58::decode_hex(std::string base58_str) {
+    auto data = cardano::BASE58::decode(base58_str);
+    return bytes2hex(data);
+}
+
+
+////////////////
+//// BASE16 ////
+////////////////
 
 std::string BASE16::encode(std::span<const uint8_t> bytes) {
     auto byte_iter = bytes.begin();
