@@ -348,42 +348,6 @@ std::vector<uint8_t> BASE58::decode(std::string bech32_str) {
     return result;
 }
 
-// std::vector<uint8_t> BASE58::decode(std::string bech32_str) {
-//     // How long is the input string?
-//     size_t bech32_str_size = bech32_str.size();
-
-//     // Ensure the string characters are all lower case.
-//     bech32_str = str_tolower(bech32_str);
-
-//     // Find the separator.
-//     size_t pos = bech32_str.rfind('1');
-//     if (pos == bech32_str.npos || pos == 0 || pos + 7 > bech32_str_size)
-//         throw std::invalid_argument("The given string is not valid bech32 format.");
-
-//     // Extract the data values.
-//     std::vector<uint8_t> values(bech32_str_size - 1 - pos);
-//     for (size_t i = 0; i < bech32_str_size - 1 - pos; ++i) {
-//         unsigned char c = bech32_str[i + pos + 1];
-//         int8_t rev = B32_CHARSET_REV[c];
-//         if (rev == -1) {
-//             throw std::invalid_argument("Invalid bech32 character found.");
-//         }
-//         values[i] = rev;
-//     }
-
-//     // Save the HRP
-//     auto hrp = std::string(bech32_str.begin(), bech32_str.begin() + pos);
-
-//     // Verify the checksum of the data
-//     if (!verify_checksum(hrp, values))
-//         throw std::invalid_argument("Invalid bech32 checksum found.");
-
-//     // Pack the bits (cardano needs to pack the bits...)
-//     values.resize(values.size() - 6); // trim the checksum
-//     auto packed_values = convertbits(values, 5, 8, false);
-//     return std::make_tuple(hrp, packed_values);
-// }
-
 std::string BASE58::encode_hex(const std::string& hex_values) {
     auto values_bytes = hex2bytes(hex_values);
     return BASE58::encode(values_bytes);
