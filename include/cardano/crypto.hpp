@@ -27,12 +27,12 @@
 
 namespace cardano {
 
-static uint32_t constexpr SECRET_KEY_SEED_SIZE = 32;
-static uint32_t constexpr ENCRYPTED_KEY_SIZE = 64;
-static uint32_t constexpr PUBLIC_KEY_SIZE = 32;
-static uint32_t constexpr CHAIN_CODE_SIZE = 32;
+static constexpr uint32_t SECRET_KEY_SEED_SIZE = 32;
+static constexpr uint32_t ENCRYPTED_KEY_SIZE = 64;
+static constexpr uint32_t PUBLIC_KEY_SIZE = 32;
+static constexpr uint32_t CHAIN_CODE_SIZE = 32;
 
-static uint32_t constexpr HardenIndex(uint32_t index) {
+static constexpr uint32_t HardenIndex(uint32_t index) {
     if (index < 0x80000000)
         return index + 0x80000000;
     return index;
