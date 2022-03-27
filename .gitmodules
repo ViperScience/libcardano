@@ -4,3 +4,6 @@
 [submodule "libs/cryptonite"]
 	path = libs/cryptonite
 	url = https://github.com/haskell-crypto/cryptonite.git
+[submodule "libs/json"]
+	path = libs/json
+	url = https://github.com/nlohmann/json.git
