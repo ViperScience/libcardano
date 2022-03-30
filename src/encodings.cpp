@@ -305,12 +305,12 @@ std::string BASE58::encode(const std::vector<uint8_t>& values) {
     return result;
 } // BASE58::encode
 
-std::vector<uint8_t> BASE58::decode(std::string bech32_str) {
-    unsigned char const* str = (unsigned const char*)(bech32_str.c_str());
+std::vector<uint8_t> BASE58::decode(std::string base58_str) {
+    unsigned char const* str = (unsigned const char*)(base58_str.c_str());
     std::vector<uint8_t> result;
     result.push_back(0);
     int resultlen = 1;
-    int encoded_len = bech32_str.length();
+    int encoded_len = base58_str.length();
     for (int i = 0; i < encoded_len; i++) {
         unsigned int carry = (unsigned int)B58_CHARSET_REV[str[i]];
         for (int j = 0; j < resultlen; j++) {

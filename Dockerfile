@@ -1,10 +1,12 @@
-FROM debian:bullseye-slim
+#FROM debian:bullseye-slim
+FROM python:3.9-slim-bullseye
 
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
-    libssl-dev \
     gdb \
+    git \
+    libssl-dev \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -16,6 +18,20 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.22.1/cmake-3.
  && ./bootstrap -- -DCMAKE_BUILD_TYPE:STRING=Release \
  && make -j16 \
  && make install
+
+# Install the botan library
+WORKDIR /opt
+RUN git clone https://github.com/randombit/botan.git \
+ && cd botan \
+ && git checkout tags/2.19.1 \
+ && python3 ./configure.py \
+ && make \
+ && make install
+
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 # Build the password cruncher executable
 ENV CTEST_OUTPUT_ON_FAILURE=1

@@ -93,6 +93,18 @@ class RewardsAddress {
     std::string toBase16(bool with_header = false) const;
 };
 
+enum class ByronAddressType { pubkey, script, redeem };
+
+class ByronAddress {
+  private:
+    // Make the default constructor private so it can only be used by the
+    // static factory methods.
+    constexpr ByronAddress() = default;
+
+  public:
+    std::string toBase58() const;
+};
+
 } // namespace cardano
 
 #endif

@@ -22,3 +22,7 @@ set(CRYPTONITE_CBITS_INCLUDE
     ${CMAKE_CURRENT_LIST_DIR}/cryptonite/cbits/blake2/ref
     PARENT_SCOPE
 )
+set(JSON_INCLUDE
+    ${CMAKE_CURRENT_LIST_DIR}/json/single_include/nlohmann
+    PARENT_SCOPE
+)
