@@ -24,6 +24,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <cardano/crypto.hpp>
 
@@ -97,11 +98,17 @@ enum class ByronAddressType { pubkey, script, redeem };
 
 class ByronAddress {
   private:
+    std::vector<uint32_t> derivation_path_;
+    std::vector<uint8_t> verification_key_;
+
     // Make the default constructor private so it can only be used by the
     // static factory methods.
-    constexpr ByronAddress() = default;
+    // constexpr ByronAddress() = default;
+
+    uint8_t header_byte_;
 
   public:
+    ByronAddress() = default;
     std::string toBase58() const;
 };
 

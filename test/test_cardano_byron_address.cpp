@@ -7,6 +7,9 @@
 #include <cardano/encodings.hpp>
 
 void testBasic() {
+    std::string addr_base58 = "DdzFFzCqrhsrcTVhLygT24QwTnNqQqQ8mZrq5jykUzMveU26sxaH529kMpo7VhPrt5pwW3dXeB2k3EEvKcNBRmzCfcQ7dTkyGzTs658C";
+    auto addr = cardano::ByronAddress();
+    TEST_ASSERT_THROW( addr.toBase58() == addr_base58 )
 }
 
 void testAdvanced() {

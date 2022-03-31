@@ -23,6 +23,6 @@ set(CRYPTONITE_CBITS_INCLUDE
     PARENT_SCOPE
 )
 set(JSON_INCLUDE
-    ${CMAKE_CURRENT_LIST_DIR}/json/single_include/nlohmann
+    ${CMAKE_CURRENT_LIST_DIR}/json/single_include
     PARENT_SCOPE
 )
