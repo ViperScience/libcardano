@@ -10,14 +10,16 @@ RUN apt-get update && apt-get install -y \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
+# Copy dependencies from repo to /opt
+COPY . /opt
+
 # Install later version of CMake than what is included in the package repos
 WORKDIR /opt
-RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.22.1/cmake-3.22.1.tar.gz \
- && tar --extract --file cmake-3.22.1.tar.gz \
- && cd cmake-3.22.1 \
- && ./bootstrap -- -DCMAKE_BUILD_TYPE:STRING=Release \
- && make -j16 \
- && make install
+ARG CMAKE_VERSION=3.23.0
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.tar.gz \
+ && mkdir cmake \
+ && tar -xf cmake-$CMAKE_VERSION-linux-x86_64.tar.gz -C cmake --strip-components=1
+ENV PATH "/opt/cmake/bin:$PATH"
 
 # Install the botan library
 WORKDIR /opt
@@ -40,10 +42,9 @@ RUN git clone https://github.com/PJK/libcbor.git \
 
 # Build the password cruncher executable
 ENV CTEST_OUTPUT_ON_FAILURE=1
-COPY . /opt
 WORKDIR /opt
 RUN mkdir build && cd build \
- && /usr/local/bin/cmake -DCMAKE_BUILD_TYPE=Release .. \
+ && cmake -DCMAKE_BUILD_TYPE=Release .. \
  && make -j16 \
  && make test \
  && make install
