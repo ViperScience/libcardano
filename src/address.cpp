@@ -238,11 +238,6 @@ auto sha3_then_blake2b224(std::span<const uint8_t> data) -> std::array<uint8_t, 
     return hashed_data;
 } // sha3_then_blake2b224
 
-#include <nlohmann/json.hpp>
-
-// for convenience
-using json = nlohmann::json;
-
 // auto ByronAddress::toBase58() const -> std::string {
 //     return std::string("");
 // }

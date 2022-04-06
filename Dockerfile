@@ -17,7 +17,7 @@ COPY . /opt
 WORKDIR /opt
 ARG CMAKE_VERSION=3.23.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.tar.gz \
- && mkdir cmake \
+ && mkdir -p cmake \
  && tar -xf cmake-$CMAKE_VERSION-linux-x86_64.tar.gz -C cmake --strip-components=1
 ENV PATH "/opt/cmake/bin:$PATH"
 
@@ -36,7 +36,7 @@ RUN git clone https://github.com/PJK/libcbor.git \
  && cd libcbor \
  && git checkout tags/v0.9.0 \
  && mkdir build && cd build \
- && /usr/local/bin/cmake -DCMAKE_BUILD_TYPE=Release .. \
+ && cmake -DCMAKE_BUILD_TYPE=Release .. \
  && make -j8 \
  && make install
 
