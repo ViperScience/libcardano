@@ -35,6 +35,13 @@ docker-build:
   script:
     - cd /opt/build
     - make test
+  after_script:
+    - curl https://img.shields.io/badge/tests-passing-success -o badge.svg
+  artifacts:
+    paths:
+        - badge.svg
+    when: always
+    expire_in: 52 weeks
 
 # Technically don't need to run this stage, since CTest tests are already run during the Docker build
 ctest-tests-default:
