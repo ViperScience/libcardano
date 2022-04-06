@@ -67,6 +67,8 @@ ctest-tests-nondefault:
 
 pages:
   stage: deploy
+  script:
+    - echo "Deploying badge SVG to GitLab Pages"
   artifacts:
     paths:
       - badge.svg
