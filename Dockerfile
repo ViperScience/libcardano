@@ -22,10 +22,6 @@ ENV PATH "/opt/cmake/bin:$PATH"
 # Build the password cruncher executable
 ENV CTEST_OUTPUT_ON_FAILURE=1
 WORKDIR /opt
-RUN ls /opt/libs/
-RUN ls /opt/libs/cardano-crypto/
-RUN ls /opt/libs/cardano-crypto/cbits/
-RUN ls /opt/libs/cardano-crypto/cbits/ed25519/
 RUN mkdir build && cd build \
  && cmake -DCMAKE_BUILD_TYPE=Release .. \
  && make -j16 \
