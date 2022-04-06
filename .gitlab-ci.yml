@@ -1,6 +1,7 @@
 stages:
 - build
 - test
+- deploy
 
 docker-build:
   image: docker:latest
@@ -67,5 +68,7 @@ ctest-tests-nondefault:
 pages:
   stage: deploy
   artifacts:
+    paths:
+      - badge.svg
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
