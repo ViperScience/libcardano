@@ -16,7 +16,7 @@ WORKDIR /opt
 ARG CMAKE_VERSION=3.23.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.tar.gz \
  && mkdir cmake \
- && tar -xvf cmake-$CMAKE_VERSION-linux-x86_64.tar.gz -C cmake --strip-components=1
+ && tar -xf cmake-$CMAKE_VERSION-linux-x86_64.tar.gz -C cmake --strip-components=1
 ENV PATH "/opt/cmake/bin:$PATH"
 
 # Build the password cruncher executable
