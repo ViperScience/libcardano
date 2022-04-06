@@ -26,19 +26,6 @@ docker-build:
     - cd $CI_PROJECT_DIR
     - docker build --pull -t "$CI_REGISTRY_IMAGE${tag}" .
     - docker push "$CI_REGISTRY_IMAGE${tag}"
-  after_script:
-    # Save unit test badge as an artifact. Since we run unit tests in this stage, this is where we need to get the badge.
-    - >
-      if [ $CI_JOB_STATUS == 'success' ]; then
-        curl https://img.shields.io/badge/tests-passed-success -o badge.svg
-      else
-        curl https://img.shields.io/badge/tests-failed-red -o badge.svg
-      fi
-  artifacts:
-    paths:
-      - badge.svg
-    when: always
-    expire_in: 52 weeks
   # Only run this job in a branch where a Dockerfile exists
   rules:
     - if: $CI_COMMIT_BRANCH
@@ -64,13 +51,3 @@ ctest-tests-nondefault:
   <<: *ctest-template
   rules:
     - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-
-pages:
-  stage: deploy
-  script:
-    - echo "Deploying badge SVG to GitLab Pages"
-  artifacts:
-    paths:
-      - badge.svg
-  # rules:
-  #   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
