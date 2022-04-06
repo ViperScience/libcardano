@@ -22,6 +22,8 @@ ENV PATH "/opt/cmake/bin:$PATH"
 # Build the password cruncher executable
 ENV CTEST_OUTPUT_ON_FAILURE=1
 WORKDIR /opt
+RUN ls .
+RUN ls ./libs
 RUN mkdir build && cd build \
  && cmake -DCMAKE_BUILD_TYPE=Release .. \
  && make -j16 \
