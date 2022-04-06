@@ -43,11 +43,11 @@ ctest-tests-default:
   stage: test
   <<: *ctest-template
   rules:
-    if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 ctest-tests-nondefault:
   image: "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
   stage: test
   <<: *ctest-template
   rules:
-    if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
