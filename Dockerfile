@@ -8,6 +8,9 @@ RUN apt-get update && apt-get install -y \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
+# Copy dependencies from repo to /opt
+COPY . /opt
+
 # Install later version of CMake than what is included in the package repos
 WORKDIR /opt
 ARG CMAKE_VERSION=3.23.0
@@ -18,7 +21,6 @@ ENV PATH "/opt/cmake/bin:$PATH"
 
 # Build the password cruncher executable
 ENV CTEST_OUTPUT_ON_FAILURE=1
-COPY . /opt
 WORKDIR /opt
 RUN mkdir build && cd build \
  && cmake -DCMAKE_BUILD_TYPE=Release .. \
