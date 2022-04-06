@@ -1,5 +1,6 @@
 stages:
 - build
+- test
 
 docker-build:
   image: docker:latest
@@ -27,3 +28,12 @@ docker-build:
       exists:
         - Dockerfile
 
+# Technically don't need to run this stage, since CTest tests are already run during the Docker build
+ctest-tests:
+  image: "$CI_REGISTRY_IMAGE${tag}"
+  stage: test
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - cd /opt/build
+    - make test
