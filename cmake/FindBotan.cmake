@@ -1,47 +1,32 @@
-# - Try to find the Botan library
-#
-# Once done this will define
-#
-#  BOTAN_FOUND - System has Botan
-#  BOTAN_INCLUDE_DIR - The Botan include directory
-#  BOTAN_LIBRARIES - The libraries needed to use Botan
-#  BOTAN_DEFINITIONS - Compiler switches required for using Botan
+# Find the Botan library
+# If found, a target botan::botan will be availible for linking.
 
-IF (BOTAN_INCLUDE_DIR AND BOTAN_LIBRARY)
-   # in cache already
-   SET(Botan_FIND_QUIETLY TRUE)
-ENDIF (BOTAN_INCLUDE_DIR AND BOTAN_LIBRARY)
+include(FindPackageHandleStandardArgs)
 
-IF (NOT WIN32)
-   # try using pkg-config to get the directories and then use these values
-   # in the FIND_PATH() and FIND_LIBRARY() calls
-   # also fills in BOTAN_DEFINITIONS, although that isn't normally useful
-   FIND_PACKAGE(PkgConfig)
-   PKG_SEARCH_MODULE(PC_BOTAN botan-2 botan)
-   SET(BOTAN_DEFINITIONS ${PC_BOTAN_CFLAGS})
-ENDIF (NOT WIN32)
+find_library(Botan_LIBRARY 
+    NAMES 
+        botan-2
+        botan 
+    PATHS
+        /usr/lib
+        /usr/lib64
+        /usr/local/lib
+        /usr/local/lib64
+)
+find_path(Botan_INCLUDE_DIR 
+    NAMES botan/botan.h
+    PATHS /usr/local/include/botan-2
+)
 
-FIND_PATH(BOTAN_INCLUDE_DIR botan/botan.h
-   HINTS
-   ${PC_BOTAN_INCLUDEDIR}
-   ${PC_BOTAN_INCLUDE_DIRS}
-   )
+find_package_handle_standard_args(Botan REQUIRED_VARS Botan_LIBRARY Botan_INCLUDE_DIR)
 
-set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-FIND_LIBRARY(BOTAN_LIBRARY NAMES ${PC_BOTAN_LIBRARIES}
-   HINTS
-   ${PC_BOTAN_LIBDIR}
-   ${PC_BOTAN_LIBRARY_DIRS}
-   )
+if (Botan_FOUND)
+    mark_as_advanced(Botan_INCLUDE_DIR)
+    mark_as_advanced(Botan_LIBRARY)
+endif()
 
-MARK_AS_ADVANCED(BOTAN_INCLUDE_DIR BOTAN_LIBRARY)
-
-# handle the QUIETLY and REQUIRED arguments and set BOTAN_FOUND to TRUE if 
-# all listed variables are TRUE
-INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Botan DEFAULT_MSG BOTAN_LIBRARY BOTAN_INCLUDE_DIR)
-
-IF(BOTAN_FOUND)
-    SET(BOTAN_LIBRARIES    ${BOTAN_LIBRARY})
-    SET(BOTAN_INCLUDE_DIRS ${BOTAN_INCLUDE_DIR})
-ENDIF()
+if (Botan_FOUND AND NOT TARGET botan::botan)
+    add_library(botan::botan STATIC IMPORTED)
+    set_property(TARGET botan::botan PROPERTY IMPORTED_LOCATION ${Botan_LIBRARY})
+    target_include_directories(botan::botan INTERFACE ${Botan_INCLUDE_DIR})
+endif()

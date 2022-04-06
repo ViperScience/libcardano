@@ -21,6 +21,8 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # Add 3rd party libraries that should be installed on the system
 find_package(Botan REQUIRED)
 
+find_package(libcbor REQUIRED)
+
 # Add the submodules
 add_subdirectory(${CMAKE_SOURCE_DIR}/libs)
 
@@ -34,8 +36,6 @@ include_directories(${PROJECT_NAME}
         ${CMAKE_SOURCE_DIR}/src
         ${CARDANO_CRYPTO_CBITS_INCLUDE}
         ${CRYPTONITE_CBITS_INCLUDE}
-        ${JSON_INCLUDE}
-        ${BOTAN_INCLUDE_DIR}
     PUBLIC
         ${CMAKE_SOURCE_DIR}/include
 )
@@ -73,8 +73,9 @@ add_library(cardano ${SOURCES})
 ########################################################################
 
 # specify libraries for linking
-target_link_libraries(${PROJECT_NAME}
-    ${BOTAN_LIBRARIES}
+target_link_libraries(${PROJECT_NAME} PUBLIC
+    cbor::cbor
+    botan::botan
 )
 
 ########################################################################

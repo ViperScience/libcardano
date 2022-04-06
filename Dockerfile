@@ -28,10 +28,15 @@ RUN git clone https://github.com/randombit/botan.git \
  && make \
  && make install
 
-RUN apt-get update && apt-get install -y \
-    pkg-config \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+# Install the libcbor library
+WORKDIR /opt
+RUN git clone https://github.com/PJK/libcbor.git \
+ && cd libcbor \
+ && git checkout tags/v0.9.0 \
+ && mkdir build && cd build \
+ && /usr/local/bin/cmake -DCMAKE_BUILD_TYPE=Release .. \
+ && make -j8 \
+ && make install
 
 # Build the password cruncher executable
 ENV CTEST_OUTPUT_ON_FAILURE=1

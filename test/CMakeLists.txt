@@ -25,7 +25,8 @@ set(TEST_CARDANO_CRYPTO_SOURCES
 )
 ADD_EXECUTABLE(test_cardano_crypto ${TEST_CARDANO_CRYPTO_SOURCES})
 target_link_libraries(test_cardano_crypto
-    ${BOTAN_LIBRARIES}
+    cbor::cbor
+    botan::botan
 )
 ADD_TEST(cardano_crypto test_cardano_crypto)
 
@@ -45,7 +46,8 @@ set(TEST_CARDANO_ADDRESS_SOURCES
 )
 ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_address
-    ${BOTAN_LIBRARIES}
+    cbor::cbor
+    botan::botan
 )
 ADD_TEST(cardano_address test_cardano_address)
 
@@ -65,6 +67,7 @@ set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
 )
 ADD_EXECUTABLE(test_cardano_byron_address ${TEST_CARDANO_BYRON_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_byron_address
-    ${BOTAN_LIBRARIES}
+    cbor::cbor
+    botan::botan
 )
 ADD_TEST(cardano_byron_address test_cardano_byron_address)
