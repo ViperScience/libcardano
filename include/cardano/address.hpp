@@ -23,6 +23,7 @@
 
 #include <array>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -96,19 +97,27 @@ class RewardsAddress {
 
 enum class ByronAddressType { pubkey, script, redeem };
 
+struct ByronAddressAttributes {
+    std::vector<uint8_t> derivation_path_ciphertext;
+    uint32_t protocol_magic;
+};
+
 class ByronAddress {
   private:
-    std::vector<uint32_t> derivation_path_;
-    std::vector<uint8_t> verification_key_;
+    ByronAddressType type_;
+    std::array<uint8_t, 28> root_;
+    ByronAddressAttributes attrs_;
 
-    // Make the default constructor private so it can only be used by the
-    // static factory methods.
-    // constexpr ByronAddress() = default;
-
-    uint8_t header_byte_;
+    // Make the default constructor private so it can only be used by the static factory methods.
+    ByronAddress() = default;
 
   public:
-    ByronAddress() = default;
+    std::array<uint8_t, 28> root() const { return root_; }
+
+    static ByronAddress fromCBOR(std::span<const uint8_t> cbor_data);
+    static ByronAddress fromBase58(std::string addr);
+
+    std::vector<uint8_t> toCBOR() const;
     std::string toBase58() const;
 };
 
