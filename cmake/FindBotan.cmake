@@ -4,9 +4,9 @@
 include(FindPackageHandleStandardArgs)
 
 find_library(Botan_LIBRARY 
-    NAMES 
+    NAMES
         botan-2
-        botan 
+        libbotan-2
     PATHS
         /usr/lib
         /usr/lib64

@@ -18,9 +18,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Add the local cmake directory to the path for custom search files
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+# Load static libraries since we are building a static library
+if(WIN32)
+    list(INSERT CMAKE_FIND_LIBRARY_SUFFIXES 0 .lib .a)
+else()
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+endif()
+
 # Add 3rd party libraries that should be installed on the system
 find_package(Botan REQUIRED)
-
 find_package(libcbor REQUIRED)
 
 # Add the submodules
@@ -48,7 +54,7 @@ include_directories(${PROJECT_NAME}
 # subdirectory of the repository.
 ENABLE_TESTING()
 
-ADD_SUBDIRECTORY( test build )
+ADD_SUBDIRECTORY(test build)
 
 ########################################################################
 # Target Build

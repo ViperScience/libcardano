@@ -23,7 +23,8 @@
 #include <stdexcept>
 
 // Third Party Library Headers
-#include "cbor.h"
+#include <botan/hash.h>
+#include <cbor.h>
 
 // Public Cardano++ Headers 
 #include <cardano/address.hpp>
@@ -208,32 +209,71 @@ std::string RewardsAddress::toBase16(bool include_header_byte) const {
 ////////////////////////////////// Byron Era Addresses ///////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 
-
-
+// +-------------------------------------------------------------------------------+
+// |                                                                               |
+// |                        CBOR-Serialized Object with CRC                        |
+// |                                                                               |
+// +-------------------------------------------------------------------------------+
+//                                         |
+//                                         |
+//                                         v
+// +-------------------------------------------------------------------------------+
+// |     Address Root    |     Address Attributes    |           AddrType          |
+// |                     |                           |                             |
+// |   Hash (224 bits)   |  Der. Path  + Stake + NM  |  PubKey | (Script) | Redeem |
+// |                     |    (open for extension)   |     (open for extension)    |
+// +-------------------------------------------------------------------------------+
+//              |                 |
+//              |                 |     +----------------------------------+
+//              v                 |     |        Derivation Path           |
+// +---------------------------+  |---->|                                  |
+// | SHA3-256                  |  |     | ChaChaPoly⁴ AccountIx/AddressIx  |
+// |   |> Blake2b 224          |  |     +----------------------------------+
+// |   |> CBOR                 |  |
+// |                           |  |
+// |  -AddrType                |  |     +----------------------------------+
+// |  -ASD  (~AddrType+PubKey) |  |     |       Stake Distribution         |
+// |  -Address Attributes      |  |     |                                  |
+// +---------------------------+  |---->|  BootstrapEra | (Single | Multi) |
+//                                |     +----------------------------------+
+//                                |
+//                                |
+//                                |     +----------------------------------+
+//                                |     |          Network Magic           |
+//                                |---->|                                  |
+//                                      | Addr Discr: MainNet vs TestNet   |
+//                                      +----------------------------------+
 //
-// Add a function here that breaks down an address CBOR using the C lib
+// CRC: Cyclic Redundancy Check; sort of checksum, a bit (pun intended) more reliable.
+// ASD: Address Spending Data; Some data that are bound to an address. It’s an extensible object
+//      with payload which identifies one of the three elements:
+//  * A Public Key (Payload is thereby a PublicKey)
+//  * A Script (Payload is thereby a script and its version)
+//  * A Redeem Key (Payload is thereby a RedeemPublicKey)
+// Derivation Path: Note that there’s no derivation path for Redeem nor Scripts addresses!
+// ChaChaPoly: Authenticated Encryption with Associated Data (see RFC 7539. We use it as a way to
+//             cipher the derivation path using a passphrase (the root public key).
 //
-#include <ostream>
-#include <iostream>
+// https://input-output-hk.github.io/cardano-wallet/concepts/byron-address-format
 
 auto byron_address_type_to_byte(ByronAddressType type) -> uint8_t {
-    uint8_t byte; 
+    uint32_t type_val; 
     switch (type)
     {
     case ByronAddressType::pubkey:
-        byte = 0;
+        type_val = 0;
         break;
     case ByronAddressType::script:
-        byte = 1;
+        type_val = 1;
         break;
     case ByronAddressType::redeem:
-        byte = 1;
+        type_val = 1;
         break;
     default:
         throw std::invalid_argument("Not a valid Byron era address type.");
         break;
     }
-    return byte;
+    return type_val;
 } // byron_address_type_to_byte
 
 auto uint_to_byron_address_type(uint32_t addr_type_val) -> ByronAddressType {
@@ -256,17 +296,28 @@ auto uint_to_byron_address_type(uint32_t addr_type_val) -> ByronAddressType {
     return type;
 } // uint_to_byron_address_type
 
+/// Compute the CRC32 checksum of the provided bytes
+auto compute_crc32(std::span<const uint8_t> bytes) -> uint32_t {
+    auto crc32 = Botan::HashFunction::create("CRC32");
+    crc32->update(bytes.data(), bytes.size());
+    auto hash = crc32->final();
+    uint32_t val = (hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3];
+    return val;
+} // compute_crc32
+
+auto check_byron_address_crc(std::span<const uint8_t> cbor, uint32_t crc) -> bool {
+    auto cbor_crc32 = compute_crc32(cbor);
+    return (cbor_crc32 == crc);
+} // check_byron_address_crc
+
 auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress {
     auto baddr = ByronAddress();
 
     struct cbor_load_result result;
     auto addr_item = cbor_load(addr_cbor.data(), addr_cbor.size(), &result);
-    // check errors....
-    // check array is the right size...
-
-    // Grab the CRC32 of the payload
-    auto crc32 = cbor_get_uint32(cbor_array_get(addr_item, 1));    
-    // maybe use this to check later...
+    if (result.error.code != CBOR_ERR_NONE)
+        throw std::invalid_argument("Provided CBOR data is not a valid bootstrap address.");
+    // Also check if the array is the right size?
 
     // Get the tagged CBOR metadata (check for the CBOR tag)
     auto tag = cbor_tag_value(cbor_array_get(addr_item, 0));
@@ -275,6 +326,11 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress 
     auto tagged_item = cbor_tag_item(cbor_array_get(addr_item, 0));
     auto payload = cbor_bytestring_handle(tagged_item);
     auto payload_len = cbor_bytestring_length(tagged_item);
+
+    // Check the CRC32 of the payload.
+    auto crc32 = cbor_get_uint32(cbor_array_get(addr_item, 1));    
+    if (!check_byron_address_crc({payload, payload_len}, crc32))
+        throw std::invalid_argument("Provided CBOR data is not a valid bootstrap address.");
 
     // Decode the address payload which is itself CBOR data
     auto payload_item = cbor_load(payload, payload_len, &result);
@@ -294,7 +350,7 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress 
             auto attr_item = cbor_load(attr_cbor, attr_cbor_len, &result);
 
             if (cbor_get_uint32(attrs_map[i].key) == 1) {
-                // Key = 1: ciphered derivation path (CBOR encoded)
+                // Key = 1: ciphered derivation path (double CBOR encoded)
                 auto n_bytes = cbor_bytestring_length(attr_item);
                 auto bytes_ptr = cbor_bytestring_handle(attr_item);
                 baddr.attrs_.derivation_path_ciphertext = std::vector<uint8_t>(
@@ -311,7 +367,7 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress 
 
     // Get the address type
     auto addr_type_val = cbor_get_uint32(cbor_array_get(payload_item, 2));
-    baddr.type_ =  uint_to_byron_address_type(addr_type_val);
+    baddr.type_ = uint_to_byron_address_type(addr_type_val);
 
     // memory clean up 
     cbor_decref(&addr_item);
@@ -323,61 +379,106 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress 
 auto ByronAddress::fromBase58(std::string addr) -> ByronAddress {
     // Decode the Base58 address to get the CBOR data as a byte vector. 
     auto addr_cbor = BASE58::decode(addr);
-
     return ByronAddress::fromCBOR(addr_cbor);
 } // ByronAddress::fromBase58
 
 auto ByronAddress::toCBOR() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> cbor;
+    // CBOR Encode the address attributes
+    auto dpath = this->attrs_.derivation_path_ciphertext;
+    auto proto = this->attrs_.protocol_magic;
+    cbor_item_t *map_item;
+    if ((dpath.size() > 0) && (proto != 0)) {
+        map_item = cbor_new_definite_map(2);
 
-    cbor_item_t *d = cbor_build_bytestring(this->root_.data(), this->root_.size());
+        // Encode the derivation path ciphertext as item 1.
+        uint8_t dpath_cbor_buff[32];
+        size_t dpath_cbor_len = cbor_serialize(cbor_build_bytestring(dpath.data(), dpath.size()),
+                                               dpath_cbor_buff, 32);
+        cbor_map_add(map_item, (struct cbor_pair) {
+            .key = cbor_move(cbor_build_uint8(1)),
+            .value = cbor_move(cbor_build_bytestring(dpath_cbor_buff, dpath_cbor_len))
+        });
+
+        // Encode the protocol magic number as item 2.
+        uint8_t proto_cbor_buff[5];
+        cbor_serialize(cbor_build_uint32(proto), proto_cbor_buff, 5);
+        cbor_map_add(map_item, (struct cbor_pair) {
+            .key = cbor_move(cbor_build_uint8(2)),
+            .value = cbor_move(cbor_build_bytestring(proto_cbor_buff, 5))
+        });
+
+    } else if (proto != 0) {
+        map_item = cbor_new_definite_map(1);
+        uint8_t proto_cbor_buff[5];
+        cbor_serialize(cbor_build_uint32(proto), proto_cbor_buff, 5);
+        cbor_map_add(map_item, (struct cbor_pair) {
+            .key = cbor_move(cbor_build_uint8(2)),
+            .value = cbor_move(cbor_build_bytestring(proto_cbor_buff, 5))
+        });
+    } else if (dpath.size() > 0) {
+        map_item = cbor_new_definite_map(1);
+        uint8_t dpath_cbor_buff[32];
+        size_t dpath_cbor_len = cbor_serialize(cbor_build_bytestring(dpath.data(), dpath.size()),
+                                               dpath_cbor_buff, 32);
+        cbor_map_add(map_item, (struct cbor_pair) {
+            .key = cbor_move(cbor_build_uint8(1)),
+            .value = cbor_move(cbor_build_bytestring(dpath_cbor_buff, dpath_cbor_len))
+        });
+    } else {
+        map_item = cbor_new_definite_map(0);
+    }
+
+    // Create the payload item, which constists of the root, attributes, and address type in a
+    // three item array.
+    cbor_item_t * payload_item = cbor_new_definite_array(3);
+    cbor_array_set(payload_item, 0,
+                   cbor_move(cbor_build_bytestring(this->root_.data(), this->root_.size())));
+    cbor_array_set(payload_item, 1, map_item);
+    cbor_array_set(payload_item, 2,
+                   cbor_move(cbor_build_uint8(byron_address_type_to_byte(this->type_))));
+
+    // Serialize the payload to CBOR
+    uint8_t buff[96];
+    size_t sz = cbor_serialize(payload_item, buff, 256);
+
+    // Tag the payload CBOR data as encoded CBOR data (tag 24)
+    cbor_item_t *cbor_tag = cbor_new_tag(24);
+    auto temp = cbor_build_bytestring(buff, sz);
+    cbor_tag_set_item(cbor_tag, temp);
+
+    // Finally, pack the tagged payload and CRC32 into a two element array.
+    cbor_item_t * addr_item = cbor_new_definite_array(2);
+    cbor_array_set(addr_item, 0, cbor_move(cbor_tag));
+
+    // Compute the CRC32 of the CBOR serialized address payload
+    std::vector<uint8_t> payload_vec(buff, buff + sz);
+    cbor_array_set(addr_item, 1, cbor_build_uint32(compute_crc32(payload_vec)) );
+
+    // CBOR encode the CBOR-Serialized Object with CRC.
+    uint8_t buff2[96];
+    size_t sz2 = cbor_serialize(addr_item, buff2, 96);
+    std::vector<uint8_t> cbor(buff2, buff2 + sz2);
 
     return cbor;
 } // ByronAddress::toBase58
 
 auto ByronAddress::toBase58() const -> std::string {
-    return std::string("");
+    auto cbor = this->toCBOR();
+    return BASE58::encode(cbor);
 } // ByronAddress::toBase58
 
-// // calculate the hash of the data using SHA3 digest then using Blake2b224
-// fn sha3_then_blake2b224(data: &[u8]) -> [u8; 28] {
-//     let mut sh3 = sha3::Sha3_256::new();
-//     let mut sh3_out = [0; 32];
-//     sh3.input(data.as_ref());
-//     sh3.result(&mut sh3_out);
+auto sha3_then_blake2b224(std::span<const uint8_t> data) -> std::array<uint8_t, 28> {
+    auto sha3 = Botan::HashFunction::create("SHA-3(256)");
+    auto blake2b = Botan::HashFunction::create("Blake2b(224)");
 
-//     let mut b2b = Blake2b::new(28);
-//     let mut out = [0; 28];
-//     b2b.input(&sh3_out[..]);
-//     b2b.result(&mut out);
-//     out
-// }
+    sha3->update(data.data(), data.size());   
+    blake2b->update(sha3->final().data(), 32);
+    auto blake2b_out = blake2b->final();
 
-// #include <span>
-
-// #include <botan/hash.h>
-// #include <botan/hex.h>
-
-// auto sha3_then_blake2b224(std::span<const uint8_t> data) -> std::array<uint8_t, 28> {
-//     // std::unique_ptr<Botan::HashFunction> sha3(Botan::HashFunction::create("SHA-3(256)"));
-//     auto sha3 = Botan::HashFunction::create("SHA-3(256)");
-//     sha3->update(data.data(), data.size());
-//     // auto sha3_out = sha3->final();
-
-//     // std::unique_ptr<Botan::HashFunction> blake2b(Botan::HashFunction::create("Blake2b(224)"));
-//     auto blake2b = Botan::HashFunction::create("Blake2b(224)");
-//     blake2b->update(sha3->final().data(), 32);
-//     auto blake2b_out = blake2b->final();
-
-//     std::array<uint8_t, 28> hashed_data;
-//     std::move(std::begin(blake2b_out), std::end(blake2b_out), hashed_data.begin());
-//     return hashed_data;
-// } // sha3_then_blake2b224
-
-// #include <botan/stream_cipher.h>
-// #include <botan/auto_rng.h>
-// #include <botan/hex.h>
-// #include <iostream>
+    std::array<uint8_t, 28> hashed_data;
+    std::move(std::begin(blake2b_out), std::end(blake2b_out), hashed_data.begin());
+    return hashed_data;
+} // sha3_then_blake2b224
 
 // auto make_derivation_path_ciphertext(std::vector<uint32_t> path, BIP32PublicKey root_key) -> std::array<uint8_t, 28> {
 //     std::unique_ptr<Botan::StreamCipher> cipher(Botan::StreamCipher::create("ChaCha(20)"));

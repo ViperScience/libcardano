@@ -99,7 +99,7 @@ enum class ByronAddressType { pubkey, script, redeem };
 
 struct ByronAddressAttributes {
     std::vector<uint8_t> derivation_path_ciphertext;
-    uint32_t protocol_magic;
+    uint32_t protocol_magic = 0;
 };
 
 class ByronAddress {

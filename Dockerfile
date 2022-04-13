@@ -1,4 +1,3 @@
-#FROM debian:bullseye-slim
 FROM python:3.9-slim-bullseye
 
 RUN apt-get update && apt-get install -y \
@@ -15,8 +14,10 @@ WORKDIR /opt
 ARG CMAKE_VERSION=3.23.0
 RUN curl -LO https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.tar.gz \
  && mkdir -p cmake \
- && tar -xf cmake-$CMAKE_VERSION-linux-x86_64.tar.gz -C cmake --strip-components=1
-ENV PATH "/opt/cmake/bin:$PATH"
+ && tar -xf cmake-$CMAKE_VERSION-linux-x86_64.tar.gz -C cmake --strip-components=1 \
+ && cp /opt/cmake/bin/* /usr/local/bin \
+ && cp -r /opt/cmake/share/* /usr/local/share \
+ && rm -rf /opt/cmake*
 
 # Install the libcbor library
 WORKDIR /opt
@@ -26,7 +27,8 @@ RUN git clone https://github.com/PJK/libcbor.git \
  && mkdir build && cd build \
  && cmake -DCMAKE_BUILD_TYPE=Release .. \
  && make -j8 \
- && make install
+ && make install \
+ && cd ../../ && rm -rf libcbor
 
 # Install the botan library
 WORKDIR /opt
@@ -35,7 +37,8 @@ RUN git clone https://github.com/randombit/botan.git \
  && git checkout tags/2.19.1 \
  && python3 ./configure.py \
  && make \
- && make install
+ && make install \
+ && cd .. && rm -rf botan
 
 # Build the Cardano++ library
 WORKDIR /opt
