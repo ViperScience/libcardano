@@ -24,6 +24,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace cardano {
 
@@ -64,9 +65,10 @@ class BIP32PublicKey {
     /// Access methods
     std::string toBech32(std::string hrp);
     std::string toBase16();
+    std::vector<uint8_t> toBytes(bool with_cc = true);
 
     /// Mutation methods
-    BIP32PublicKey deriveChild(uint32_t index);
+    BIP32PublicKey deriveChild(uint32_t index, uint32_t derivation_mode = 2);
 }; // BIP32PublicKey
 
 class BIP32PrivateKey {
@@ -97,7 +99,7 @@ class BIP32PrivateKey {
 
     /// Conversion methods
     BIP32PublicKey toPublic();
-    BIP32PrivateKey deriveChild(uint32_t index);
+    BIP32PrivateKey deriveChild(uint32_t index, uint32_t derivation_mode = 2);
     BIP32PrivateKeyEncrypted encrypt(std::string password);
 }; // BIP32PrivateKey
 
@@ -120,7 +122,8 @@ class BIP32PrivateKeyEncrypted {
     std::string toBase16();
 
     /// Conversion methods
-    BIP32PrivateKeyEncrypted deriveChild(uint32_t index, std::string password);
+    BIP32PrivateKeyEncrypted deriveChild(uint32_t index, std::string password, 
+                                         uint32_t derivation_mode = 2);
     BIP32PublicKey toPublic(std::string password);
     BIP32PrivateKey decrypt(std::string password);
 }; // BIP32PrivateKeyEncrypted

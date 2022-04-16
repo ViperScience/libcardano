@@ -52,7 +52,7 @@ BIP32PublicKey BIP32PublicKey::fromBech32(std::string bech32_str) {
     return k;
 } // BIP32PublicKey::fromBech32
 
-BIP32PublicKey BIP32PublicKey::deriveChild(uint32_t index) {
+BIP32PublicKey BIP32PublicKey::deriveChild(uint32_t index, uint32_t derivation_mode) {
     uint8_t *pub_in = this->pub_.data();
     uint8_t *cc_in = this->cc_.data();
 
@@ -61,8 +61,18 @@ BIP32PublicKey BIP32PublicKey::deriveChild(uint32_t index) {
     uint8_t *cc_out = k.cc_.data();
 
     // Derive the child public key for the soft index.
-    int flag = wallet_encrypted_derive_public(pub_in, cc_in, index, pub_out,
-                                              cc_out, DERIVATION_V2);
+    derivation_scheme_mode mode;
+    switch (derivation_mode)
+    {
+    case 1:
+        mode = DERIVATION_V1;
+        break;
+    case 2:
+    default:
+        mode = DERIVATION_V2;
+        break;
+    }
+    int flag = wallet_encrypted_derive_public(pub_in, cc_in, index, pub_out, cc_out, mode);
     if (flag != 0)
         throw std::invalid_argument(
             "Cannot derive hardened index from public key.");
@@ -79,6 +89,14 @@ std::string BIP32PublicKey::toBase16() {
     auto bytes = concat_bytes(this->pub_, this->cc_);
     return BASE16::encode(bytes);
 } // ExtendedPublicKey::toBase16
+
+std::vector<uint8_t> BIP32PublicKey::toBytes(bool with_cc) {
+    if (!with_cc) {
+        std::vector<uint8_t> bytes(this->pub_.data(), this->pub_.data() + this->pub_.size());
+        return bytes;
+    }
+    return concat_bytes(this->pub_, this->cc_);
+} // BIP32PublicKey::toBytes
 
 bool BIP32PrivateKey::clear() {
     std::fill(this->prv_.begin(), this->prv_.end(), 0);
@@ -125,7 +143,7 @@ BIP32PublicKey BIP32PrivateKey::toPublic() {
     return BIP32PublicKey(pub_key, this->cc_);
 } // BIP32PrivateKey::toPublic
 
-BIP32PrivateKey BIP32PrivateKey::deriveChild(uint32_t index) {
+auto BIP32PrivateKey::deriveChild(uint32_t index, uint32_t derivation_mode) -> BIP32PrivateKey {
     // Build the encrypted key struct for the derive function.
     encrypted_key ek;
     std::copy(this->prv_.begin(), this->prv_.end(), std::begin(ek.ekey));
@@ -133,11 +151,21 @@ BIP32PrivateKey BIP32PrivateKey::deriveChild(uint32_t index) {
     cardano_crypto_ed25519_publickey(this->prv_.data(), ek.pkey);
 
     // Perform the child key derivation using the cardano crypto C library.
+    derivation_scheme_mode mode;
+    switch (derivation_mode)
+    {
+    case 1:
+        mode = DERIVATION_V1;
+        break;
+    case 2:
+    default:
+        mode = DERIVATION_V2;
+        break;
+    }
     uint32_t pw_len = 0; // This will skip the decryption
     uint8_t *pw = NULL;
     encrypted_key ek_out;
-    wallet_encrypted_derive_private(&ek, pw, pw_len, index, &ek_out,
-                                    DERIVATION_V2);
+    wallet_encrypted_derive_private(&ek, pw, pw_len, index, &ek_out, mode);
 
     std::array<uint8_t, ENCRYPTED_KEY_SIZE> skey;
     std::array<uint8_t, CHAIN_CODE_SIZE> cc;
@@ -168,14 +196,15 @@ BIP32PrivateKeyEncrypted::BIP32PrivateKeyEncrypted(std::string prv,
                 this->cc_.begin());
 } // BIP32PrivateKeyEncrypted::ExtendedPublicKey
 
-BIP32PrivateKeyEncrypted
-BIP32PrivateKeyEncrypted::deriveChild(uint32_t index, std::string password) {
+auto BIP32PrivateKeyEncrypted::deriveChild(
+    uint32_t index, std::string password, uint32_t derivation_mode
+) -> BIP32PrivateKeyEncrypted {
     auto decrypted = this->decrypt(password);
-    auto child = decrypted.deriveChild(index);
+    auto child = decrypted.deriveChild(index, derivation_mode);
     return child.encrypt(password);
 } // BIP32PrivateKeyEncrypted::deriveChild
 
-BIP32PublicKey BIP32PrivateKeyEncrypted::toPublic(std::string password) {
+auto BIP32PrivateKeyEncrypted::toPublic(std::string password) -> BIP32PublicKey {
     std::array<uint8_t, PUBLIC_KEY_SIZE> pub{};
     wallet_encrypted_private_to_public((const uint8_t *)password.c_str(),
                                        password.size(), this->xprv_.data(),

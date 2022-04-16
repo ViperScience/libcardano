@@ -23,6 +23,7 @@
 #include <stdexcept>
 
 // Third Party Library Headers
+#include <botan/cipher_mode.h>
 #include <botan/hash.h>
 #include <cbor.h>
 
@@ -310,6 +311,85 @@ auto check_byron_address_crc(std::span<const uint8_t> cbor, uint32_t crc) -> boo
     return (cbor_crc32 == crc);
 } // check_byron_address_crc
 
+auto byron_address_attributes_to_libcbor_item(ByronAddressAttributes attrs) -> cbor_item_t* {
+    auto adp = attrs.derivation_path_ciphertext;
+    auto apm = attrs.protocol_magic;
+
+    cbor_item_t *map_item;
+    if ((adp.size() > 0) && (apm != 0))
+        map_item = cbor_new_definite_map(2);
+    else if ((adp.size() > 0) || (apm != 0))
+        map_item = cbor_new_definite_map(1);
+    else
+        map_item = cbor_new_definite_map(0);
+
+    if (adp.size() > 0) {
+        // Encode the derivation path ciphertext as item 1.
+        uint8_t dpath_cbor_buff[32];
+        size_t dpath_cbor_len = cbor_serialize(
+            cbor_build_bytestring(adp.data(), adp.size()), dpath_cbor_buff, 32);
+        cbor_map_add(map_item, (struct cbor_pair) {
+            .key = cbor_move(cbor_build_uint8(1)),
+            .value = cbor_move(cbor_build_bytestring(dpath_cbor_buff, dpath_cbor_len))
+        });
+    }
+
+    if (apm != 0) {
+        // Encode the protocol magic number as item 2.
+        uint8_t proto_cbor_buff[5];
+        cbor_serialize(cbor_build_uint32(apm), proto_cbor_buff, 5);
+        cbor_map_add(map_item, (struct cbor_pair) {
+            .key = cbor_move(cbor_build_uint8(2)),
+            .value = cbor_move(cbor_build_bytestring(proto_cbor_buff, 5))
+        });
+    }
+
+    return map_item;
+} // byron_address_attributes_to_libcbor_item
+
+ByronAddressAttributes::ByronAddressAttributes(BIP32PublicKey xpub, std::span<const uint32_t> path, 
+                                               uint32_t magic) {
+    // Create the passphrase for encrypting the derivation path.
+    const uint32_t num_iterations = 500;
+    const size_t key_size = 32;
+    std::vector<uint8_t> key;
+    key.resize(key_size);
+    const std::array<uint8_t, 15> salt = {
+        0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2d, 0x68, 0x61, 0x73, 0x68, 0x69, 0x6e, 0x67
+    }; // as string -> address-hashing
+    auto xpub_bytes = xpub.toBytes(); // <- get vector of pub key and chain code
+    cryptonite_fastpbkdf2_hmac_sha512(xpub_bytes.data(), xpub_bytes.size(), salt.data(), salt.size(),
+                                      num_iterations, key.data(), key_size);
+
+    // CBOR encode the derivation path.
+    // Let libcbor allocate all the memory it needs. Then manually free the buffer.
+    cbor_item_t *path_cbor_item = cbor_new_indefinite_array();
+    for (auto idx : path)
+        cbor_array_push(path_cbor_item, cbor_move(cbor_build_uint32(idx)));
+    size_t buff_size;
+    uint8_t *path_cbor_buff;
+    auto cbor_len = cbor_serialize_alloc(path_cbor_item, &path_cbor_buff, &buff_size);
+
+    // Create the nonce (hardcoded in legacy Bryon code) used for the encryption cipher.
+    std::string nonce_str = "serokellfore";
+    Botan::secure_vector<uint8_t> iv(nonce_str.data(), nonce_str.data() + nonce_str.length());
+
+    // Encrypt the derivation path (CBOR encoded) using a ChaCha20Poly1305 cipher.
+    Botan::secure_vector<uint8_t> pt(path_cbor_buff, path_cbor_buff + cbor_len);
+    auto enc = Botan::Cipher_Mode::create("ChaCha20Poly1305", Botan::ENCRYPTION);
+    enc->set_key(key);
+    enc->start(iv);
+    enc->finish(pt);
+
+    // Clean up memory
+    free(path_cbor_buff);
+    cbor_decref(&path_cbor_item);
+
+    // Set the object members
+    this->protocol_magic = magic;
+    this->derivation_path_ciphertext = std::vector(pt.data(), pt.data() + pt.size());
+} // ByronAddressAttributes::ByronAddressAttributes
+
 auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress {
     auto baddr = ByronAddress();
 
@@ -369,7 +449,7 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress 
     auto addr_type_val = cbor_get_uint32(cbor_array_get(payload_item, 2));
     baddr.type_ = uint_to_byron_address_type(addr_type_val);
 
-    // memory clean up 
+    // Clean up memory 
     cbor_decref(&addr_item);
     cbor_decref(&payload_item);
 
@@ -383,81 +463,46 @@ auto ByronAddress::fromBase58(std::string addr) -> ByronAddress {
 } // ByronAddress::fromBase58
 
 auto ByronAddress::toCBOR() const -> std::vector<uint8_t> {
-    // CBOR Encode the address attributes
-    auto dpath = this->attrs_.derivation_path_ciphertext;
-    auto proto = this->attrs_.protocol_magic;
-    cbor_item_t *map_item;
-    if ((dpath.size() > 0) && (proto != 0)) {
-        map_item = cbor_new_definite_map(2);
-
-        // Encode the derivation path ciphertext as item 1.
-        uint8_t dpath_cbor_buff[32];
-        size_t dpath_cbor_len = cbor_serialize(cbor_build_bytestring(dpath.data(), dpath.size()),
-                                               dpath_cbor_buff, 32);
-        cbor_map_add(map_item, (struct cbor_pair) {
-            .key = cbor_move(cbor_build_uint8(1)),
-            .value = cbor_move(cbor_build_bytestring(dpath_cbor_buff, dpath_cbor_len))
-        });
-
-        // Encode the protocol magic number as item 2.
-        uint8_t proto_cbor_buff[5];
-        cbor_serialize(cbor_build_uint32(proto), proto_cbor_buff, 5);
-        cbor_map_add(map_item, (struct cbor_pair) {
-            .key = cbor_move(cbor_build_uint8(2)),
-            .value = cbor_move(cbor_build_bytestring(proto_cbor_buff, 5))
-        });
-
-    } else if (proto != 0) {
-        map_item = cbor_new_definite_map(1);
-        uint8_t proto_cbor_buff[5];
-        cbor_serialize(cbor_build_uint32(proto), proto_cbor_buff, 5);
-        cbor_map_add(map_item, (struct cbor_pair) {
-            .key = cbor_move(cbor_build_uint8(2)),
-            .value = cbor_move(cbor_build_bytestring(proto_cbor_buff, 5))
-        });
-    } else if (dpath.size() > 0) {
-        map_item = cbor_new_definite_map(1);
-        uint8_t dpath_cbor_buff[32];
-        size_t dpath_cbor_len = cbor_serialize(cbor_build_bytestring(dpath.data(), dpath.size()),
-                                               dpath_cbor_buff, 32);
-        cbor_map_add(map_item, (struct cbor_pair) {
-            .key = cbor_move(cbor_build_uint8(1)),
-            .value = cbor_move(cbor_build_bytestring(dpath_cbor_buff, dpath_cbor_len))
-        });
-    } else {
-        map_item = cbor_new_definite_map(0);
-    }
+    // CBOR encode the address attributes
+    cbor_item_t *attrs_item = byron_address_attributes_to_libcbor_item(this->attrs_);
 
     // Create the payload item, which constists of the root, attributes, and address type in a
     // three item array.
     cbor_item_t * payload_item = cbor_new_definite_array(3);
     cbor_array_set(payload_item, 0,
                    cbor_move(cbor_build_bytestring(this->root_.data(), this->root_.size())));
-    cbor_array_set(payload_item, 1, map_item);
+    cbor_array_set(payload_item, 1, attrs_item);
     cbor_array_set(payload_item, 2,
                    cbor_move(cbor_build_uint8(byron_address_type_to_byte(this->type_))));
 
     // Serialize the payload to CBOR
-    uint8_t buff[96];
-    size_t sz = cbor_serialize(payload_item, buff, 256);
+    size_t buffer_size;
+    uint8_t *payload_buffer;
+    size_t payload_cbor_len = cbor_serialize_alloc(payload_item, &payload_buffer, &buffer_size);
 
     // Tag the payload CBOR data as encoded CBOR data (tag 24)
     cbor_item_t *cbor_tag = cbor_new_tag(24);
-    auto temp = cbor_build_bytestring(buff, sz);
+    auto temp = cbor_build_bytestring(payload_buffer, payload_cbor_len);
     cbor_tag_set_item(cbor_tag, temp);
 
     // Finally, pack the tagged payload and CRC32 into a two element array.
-    cbor_item_t * addr_item = cbor_new_definite_array(2);
+    auto addr_item = cbor_new_definite_array(2);
     cbor_array_set(addr_item, 0, cbor_move(cbor_tag));
 
     // Compute the CRC32 of the CBOR serialized address payload
-    std::vector<uint8_t> payload_vec(buff, buff + sz);
+    std::vector<uint8_t> payload_vec(payload_buffer, payload_buffer + payload_cbor_len);
     cbor_array_set(addr_item, 1, cbor_build_uint32(compute_crc32(payload_vec)) );
 
     // CBOR encode the CBOR-Serialized Object with CRC.
-    uint8_t buff2[96];
-    size_t sz2 = cbor_serialize(addr_item, buff2, 96);
-    std::vector<uint8_t> cbor(buff2, buff2 + sz2);
+    uint8_t *addr_buffer;
+    size_t addr_cbor_len = cbor_serialize_alloc(addr_item, &addr_buffer, &buffer_size);
+    std::vector<uint8_t> cbor(addr_buffer, addr_buffer + addr_cbor_len);
+
+    // Clean up memory
+    free(payload_buffer);
+    free(addr_buffer);
+    cbor_decref(&payload_item);
+    cbor_decref(&addr_item);
 
     return cbor;
 } // ByronAddress::toBase58
@@ -480,89 +525,48 @@ auto sha3_then_blake2b224(std::span<const uint8_t> data) -> std::array<uint8_t, 
     return hashed_data;
 } // sha3_then_blake2b224
 
-// auto make_derivation_path_ciphertext(std::vector<uint32_t> path, BIP32PublicKey root_key) -> std::array<uint8_t, 28> {
-//     std::unique_ptr<Botan::StreamCipher> cipher(Botan::StreamCipher::create("ChaCha(20)"));
+auto ByronAddress::fromRootKey(BIP32PrivateKey xprv, std::span<const uint32_t> dpath, 
+                               uint32_t network_magic) -> ByronAddress {
+    const auto addr_type = ByronAddressType::pubkey;
+    const auto addr_type_byte = byron_address_type_to_byte(addr_type);
 
-// }
+    // Get the root public key
+    const auto xpub = xprv.toPublic();
 
-// // pub fn new(xpub: &XPub, attrs: Attributes) -> Self {
-// //         ExtendedAddr {
-// //             addr: hash_spending_data(AddrType::ATPubKey, xpub, &attrs),
-// //             attributes: attrs,
-// //             addr_type: AddrType::ATPubKey,
-// //         }
-// //     }
+    // Create the address attributes
+    auto attrs = ByronAddressAttributes(xpub, dpath);
 
-// ByronAddress::ByronAddress(BIP32PublicKey xpub, attrs) {
+    // CBOR encode the address attributes
+    cbor_item_t *attrs_item = byron_address_attributes_to_libcbor_item(attrs);
 
-// }
+    // Derive the address public key from the root private key.
+    if (dpath.size() != 2)
+        throw std::invalid_argument("Invalid Byron address derivation path.");
+    auto addr_xpub = xprv.deriveChild(dpath[0], 1).deriveChild(dpath[1], 1).toPublic();
 
-// ByronAddress::ByronAddress(ByronAddressType type, std::vector<uint32_t> path, BIP32PrivateKey root_key) {
+    // CBOR encode the address spending data
+    const auto xpb = addr_xpub.toBytes();
+    cbor_item_t * spending_item = cbor_new_definite_array(2);
+    cbor_array_set(spending_item, 0, cbor_move(cbor_build_uint8(addr_type_byte)));
+    cbor_array_set(spending_item, 1, cbor_move(cbor_build_bytestring(xpb.data(), xpb.size())));
 
-//     // BYRON_DERIVATION_PATH =
-//     //     [ * uint32 ]
-
-//     // BYRON_DERIVATION_PATH_CIPHERTEXT = ; Obtained by encrypting a serialized derivation path
-//     //     bytes .size 28
-//     auto der_path_enc = make_derivation_path_ciphertext(path, root_key.toPublic());
-
-//     // BYRON_ADDRESS_ATTRIBUTES =
-//     //     { 1 : <<bytes .cbor BYRON_DERIVATION_PATH_CIPHERTEXT>>  ; Double CBOR-encoded ChaCha20/Poly1305 encrypted digest, see CIP for details.
-//     //     , 2 : <<uint32>>                             ; CBOR-encoded network discriminant
-//     //     }
+    // Create the address root
+    cbor_item_t * root_item = cbor_new_definite_array(3);
+    cbor_array_set(root_item, 0, cbor_move(cbor_build_uint8(addr_type_byte)));
+    cbor_array_set(root_item, 1, cbor_move(spending_item));
+    cbor_array_set(root_item, 2, cbor_move(attrs_item));
     
+    // Serialize the address root to CBOR data.
+    // Let libcbor allocate all the memory it needs. Then manually free the buffer.
+    size_t buffer_size;
+    uint8_t *buffer;
+    auto cbor_len = cbor_serialize_alloc(root_item, &buffer, &buffer_size);
+    std::vector<uint8_t> root_cbor(buffer, buffer + cbor_len);
+    free(buffer);
+    cbor_decref(&root_item);
 
-//     // BYRON_ADDRESS_TYPE =
-//     //        0  ; Public key
-//     //     // 2  ; Redemption
-//     // Byron address type as a byte to be concatenated with other data.
-//     uint8_t type_byte;
-//     switch(type) {
-//         case ByronAddressType::script :
-//             type_byte = 1;
-//             break;
-//         case ByronAddressType::redeem :
-//             type_byte = 2;
-//             break;
-//         case ByronAddressType::pubkey :
-//         default :
-//             type_byte = 0;
-//     }
+    // Hash the address root
+    auto root = sha3_then_blake2b224(root_cbor);    
 
-//     // BYRON_ADDRESS_SPENDING_DATA =
-//     //     ( 0, bytes .size 64 ) ; Ed25519 Public key | Associated BIP-32 chain code
-//     //     //
-//     //     ( 2, bytes .size 32 ) ; Ed25519 Public key
-//     auto spending_data
-    
-
-//     std::array<uint8_t, 28> root_hash;
-//     std::vector<uint8_t> attributes;
-
-//     // Convert the payload to CBOR
-
-//     // CRC32 of the payload
-
-//     // BYRON_ADDRESS_ROOT =
-//     //     ( BYRON_ADDRESS_TYPE
-//     //     , BYRON_ADDRESS_SPENDING_DATA
-//     //     , BYRON_ADDRESS_ATTRIBUTES
-//     //     )
-//     auto root = concat_bytes(spending_data, attributes);
-//     root.insert(root.begin(), type_byte);
-
-//     // BYRON_ADDRESS_PAYLOAD =
-//     //     ( bytes .size 28            ; blake2b_224(sha3_256(BYRON_ADDRESS_ROOT)) digest
-//     //     , BYRON_ADDRESS_ATTRIBUTES
-//     //     , BYRON_ADDRESS_TYPE
-//     //     )
-//     auto root_hash = sha3_then_blake2b224(root);
-//     auto payload = concat_bytes(root_hash, attributes);
-//     payload.push_back(type_byte);
-
-//     // BYRON_ADDRESS =
-//     //     ( #6.24(<<BYRON_ADDRESS_PAYLOAD>>)
-//     //     , uint32 ; crc32 of the CBOR serialized address payload
-//     //     )
-
-// }
+    return ByronAddress(root, attrs, addr_type);
+} // ByronAddress::fromKey

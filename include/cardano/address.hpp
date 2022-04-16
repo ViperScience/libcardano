@@ -31,7 +31,7 @@
 
 namespace cardano {
 
-inline size_t constexpr KEY_HASH_LENGTH = 28;
+constexpr size_t KEY_HASH_LENGTH = 28;
 
 enum class NetworkID { mainnet, testnet };
 
@@ -41,9 +41,8 @@ class BaseAddress {
     std::array<uint8_t, KEY_HASH_LENGTH> pmt_key_hash_{};
     std::array<uint8_t, KEY_HASH_LENGTH> stk_key_hash_{};
 
-    // Make the default constructor private so it can only be used by the
-    // static factory methods.
-    constexpr BaseAddress() = default;
+    // Make the default constructor private so it can only be used by the static factory methods.
+    BaseAddress() = default;
 
   public:
     BaseAddress(NetworkID nid,
@@ -62,13 +61,11 @@ class EnterpriseAddress {
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
     uint8_t header_byte_;
 
-    // Make the default constructor private so it can only be used by the
-    // static factory methods.
-    constexpr EnterpriseAddress() = default;
+    // Make the default constructor private so it can only be used by the static factory methods.
+    EnterpriseAddress() = default;
 
   public:
-    EnterpriseAddress(NetworkID nid,
-                      std::array<uint8_t, KEY_HASH_LENGTH> key_hash);
+    EnterpriseAddress(NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash);
     static EnterpriseAddress fromKey(NetworkID nid, BIP32PublicKey pub_key);
     static EnterpriseAddress fromBech32(std::string addr);
     std::string toBech32(std::string hrp) const;
@@ -82,13 +79,11 @@ class RewardsAddress {
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
     uint8_t header_byte_;
 
-    // Make the default constructor private so it can only be used by the
-    // static factory methods.
-    constexpr RewardsAddress() = default;
+    // Make the default constructor private so it can only be used by the static factory methods.
+    RewardsAddress() = default;
 
   public:
-    RewardsAddress(NetworkID nid,
-                   std::array<uint8_t, KEY_HASH_LENGTH> key_hash);
+    RewardsAddress(NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash);
     static RewardsAddress fromKey(NetworkID nid, BIP32PublicKey stake_key);
     static RewardsAddress fromBech32(std::string addr);
     std::string toBech32(std::string hrp) const;
@@ -100,23 +95,28 @@ enum class ByronAddressType { pubkey, script, redeem };
 struct ByronAddressAttributes {
     std::vector<uint8_t> derivation_path_ciphertext;
     uint32_t protocol_magic = 0;
+    ByronAddressAttributes() = default;
+    ByronAddressAttributes(std::vector<uint8_t> path, uint32_t magic)
+        : derivation_path_ciphertext{std::move(path)}, protocol_magic{magic} {}
+    ByronAddressAttributes(BIP32PublicKey xprv, std::span<const uint32_t> path, uint32_t magic = 0);
 };
 
 class ByronAddress {
   private:
-    ByronAddressType type_;
-    std::array<uint8_t, 28> root_;
+    std::array<uint8_t, KEY_HASH_LENGTH> root_;
     ByronAddressAttributes attrs_;
+    ByronAddressType type_;
 
     // Make the default constructor private so it can only be used by the static factory methods.
     ByronAddress() = default;
 
   public:
-    std::array<uint8_t, 28> root() const { return root_; }
-
+    ByronAddress(std::array<uint8_t, KEY_HASH_LENGTH> root, ByronAddressAttributes attrs,
+                 ByronAddressType type)
+        : root_{std::move(root)}, attrs_{std::move(attrs)}, type_{type} {}
+    static ByronAddress fromRootKey(BIP32PrivateKey xprv, std::span<const uint32_t> derivation_path, uint32_t network_magic = 0);
     static ByronAddress fromCBOR(std::span<const uint8_t> cbor_data);
     static ByronAddress fromBase58(std::string addr);
-
     std::vector<uint8_t> toCBOR() const;
     std::string toBase58() const;
 };

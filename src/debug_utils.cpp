@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Viper Science LLC
+// Copyright (c) 2022 Viper Science LLC
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,11 +18,4 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef _CARDANO_CARDANO_HPP_
-#define _CARDANO_CARDANO_HPP_
-
-#include <cardano/encodings.hpp>
-#include <cardano/crypto.hpp>
-#include <cardano/address.hpp>
-
-#endif // _CARDANO_CARDANO_HPP_
+#include "debug_utils.hpp"

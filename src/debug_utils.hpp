@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Viper Science LLC
+// Copyright (c) 2022 Viper Science LLC
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,11 +18,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef _CARDANO_CARDANO_HPP_
-#define _CARDANO_CARDANO_HPP_
+#include <cstdint>
+#include <iostream>
+#include <iomanip>
+#include <span>
 
-#include <cardano/encodings.hpp>
-#include <cardano/crypto.hpp>
-#include <cardano/address.hpp>
+#ifndef _CARDANO_DEBUG_UTILS_HPP_
+#define _CARDANO_DEBUG_UTILS_HPP_
 
-#endif // _CARDANO_CARDANO_HPP_
+namespace cardano_debug {
+
+static void print_bytes(std::span<const uint8_t> data, size_t line_width = 16) {
+    size_t counter = 0;
+    for (auto v : data) {
+        std::cout << "0x" << std::hex << std::setfill('0') << std::setw(2) << (int)v << " ";
+        counter++;
+        if (counter > line_width - 1) {
+            std::cout << std::endl;
+            counter = 0;
+        }
+    } 
+    std::cout << std::endl;
+}
+
+} // namespace cardano_debug
+
+#endif // _CARDANO_DEBUG_UTILS_HPP_
