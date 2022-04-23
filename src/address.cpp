@@ -323,25 +323,28 @@ auto byron_address_attributes_to_libcbor_item(ByronAddressAttributes attrs) -> c
     else
         map_item = cbor_new_definite_map(0);
 
+    size_t buffer_size, cbor_len;
+    uint8_t *buffer;
+
     if (adp.size() > 0) {
         // Encode the derivation path ciphertext as item 1.
-        uint8_t dpath_cbor_buff[32];
-        size_t dpath_cbor_len = cbor_serialize(
-            cbor_build_bytestring(adp.data(), adp.size()), dpath_cbor_buff, 32);
+        cbor_len = cbor_serialize_alloc(
+            cbor_build_bytestring(adp.data(), adp.size()), &buffer, &buffer_size);
         cbor_map_add(map_item, (struct cbor_pair) {
             .key = cbor_move(cbor_build_uint8(1)),
-            .value = cbor_move(cbor_build_bytestring(dpath_cbor_buff, dpath_cbor_len))
+            .value = cbor_move(cbor_build_bytestring(buffer, cbor_len))
         });
+        free(buffer);
     }
 
     if (apm != 0) {
         // Encode the protocol magic number as item 2.
-        uint8_t proto_cbor_buff[5];
-        cbor_serialize(cbor_build_uint32(apm), proto_cbor_buff, 5);
+        cbor_len = cbor_serialize_alloc(cbor_build_uint32(apm), &buffer, &buffer_size);
         cbor_map_add(map_item, (struct cbor_pair) {
             .key = cbor_move(cbor_build_uint8(2)),
-            .value = cbor_move(cbor_build_bytestring(proto_cbor_buff, 5))
+            .value = cbor_move(cbor_build_bytestring(buffer, cbor_len))
         });
+        free(buffer);
     }
 
     return map_item;
@@ -396,7 +399,7 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress 
     struct cbor_load_result result;
     auto addr_item = cbor_load(addr_cbor.data(), addr_cbor.size(), &result);
     if (result.error.code != CBOR_ERR_NONE)
-        throw std::invalid_argument("Provided CBOR data is not a valid bootstrap address.");
+        throw std::invalid_argument("Provided CBOR data is invalid.");
     // Also check if the array is the right size?
 
     // Get the tagged CBOR metadata (check for the CBOR tag)
@@ -414,10 +417,12 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress 
 
     // Decode the address payload which is itself CBOR data
     auto payload_item = cbor_load(payload, payload_len, &result);
+    if (result.error.code != CBOR_ERR_NONE)
+        throw std::invalid_argument("Provided CBOR data is invalid.");
 
     // Access the address root (hash of address data)
     auto root_ptr = std::span(cbor_bytestring_handle(cbor_array_get(payload_item, 0)), 28);
-    std::move(root_ptr.begin(), root_ptr.end(), baddr.root_.begin());
+    std::copy(root_ptr.begin(), root_ptr.end(), baddr.root_.begin());
 
     // Access the address attributes (if present)
     auto map_size = cbor_map_size(cbor_array_get(payload_item, 1));
