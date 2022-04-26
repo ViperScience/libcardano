@@ -277,7 +277,7 @@ auto byron_address_type_to_byte(ByronAddressType type) -> uint8_t {
     return type_val;
 } // byron_address_type_to_byte
 
-auto uint_to_byron_address_type(uint32_t addr_type_val) -> ByronAddressType {
+auto uint_to_byron_address_type(uint8_t addr_type_val) -> ByronAddressType {
     ByronAddressType type;
     switch (addr_type_val)
     {
@@ -451,7 +451,7 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress 
     }
 
     // Get the address type
-    auto addr_type_val = cbor_get_uint32(cbor_array_get(payload_item, 2));
+    auto addr_type_val = cbor_get_uint8(cbor_array_get(payload_item, 2));
     baddr.type_ = uint_to_byron_address_type(addr_type_val);
 
     // Clean up memory 
