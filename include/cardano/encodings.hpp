@@ -22,38 +22,39 @@
 #define _CARDANO_ENCODINGS_HPP_
 
 #include <span>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
 namespace cardano {
-
-class BECH32 {
-  private:
-    BECH32() {}
-  public:
-    static std::string encode(const std::string& hrp, const std::vector<uint8_t>& values);
-    static std::string encode_hex(const std::string& hrp, const std::string& hex_values);
-    static std::tuple<std::string, std::vector<uint8_t>> decode(std::string str);
-    static std::tuple<std::string, std::string> decode_hex(std::string str);
-}; // BECH32
-
-class BASE58 {
-  private:
-    BASE58() {}
-  public:
-    static std::string encode(const std::vector<uint8_t>& values);
-    static std::string encode_hex(const std::string& hex_values);
-    static std::vector<uint8_t> decode(std::string str);
-    static std::string decode_hex(std::string str);
-}; // BASE58
 
 class BASE16 {
   private:
     BASE16() {}
   public:
     static std::string encode(std::span<const uint8_t> bytes);
-    static std::vector<uint8_t> decode(std::string str);
+    static std::vector<uint8_t> decode(std::string_view str);
 }; // BASE16
+
+class BECH32 {
+  private:
+    BECH32() {}
+  public:
+    static std::string encode(std::string_view hrp, std::span<const uint8_t> values);
+    static std::string encode_hex(std::string_view hrp, std::string_view hex_values);
+    static std::tuple<std::string, std::vector<uint8_t>> decode(std::string_view str);
+    static std::tuple<std::string, std::string> decode_hex(std::string_view str);
+}; // BECH32
+
+class BASE58 {
+  private:
+    BASE58() {}
+  public:
+    static std::string encode(std::span<const uint8_t> values);
+    static std::string encode_hex(std::string_view hex_values);
+    static std::vector<uint8_t> decode(std::string_view str);
+    static std::string decode_hex(std::string_view str);
+}; // BASE58
 
 } // namespace cardano
 

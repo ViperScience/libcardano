@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 #include <algorithm>
-#include <cctype>
+#include <charconv>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
@@ -32,33 +32,57 @@
 
 using namespace cardano;
 
-std::string bytes2hex(std::vector<uint8_t> bytes) {
+auto bytes2hex(std::span<const uint8_t> bytes) -> std::string {
     std::ostringstream ss;
     ss << std::hex << std::setfill('0');
     auto first = bytes.begin();
     while (first != bytes.end())
         ss << std::setw(2) << static_cast<int>(*first++);
     return ss.str();
-}
+} // bytes2hex
 
-std::vector<uint8_t> hex2bytes(const std::string& hex) {
+auto hex2bytes(std::string_view hex) -> std::vector<uint8_t> {
+    // Ensure an even number of characters in the string
+    if (hex.size() % 2 != 0)
+        throw std::invalid_argument("Not a valid hexadecimal string.");
+    // Verify only hexadecimal characters
+    if (hex.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
+        throw std::invalid_argument("Not a valid hexadecimal string.");
     std::vector<uint8_t> bytes;
-    for (unsigned int i = 0; i < hex.length(); i += 2) {
-        std::string byteString = hex.substr(i, 2);
-        uint8_t byte = (uint8_t) strtol(byteString.c_str(), NULL, 16);
+    bytes.reserve(hex.size() / 2);
+    uint8_t byte;
+    auto hex_ptr = hex.data();
+    for (size_t i = 0; i < hex.size(); i += 2) {
+        auto res = std::from_chars(hex_ptr, hex_ptr + 2, byte, 16);
+        if (res.ec != std::errc()) 
+            throw std::invalid_argument("Invalid hex character found.");
         bytes.push_back(byte);
+        hex_ptr += 2;
     }
     return bytes;
-}
+} // hex2bytes
 
-//////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////// BECH32 /////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////// BASE16 ////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-/** The Bech32 character set for encoding. */
-const char* B32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+auto BASE16::encode(std::span<const uint8_t> bytes) -> std::string {
+    return bytes2hex(bytes);
+} // BASE16::encode
 
-/** The Bech32 character set for decoding. */
+std::vector<uint8_t> BASE16::decode(std::string_view hex) {
+    return hex2bytes(hex);
+} // BASE16::decode
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////// BECH32 ////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+/// The Bech32 character set for encoding.
+static constexpr std::string_view B32_CHARSET = 
+    "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+
+/// The Bech32 character set for decoding.
 static constexpr int8_t B32_CHARSET_REV[128] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -70,11 +94,10 @@ static constexpr int8_t B32_CHARSET_REV[128] = {
      1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, -1, -1, -1, -1, -1
 };
 
-/** This function will compute what 6 5-bit values to XOR into the last 6 input values, in order to
- *  make the checksum 0. These 6 values are packed together in a single 30-bit integer. The higher
- *  bits correspond to earlier values. */
-uint32_t polymod(const std::vector<uint8_t>& values)
-{
+/// This function will compute what 6 5-bit values to XOR into the last 6 input
+/// values, in order to make the checksum 0. These 6 values are packed together
+/// in a single 30-bit integer. The higher bits correspond to earlier values.
+static constexpr auto polymod(std::span<const uint8_t> values) -> uint32_t {
     // The input is interpreted as a list of coefficients of a polynomial over F = GF(32), with an
     // implicit 1 in front. If the input is [v0,v1,v2,v3,v4], that polynomial is v(x) =
     // 1*x^5 + v0*x^4 + v1*x^3 + v2*x^2 + v3*x + v4. The implicit 1 guarantees that
@@ -132,13 +155,13 @@ uint32_t polymod(const std::vector<uint8_t>& values)
     return c;
 }
 
-/** Expand a HRP for use in checksum computation. */
-std::vector<uint8_t> expand_hrp(const std::string& hrp) {
+/// Expand a HRP for use in checksum computation.
+auto expand_hrp(std::string_view hrp) -> std::vector<uint8_t> {
     std::vector<uint8_t> ret;
     ret.reserve(hrp.size() + 90);
     ret.resize(hrp.size() * 2 + 1);
     for (size_t i = 0; i < hrp.size(); ++i) {
-        unsigned char c = hrp[i];
+        uint8_t c = hrp[i];
         ret[i] = c >> 5;
         ret[i + hrp.size() + 1] = c & 0x1f;
     }
@@ -146,20 +169,23 @@ std::vector<uint8_t> expand_hrp(const std::string& hrp) {
     return ret;
 }
 
-/** Verify a checksum. */
-bool verify_checksum(const std::string& hrp, const std::vector<uint8_t>& values) {
-    // PolyMod computes what value to xor into the final values to make the checksum 0. However,
-    // if we required that the checksum was 0, it would be the case that appending a 0 to a valid
-    // list of values would result in a new valid list. For that reason, Bech32 requires the
-    // resulting checksum to be 1 instead.
-    uint32_t check = polymod(concat_bytes(expand_hrp(hrp), values));
+/// Verify a checksum.
+auto verify_checksum(std::string_view hrp, std::span<const uint8_t> values)
+-> bool {
+    // PolyMod computes what value to xor into the final values to make the
+    // checksum 0. However, if we required that the checksum was 0, it would be
+    // the case that appending a 0 to a valid list of values would result in a
+    // new valid list. For that reason, Bech32 requires the resulting checksum 
+    // to be 1 instead.
+    const uint32_t check = polymod(concat_bytes(expand_hrp(hrp), values));
     return check == 1;
 }
 
-std::vector<uint8_t> create_checksum(const std::string& hrp, const std::vector<uint8_t>& values) {
+auto create_checksum(std::string_view hrp, std::span<const uint8_t> values)
+-> std::vector<uint8_t> {
     std::vector<uint8_t> enc = concat_bytes(expand_hrp(hrp), values);
     enc.resize(enc.size() + 6);
-    uint32_t mod = polymod(enc) ^ 1;
+    const uint32_t mod = polymod(enc) ^ 1;
     std::vector<uint8_t> ret;
     ret.resize(6);
     for (size_t i = 0; i < 6; ++i) {
@@ -167,9 +193,10 @@ std::vector<uint8_t> create_checksum(const std::string& hrp, const std::vector<u
         ret[i] = (mod >> (5 * (5 - i))) & 31;
     }
     return ret;
-}
+} // create_checksum
 
-std::vector<uint8_t> convertbits(std::vector<uint8_t> data, int frombits, int tobits, bool pad) {
+auto convertbits(std::span<const uint8_t> data, int frombits, int tobits, 
+                 bool pad) -> std::vector<uint8_t> {
     int acc = 0;
     int bits = 0;
     std::vector<uint8_t> ret;
@@ -191,36 +218,38 @@ std::vector<uint8_t> convertbits(std::vector<uint8_t> data, int frombits, int to
     else if (bits >= frombits || ((acc << (tobits - bits)) & maxv))
         throw std::invalid_argument("Invalid bit conversion.");
     return ret;
-}
+} // convertbits
 
-std::string BECH32::encode(const std::string& hrp, const std::vector<uint8_t>& values) {
+auto BECH32::encode(std::string_view hrp, std::span<const uint8_t> values)
+-> std::string {
     // First ensure that the HRP is all lowercase. BIP-173 requires an encoder
     // to return a lowercase Bech32 string, but if given an uppercase HRP, the
     // result will always be invalid.
     for (const char& c : hrp) 
         if (!(c < 'A' || c > 'Z'))
-            throw std::invalid_argument("Invalid HRP, the HRB cannot be uppercase.");
+            throw std::invalid_argument(
+                "Invalid HRP, the HRB cannot be uppercase.");
     auto unpacked_values = convertbits(values, 8, 5, true);
     auto checksum = create_checksum(hrp, unpacked_values);
     auto combined = concat_bytes(unpacked_values, checksum);
-    std::string ret = hrp + '1';
+    auto ret = std::string(hrp) + '1';
     ret.reserve(ret.size() + combined.size());
     for (const auto c : combined)
         ret += B32_CHARSET[c];
     return ret;
 } // BECH32::encode
 
-std::tuple<std::string, std::vector<uint8_t>> BECH32::decode(std::string bech32_str) {
-    // How long is the input string?
-    size_t bech32_str_size = bech32_str.size();
-
+auto BECH32::decode(std::string_view str)
+-> std::tuple<std::string, std::vector<uint8_t>> {
     // Ensure the string characters are all lower case.
-    bech32_str = str_tolower(bech32_str);
+    auto bech32_str = str_tolower(std::string(str));
 
     // Find the separator.
+    size_t bech32_str_size = str.size();
     size_t pos = bech32_str.rfind('1');
     if (pos == bech32_str.npos || pos == 0 || pos + 7 > bech32_str_size)
-        throw std::invalid_argument("The given string is not valid bech32 format.");
+        throw std::invalid_argument(
+            "The given string is not valid bech32 format.");
 
     // Extract the data values.
     std::vector<uint8_t> values(bech32_str_size - 1 - pos);
@@ -246,20 +275,22 @@ std::tuple<std::string, std::vector<uint8_t>> BECH32::decode(std::string bech32_
     return std::make_tuple(hrp, packed_values);
 } // BECH32::decode
 
-std::string BECH32::encode_hex(const std::string& hrp, const std::string& hex_values) {
+auto BECH32::encode_hex(std::string_view hrp, std::string_view hex_values) 
+-> std::string {
     auto values_bytes = hex2bytes(hex_values);
     return BECH32::encode(hrp, values_bytes);
 } // BECH32::encode_hex
 
-std::tuple<std::string, std::string> BECH32::decode_hex(std::string bech32_str) {
+auto BECH32::decode_hex(std::string_view bech32_str)
+-> std::tuple<std::string, std::string> {
     auto [ hrp, data ] = cardano::BECH32::decode(bech32_str);
-    auto hex_values = bytes2hex(data);
-    return std::make_tuple(hrp, hex_values);
+    auto hex_str = bytes2hex(data);
+    return std::make_tuple(hrp, hex_str);
 } // BECH32::decode_hex
 
-//////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////// BASE58 /////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////// BASE58 ////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 /** The Base58 character set for encoding. */
 static constexpr uint8_t B58_CHARSET[] = {
@@ -277,14 +308,14 @@ static constexpr int8_t B58_CHARSET_REV[128] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, -1, -1, -1, -1, -1, -1,
-    -1, 9, 10, 11, 12, 13, 14, 15, 16, -1, 17, 18, 19, 20, 21, -1,
+    -1,  0,  1,  2,  3,  4,  5,  6,  7,  8, -1, -1, -1, -1, -1, -1,
+    -1,  9, 10, 11, 12, 13, 14, 15, 16, -1, 17, 18, 19, 20, 21, -1,
     22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, -1, -1, -1, -1, -1,
     -1, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, -1, 44, 45, 46,
     47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1
 };
 
-std::string BASE58::encode(const std::vector<uint8_t>& values) {
+auto BASE58::encode(std::span<const uint8_t> values) -> std::string {
     std::vector<uint8_t> digits((values.size() * 138 / 100) + 1);
     size_t digitslen = 1;
     for (size_t i = 0; i < values.size(); i++) {
@@ -305,83 +336,44 @@ std::string BASE58::encode(const std::vector<uint8_t>& values) {
     return result;
 } // BASE58::encode
 
-std::vector<uint8_t> BASE58::decode(std::string base58_str) {
-    unsigned char const* str = (unsigned const char*)(base58_str.c_str());
+auto BASE58::decode(std::string_view str) -> std::vector<uint8_t> {
     std::vector<uint8_t> result;
     result.push_back(0);
-    int resultlen = 1;
-    int encoded_len = base58_str.length();
-    for (int i = 0; i < encoded_len; i++) {
+    int res_len = 1;
+    int enc_len = str.length();
+    for (int i = 0; i < enc_len; i++) {
         unsigned int carry = (unsigned int)B58_CHARSET_REV[str[i]];
-        for (int j = 0; j < resultlen; j++) {
+        for (int j = 0; j < res_len; j++) {
             carry += (unsigned int)(result[j]) * 58;
-            result[j] = (unsigned char)(carry & 0xff);
+            result[j] = (uint8_t)(carry & 0xff);
             carry >>= 8;
         }
         while (carry > 0) {
-            resultlen++;
-            result.push_back((unsigned int)(carry & 0xff));
+            res_len++;
+            result.push_back((uint8_t)(carry & 0xff));
             carry >>= 8;
         }
     }
 
-    for (int i = 0; i < encoded_len && str[i] == '1'; i++) {
-        resultlen++;
+    for (int i = 0; i < enc_len && str[i] == '1'; i++) {
+        res_len++;
         result.push_back(0);
     }
 
-    for (int i = resultlen - 1, z = (resultlen >> 1) + (resultlen & 1); i >= z; i--) {
+    for (int i = res_len - 1, z = (res_len >> 1) + (res_len & 1); i >= z; i--) {
         int k = result[i];
-        result[i] = result[resultlen - i - 1];
-        result[resultlen - i - 1] = k;
+        result[i] = result[res_len - i - 1];
+        result[res_len - i - 1] = k;
     }
     return result;
 } // BASE58::decode
 
-std::string BASE58::encode_hex(const std::string& hex_values) {
+auto BASE58::encode_hex(std::string_view hex_values) -> std::string {
     auto values_bytes = hex2bytes(hex_values);
     return BASE58::encode(values_bytes);
 } // BASE58::encode_hex
 
-std::string BASE58::decode_hex(std::string base58_str) {
+auto BASE58::decode_hex(std::string_view base58_str) -> std::string {
     auto data = cardano::BASE58::decode(base58_str);
     return bytes2hex(data);
 } // BASE58::decode_hex
-
-//////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////// BASE16 /////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
-
-std::string BASE16::encode(std::span<const uint8_t> bytes) {
-    auto byte_iter = bytes.begin();
-    std::stringstream ss;
-    ss << std::hex << std::setfill('0');
-    for (size_t i = 0; i < bytes.size(); i++)
-        ss << std::setw(2) << static_cast<int>(*byte_iter++);
-    return ss.str();
-} // BASE16::encode
-
-std::vector<uint8_t> BASE16::decode(std::string hex) {
-    // Ensure an even number of characters in the string
-    if (hex.size() % 2 != 0)
-        throw std::invalid_argument("Not a valid hexadecimal string.");
-    // Normalize to lowercase
-    std::transform(hex.begin(), hex.end(), hex.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    // Verify only hexadecimal characters
-    if (hex.find_first_not_of("0123456789abcdef") != std::string::npos)
-        throw std::invalid_argument("Not a valid hexadecimal string.");
-
-    std::vector<uint8_t> ret;
-    ret.reserve(hex.size() / 2);
-    std::map<char, uint8_t> char2hex = {
-        {'0', 0x0}, {'1', 0x1}, {'2', 0x2}, {'3', 0x3}, {'4', 0x4}, {'5', 0x5},
-        {'6', 0x6}, {'7', 0x7}, {'8', 0x8}, {'9', 0x9}, {'a', 0xa}, {'b', 0xb},
-        {'c', 0xc}, {'d', 0xd}, {'e', 0xe}, {'f', 0xf}};
-    for (size_t i = 0; i < hex.length() / 2; i++) {
-        uint8_t high_bits = char2hex[hex[2 * i]];
-        uint8_t low_bits = char2hex[hex[2 * i + 1]];
-        ret.insert(ret.end(), (high_bits << 4) | low_bits);
-    }
-    return ret;
-} // BASE16::decode
