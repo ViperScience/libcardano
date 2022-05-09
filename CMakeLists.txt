@@ -62,9 +62,10 @@ ADD_SUBDIRECTORY(test build)
 
 # specify the source files
 set(SOURCES
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/utils.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}

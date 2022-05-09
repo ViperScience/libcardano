@@ -24,5 +24,7 @@
 #include <cardano/encodings.hpp>
 #include <cardano/crypto.hpp>
 #include <cardano/address.hpp>
+#include <cardano/mnemonic.hpp>
+#include <cardano/bip39_dictionary.hpp>
 
 #endif // _CARDANO_CARDANO_HPP_

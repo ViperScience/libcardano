@@ -71,3 +71,25 @@ target_link_libraries(test_cardano_byron_address
     botan::botan
 )
 ADD_TEST(cardano_byron_address test_cardano_byron_address)
+
+########################################################################
+# Test the Mnemonic generation and root key derivation
+########################################################################
+
+set(TEST_CARDANO_MNEMONIC_SOURCES 
+    test_cardano_mnemonic.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
+    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
+    ${CMAKE_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils.cpp
+    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${CARDANO_CRYPTO_CBITS_SOURCES}
+    ${CRYPTONITE_CBITS_SOURCES}
+)
+ADD_EXECUTABLE(test_cardano_mnemonic ${TEST_CARDANO_MNEMONIC_SOURCES})
+target_link_libraries(test_cardano_mnemonic
+    cbor::cbor
+    botan::botan
+)
+ADD_TEST(cardano_mnemonic test_cardano_mnemonic)
