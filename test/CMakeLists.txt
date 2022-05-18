@@ -15,6 +15,7 @@ ADD_TEST(cardano_encodings test_cardano_encodings)
 
 set(TEST_CARDANO_CRYPTO_SOURCES 
     test_cardano_crypto.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
@@ -36,6 +37,7 @@ ADD_TEST(cardano_crypto test_cardano_crypto)
 
 set(TEST_CARDANO_ADDRESS_SOURCES 
     test_cardano_address.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
@@ -57,6 +59,7 @@ ADD_TEST(cardano_address test_cardano_address)
 
 set(TEST_CARDANO_BYRON_ADDRESS_SOURCES 
     test_cardano_byron_address.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp

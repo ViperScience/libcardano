@@ -26,6 +26,8 @@
 #include <string>
 #include <vector>
 
+#include <cardano/mnemonic.hpp>
+
 namespace cardano {
 
 static constexpr uint32_t SECRET_KEY_SEED_SIZE = 32;
@@ -85,11 +87,15 @@ class BIP32PrivateKey {
     BIP32PrivateKey(std::array<uint8_t, ENCRYPTED_KEY_SIZE> priv,
                     std::array<uint8_t, PUBLIC_KEY_SIZE> cc)
         : prv_{std::move(priv)}, cc_{std::move(cc)} {}
+    BIP32PrivateKey(std::span<const uint8_t> xpriv); // prv + cc
     BIP32PrivateKey(std::string prv, std::string cc);
     ~BIP32PrivateKey() { this->clear(); }
 
     /// Factory methods
-    static BIP32PrivateKey fromBech32(std::string bech32);
+    static BIP32PrivateKey fromMnemonic(cardano::Mnemonic mn);
+    static BIP32PrivateKey fromMnemonicByron(cardano::Mnemonic mn);
+    static BIP32PrivateKey fromMnemonic(cardano::Mnemonic mn, std::string_view passphrase);
+    static BIP32PrivateKey fromBech32(std::string_view bech32);
     // static BIP32PrivateKey fromCBOR(std::string bech32); // TODO
 
     /// Access methods

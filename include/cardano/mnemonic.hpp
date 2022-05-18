@@ -25,6 +25,7 @@
 #include <array>
 #include <span>
 #include <string_view>
+#include <tuple>
 
 // Public Cardano++ Headers
 #include <cardano/bip39_dictionary.hpp>
@@ -51,11 +52,18 @@ class Mnemonic {
 
     /// Factory methods
     static Mnemonic generate(size_t mnemonic_size = 24, 
-                              BIP39Language lang = BIP39Language::English);
+                             BIP39Language lang = BIP39Language::English);
+
+    const std::vector<uint16_t>& i() const { return this->word_indexes_; }
+    const std::vector<std::string>& w() const { return this->word_list_; }
 
     /// Utility methods
     size_t size() { return word_list_.size(); };
+    size_t isize() { return word_indexes_.size(); };
+    uint8_t checksum();
     bool verify_checksum();
+    std::vector<uint8_t> toSeed();
+    std::tuple<std::vector<uint8_t>, uint8_t> toEntropy();
 
 }; // Mnemonic
 

@@ -23,6 +23,13 @@
 #include <stdexcept>
 #include <vector>
 
+// Third-Party Library Headers
+#include <botan/pwdhash.h>
+#include <botan/pbkdf2.h>
+#include <botan/hash.h>
+#include <botan/mac.h>
+#include <cbor.h>
+
 // Public Cardano++ Headers 
 #include <cardano/crypto.hpp>
 #include <cardano/encodings.hpp>
@@ -30,6 +37,8 @@
 // Private Cardano++ Headers
 #include "cardano_crypto_interface.h"
 #include "utils.hpp"
+
+#include <iostream>
 
 using namespace cardano;
 
@@ -62,8 +71,7 @@ BIP32PublicKey BIP32PublicKey::deriveChild(uint32_t index, uint32_t derivation_m
 
     // Derive the child public key for the soft index.
     derivation_scheme_mode mode;
-    switch (derivation_mode)
-    {
+    switch (derivation_mode) {
     case 1:
         mode = DERIVATION_V1;
         break;
@@ -74,7 +82,7 @@ BIP32PublicKey BIP32PublicKey::deriveChild(uint32_t index, uint32_t derivation_m
     }
     int flag = wallet_encrypted_derive_public(pub_in, cc_in, index, pub_out, cc_out, mode);
     if (flag != 0)
-        throw std::invalid_argument(
+        throw std::runtime_error(
             "Cannot derive hardened index from public key.");
 
     return k;
@@ -105,16 +113,24 @@ bool BIP32PrivateKey::clear() {
 
 BIP32PrivateKey::BIP32PrivateKey(std::string prv, std::string cc) {
     if (prv.size() != this->prv_.size() * 2)
-        throw std::invalid_argument("Invalid hex public key size.");
+        throw std::invalid_argument("Invalid hex private key size.");
     if (cc.size() != this->cc_.size() * 2)
         throw std::invalid_argument("Invalid hex chain code size.");
     auto bytes = BASE16::decode(prv + cc);
     std::copy_n(bytes.begin(), this->prv_.size(), this->prv_.begin());
     std::copy_n(bytes.begin() + this->prv_.size(), this->cc_.size(),
                 this->cc_.begin());
-} // BIP32PrivateKey::ExtendedPublicKey
+} // BIP32PrivateKey::BIP32PrivateKey
 
-BIP32PrivateKey BIP32PrivateKey::fromBech32(std::string bech32_str) {
+BIP32PrivateKey::BIP32PrivateKey(std::span<const uint8_t> xpriv) {
+    if (xpriv.size() != this->prv_.size() + this->cc_.size())
+        throw std::invalid_argument("Invalid extended private key size.");
+    std::copy_n(xpriv.begin(), this->prv_.size(), this->prv_.begin());
+    std::copy_n(xpriv.begin() + this->prv_.size(), this->cc_.size(),
+                this->cc_.begin());
+} // BIP32PrivateKey::BIP32PrivateKey
+
+BIP32PrivateKey BIP32PrivateKey::fromBech32(std::string_view bech32_str) {
     auto [hrp1, data] = cardano::BECH32::decode(bech32_str);
     std::array<uint8_t, ENCRYPTED_KEY_SIZE> skey;
     std::array<uint8_t, CHAIN_CODE_SIZE> cc;
@@ -122,6 +138,106 @@ BIP32PrivateKey BIP32PrivateKey::fromBech32(std::string bech32_str) {
     std::copy_n(data.begin() + ENCRYPTED_KEY_SIZE, CHAIN_CODE_SIZE, cc.begin());
     return BIP32PrivateKey(skey, cc);
 } // BIP32PrivateKey::fromBech32
+
+auto tweak_bits_byron(std::span<uint8_t> data) -> void {
+    // clear the lowest 3 bits
+    // clear the highest bit
+    // set the highest 2nd bit
+    data[0]  &= 0b11111000;
+    data[31] &= 0b01111111;
+    data[31] |= 0b01000000;
+} // tweak_bits_byron
+
+auto tweak_bits_icarus(std::span<uint8_t> data) -> void {
+    // on the ed25519 scalar leftmost 32 bytes:
+    // * clear the lowest 3 bits
+    // * clear the highest bit
+    // * clear the 3rd highest bit
+    // * set the highest 2nd bit
+    data[0]  &= 0b11111000;
+    data[31] &= 0b00011111;
+    data[31] |= 0b01000000;
+} // tweak_bits_icarus
+
+auto hash_repeatedly(std::vector<uint8_t> key, size_t count)
+-> std::vector<uint8_t> {
+    if (count > 1000)
+        std::runtime_error("Cannot generate root key (looping forever).");
+    
+    auto mac = Botan::MessageAuthenticationCode::create("HMAC(SHA-512)");
+    if (!mac)
+        std::runtime_error("Unable to create HMAC object.");
+
+    auto message = "Root Seed Chain " + std::to_string(count);
+    auto data = std::vector<uint8_t>(message.begin(), message.end());
+    mac->set_key(key);
+    mac->update(data);
+    auto tag = mac->final();
+
+    auto iL = std::vector<uint8_t>(tag.begin(), tag.begin() + 32);
+    auto iR = std::vector<uint8_t>(tag.begin() + 32, tag.end());
+
+    auto sha512 = Botan::HashFunction::create("SHA-512");
+    sha512->update(iL.data(), iL.size());
+    auto prv = sha512->final();
+    tweak_bits_byron(prv);
+
+    if (prv[31] & 0b00100000)
+        return hash_repeatedly(key, count + 1);
+
+    return concat_bytes(prv, iR);
+} // hash_repeatedly
+
+auto hash_seed(std::span<const uint8_t> seed) -> std::vector<uint8_t> {
+    // CBOR encode the seed.
+    uint8_t *buffer;
+    size_t buffer_size;
+    auto cbor_seed = cbor_build_bytestring(seed.data(), seed.size());
+    auto cbor_len = cbor_serialize_alloc(cbor_seed, &buffer, &buffer_size);
+    cbor_decref(&cbor_seed);
+
+    // Blake2b-SHA256 encode the CBOR encoded seed (32 byte result).
+    auto blake2b = Botan::HashFunction::create("Blake2b(256)");
+    blake2b->update(buffer, cbor_len);
+    auto hashed = blake2b->final();
+    free(buffer);
+    
+    // CBOR encode the hashed seed (34 bytes after CBOR encoding).
+    auto cbor_hash = cbor_build_bytestring(hashed.data(), hashed.size());
+    cbor_len = cbor_serialize_alloc(cbor_hash, &buffer, &buffer_size);
+    cbor_decref(&cbor_hash);
+
+    // Store the result in a std::vector container.
+    auto hashed_seed = std::vector<uint8_t>(buffer, buffer + cbor_len);
+    free(buffer);
+
+    return hashed_seed;
+} // hash_seed
+
+auto BIP32PrivateKey::fromMnemonicByron(cardano::Mnemonic mn)
+-> BIP32PrivateKey {
+    auto hashed_seed = hash_seed(mn.toSeed());
+    auto xprv = hash_repeatedly(hashed_seed, 1);
+    return BIP32PrivateKey(xprv);
+} // BIP32PrivateKey::fromMnemonicByron
+
+auto BIP32PrivateKey::fromMnemonic(cardano::Mnemonic mn,
+                                   std::string_view passphrase)
+-> BIP32PrivateKey {
+    auto mac = Botan::MessageAuthenticationCode::create("HMAC(SHA-512)");
+    auto pbkdf2 = std::unique_ptr<Botan::PBKDF2>(
+        new Botan::PBKDF2(*mac.release(), 4096));
+    auto seed = mn.toSeed();
+    auto key = std::vector<uint8_t>(96);
+    pbkdf2->derive_key(key.data(), key.size(), passphrase.data(),
+                       passphrase.size(), seed.data(), seed.size());
+    tweak_bits_icarus(key);
+    return BIP32PrivateKey(key);
+}; // BIP32PrivateKey::fromMnemonic
+
+auto BIP32PrivateKey::fromMnemonic(cardano::Mnemonic mn) -> BIP32PrivateKey {
+    return BIP32PrivateKey::fromMnemonic(mn, "");
+}; // BIP32PrivateKey::fromMnemonic
 
 std::string BIP32PrivateKey::toBech32(std::string hrp) {
     std::vector<uint8_t> data;
@@ -143,7 +259,8 @@ BIP32PublicKey BIP32PrivateKey::toPublic() {
     return BIP32PublicKey(pub_key, this->cc_);
 } // BIP32PrivateKey::toPublic
 
-auto BIP32PrivateKey::deriveChild(uint32_t index, uint32_t derivation_mode) -> BIP32PrivateKey {
+auto BIP32PrivateKey::deriveChild(uint32_t index, uint32_t derivation_mode)
+-> BIP32PrivateKey {
     // Build the encrypted key struct for the derive function.
     encrypted_key ek;
     std::copy(this->prv_.begin(), this->prv_.end(), std::begin(ek.ekey));
@@ -204,7 +321,8 @@ auto BIP32PrivateKeyEncrypted::deriveChild(
     return child.encrypt(password);
 } // BIP32PrivateKeyEncrypted::deriveChild
 
-auto BIP32PrivateKeyEncrypted::toPublic(std::string password) -> BIP32PublicKey {
+auto BIP32PrivateKeyEncrypted::toPublic(std::string password)
+-> BIP32PublicKey {
     std::array<uint8_t, PUBLIC_KEY_SIZE> pub{};
     wallet_encrypted_private_to_public((const uint8_t *)password.c_str(),
                                        password.size(), this->xprv_.data(),
