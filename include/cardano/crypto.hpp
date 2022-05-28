@@ -53,24 +53,26 @@ class BIP32PublicKey {
     BIP32PublicKey() = default;
 
   public:
-    BIP32PublicKey(std::string pub, std::string cc);
-    BIP32PublicKey(std::array<uint8_t, PUBLIC_KEY_SIZE> pub,
-                   std::array<uint8_t, CHAIN_CODE_SIZE> cc)
+    BIP32PublicKey(std::string_view xpub);
+    BIP32PublicKey(const std::string& pub, const std::string& cc);
+    constexpr BIP32PublicKey(std::array<uint8_t, PUBLIC_KEY_SIZE> pub,
+                             std::array<uint8_t, CHAIN_CODE_SIZE> cc)
         : pub_{std::move(pub)}, cc_{std::move(cc)} {}
 
     /// Static factory method
-    static BIP32PublicKey fromBech32(std::string bech32);
+    static auto fromBech32(std::string bech32_str) -> BIP32PublicKey;
 
     // Key accessor
     const std::array<uint8_t, PUBLIC_KEY_SIZE> &pkey = pub_;
 
     /// Access methods
-    std::string toBech32(std::string hrp);
-    std::string toBase16();
-    std::vector<uint8_t> toBytes(bool with_cc = true);
+    auto toBech32(std::string_view hrp) const -> std::string;
+    auto toBase16() const -> std::string;
+    auto toBytes(bool with_cc = true) const -> std::vector<uint8_t>;
 
     /// Mutation methods
-    BIP32PublicKey deriveChild(uint32_t index, uint32_t derivation_mode = 2);
+    auto deriveChild(uint32_t index, uint32_t derivation_mode = 2) const 
+        -> BIP32PublicKey;
 }; // BIP32PublicKey
 
 class BIP32PrivateKey {
@@ -84,29 +86,33 @@ class BIP32PrivateKey {
     bool clear();
 
   public:
-    BIP32PrivateKey(std::array<uint8_t, ENCRYPTED_KEY_SIZE> priv,
-                    std::array<uint8_t, PUBLIC_KEY_SIZE> cc)
+    constexpr BIP32PrivateKey(std::array<uint8_t, ENCRYPTED_KEY_SIZE> priv,
+                              std::array<uint8_t, CHAIN_CODE_SIZE> cc)
         : prv_{std::move(priv)}, cc_{std::move(cc)} {}
     BIP32PrivateKey(std::span<const uint8_t> xpriv); // prv + cc
-    BIP32PrivateKey(std::string prv, std::string cc);
+    BIP32PrivateKey(std::string_view xpriv); // prv + cc 
+    BIP32PrivateKey(const std::string& prv, const std::string& cc);
     ~BIP32PrivateKey() { this->clear(); }
 
     /// Factory methods
-    static BIP32PrivateKey fromMnemonic(cardano::Mnemonic mn);
-    static BIP32PrivateKey fromMnemonicByron(cardano::Mnemonic mn);
-    static BIP32PrivateKey fromMnemonic(cardano::Mnemonic mn, std::string_view passphrase);
-    static BIP32PrivateKey fromBech32(std::string_view bech32);
+    static auto fromBech32(std::string_view bech32_str) -> BIP32PrivateKey;
+    static auto fromMnemonic(const cardano::Mnemonic& mn) -> BIP32PrivateKey;
+    static auto fromMnemonicByron(const cardano::Mnemonic& mn)
+        -> BIP32PrivateKey;
+    static auto fromMnemonic(const cardano::Mnemonic& mn,
+                             std::string_view passphrase) -> BIP32PrivateKey;
     // static BIP32PrivateKey fromCBOR(std::string bech32); // TODO
 
     /// Access methods
-    std::string toBech32(std::string hrp);
-    std::string toBase16();
-    // std::string toCBOR(std::string hrp);
+    auto toBech32(std::string_view hrp) const -> std::string;
+    auto toBase16() const -> std::string;
+    // auto toCBOR(std::string hrp) const -> std::string;
 
     /// Conversion methods
-    BIP32PublicKey toPublic();
-    BIP32PrivateKey deriveChild(uint32_t index, uint32_t derivation_mode = 2);
-    BIP32PrivateKeyEncrypted encrypt(std::string password);
+    auto toPublic() const -> BIP32PublicKey;
+    auto deriveChild(uint32_t index, uint32_t derivation_mode = 2) const
+        -> BIP32PrivateKey;
+    auto encrypt(std::string_view password) -> BIP32PrivateKeyEncrypted;
 }; // BIP32PrivateKey
 
 class BIP32PrivateKeyEncrypted {
@@ -119,19 +125,22 @@ class BIP32PrivateKeyEncrypted {
     BIP32PrivateKeyEncrypted() = default;
 
   public:
-    BIP32PrivateKeyEncrypted(std::array<uint8_t, ENCRYPTED_KEY_SIZE> prv,
-                             std::array<uint8_t, CHAIN_CODE_SIZE> cc)
+    constexpr BIP32PrivateKeyEncrypted(
+        std::array<uint8_t, ENCRYPTED_KEY_SIZE> prv,
+        std::array<uint8_t, CHAIN_CODE_SIZE> cc)
         : xprv_{std::move(prv)}, cc_{std::move(cc)} {}
-    BIP32PrivateKeyEncrypted(std::string prv_enc, std::string cc);
+    BIP32PrivateKeyEncrypted(const std::string& prv_enc, const std::string& cc);
+    BIP32PrivateKeyEncrypted(std::string_view xprv_enc);
 
     /// Access methods
-    std::string toBase16();
+    auto toBase16() const -> std::string;
 
     /// Conversion methods
-    BIP32PrivateKeyEncrypted deriveChild(uint32_t index, std::string password, 
-                                         uint32_t derivation_mode = 2);
-    BIP32PublicKey toPublic(std::string password);
-    BIP32PrivateKey decrypt(std::string password);
+    auto deriveChild(uint32_t index, std::string_view password, 
+                     uint32_t derivation_mode = 2) const
+        -> BIP32PrivateKeyEncrypted;
+    auto toPublic(std::string_view password) const -> BIP32PublicKey;
+    auto decrypt(std::string_view password) const -> BIP32PrivateKey;
 }; // BIP32PrivateKeyEncrypted
 
 } // namespace cardano

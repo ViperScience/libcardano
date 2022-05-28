@@ -59,19 +59,27 @@ int wallet_encrypted_derive_public
      uint8_t *cc_out,
      derivation_scheme_mode mode);
 
+int wallet_encrypted_derive_public_v2
+    (uint8_t const *pub_in,
+     uint8_t const *cc_in,
+     uint32_t index,
+     uint8_t *pub_out,
+     uint8_t *cc_out,
+     derivation_scheme_mode mode);
+
 void wallet_encrypted_private_to_public
-    (uint8_t const*  pass,
+    (uint8_t const *pass,
      uint32_t const  pass_len,
      ed25519_secret_key const encrypted_key /* in */,
      ed25519_public_key pub_key /* out */);
 
 void wallet_decrypt_private
-    (uint8_t const*  pass,
+    (uint8_t const *pass,
      uint32_t const  pass_len,
      ed25519_secret_key const encrypted_key /* in */,
      ed25519_secret_key decrypted_key /* out */);
 
-void blake2b_224_hash(const uint8_t *data, uint32_t len, uint8_t *out);
+void blake2b_224_hash(uint8_t const *data, uint32_t len, uint8_t *out);
 
 #ifdef  __cplusplus
 }

@@ -7,3 +7,9 @@
 
 # Build
 build
+.build
+.local_build
+
+# CLion
+.idea
+cmake-build*
