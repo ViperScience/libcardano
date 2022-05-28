@@ -230,7 +230,7 @@ auto Mnemonic::generate(size_t mnemonic_size, BIP39Language lang) -> Mnemonic
 
         n_carry_bits = n_bits - 11;
         carry_bits = entropy_byte_vector[ent_idx - 1];
-        carry_bits &= (255 >> 8 - n_carry_bits);
+        carry_bits &= 255 >> (8 - n_carry_bits);
         indexes[i] &= WORD_INDEX_MASK; // clear any carry bits that were added
 
         words.push_back(d[indexes[i]]);
@@ -251,7 +251,7 @@ auto Mnemonic::toEntropy() const -> std::tuple<std::vector<uint8_t>, uint8_t>
     // entropy bits into a byte (8 bit) vector. The entropy checksum will then
     // be recalculated and verified with the current checksum.
     auto ent_idx = 0UL;
-    uint8_t carry_bits = 0, n_carry_bits = 0, n_bits_remaining, n_bits_packed;
+    uint8_t carry_bits = 0, n_carry_bits = 0, n_bits_remain, n_bits_packed;
     auto entropy_byte_vector = std::vector<uint8_t>(entropy_size_bytes);
     for (const auto widx : this->word_indexes_) {
         auto word_index = widx & WORD_INDEX_MASK; // Use the mask to be safe
@@ -269,19 +269,19 @@ auto Mnemonic::toEntropy() const -> std::tuple<std::vector<uint8_t>, uint8_t>
         // next entropy byte. Unless the entropy byte vector is full, in that
         // case the remaining bits are the checksum.
         n_bits_packed = 8 - n_carry_bits;
-        n_bits_remaining = 11 - n_bits_packed;
-        if ((ent_idx < entropy_size_bytes) && (n_bits_remaining >= 8)) {
+        n_bits_remain = 11 - n_bits_packed;
+        if ((ent_idx < entropy_size_bytes) && (n_bits_remain >= 8)) {
             entropy_byte_vector[ent_idx] = 0;
-            entropy_byte_vector[ent_idx] |= word_index >> n_bits_remaining - 8;
-            n_bits_remaining -= 8;
+            entropy_byte_vector[ent_idx] |= word_index >> (n_bits_remain - 8);
+            n_bits_remain -= 8;
             ent_idx++;
         }
 
         // Any remaining bits are carried over to start packing the next
         // entropy byte. If the entropy byte vector is full, the carry bits are
         // the checksum.
-        n_carry_bits = n_bits_remaining;
-        carry_bits = word_index & (65535 >> 16 - n_bits_remaining);
+        n_carry_bits = n_bits_remain;
+        carry_bits = word_index & (65535 >> (16 - n_bits_remain));
     }
 
     return std::make_tuple(entropy_byte_vector, (uint8_t)carry_bits);
