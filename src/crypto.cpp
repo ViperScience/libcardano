@@ -47,28 +47,6 @@ static constexpr size_t SYM_KEY_SIZE = 32;
 static constexpr size_t SYM_NONCE_SIZE = 8;
 #define SYM_BUF_SIZE ( SYM_KEY_SIZE + SYM_NONCE_SIZE )
 
-BIP32PublicKey::BIP32PublicKey(std::string_view xpub)
-{
-    if (xpub.size() != (PUBLIC_KEY_SIZE + CHAIN_CODE_SIZE) * 2)
-        throw std::invalid_argument("Invalid hex public key size.");
-    const auto bytes = BASE16::decode(xpub);
-    std::copy_n(bytes.begin(), PUBLIC_KEY_SIZE, this->pub_.begin());
-    std::copy_n(bytes.begin() + PUBLIC_KEY_SIZE, CHAIN_CODE_SIZE,
-                this->cc_.begin());
-}
-
-BIP32PublicKey::BIP32PublicKey(const std::string& pub, const std::string& cc)
-{
-    if (pub.size() != PUBLIC_KEY_SIZE * 2)
-        throw std::invalid_argument("Invalid hex public key size.");
-    if (cc.size() != CHAIN_CODE_SIZE * 2)
-        throw std::invalid_argument("Invalid hex chain code size.");
-    const auto bytes = BASE16::decode(pub + cc);
-    std::copy_n(bytes.begin(), this->pub_.size(), this->pub_.begin());
-    std::copy_n(bytes.begin() + this->pub_.size(), this->cc_.size(),
-                this->cc_.begin());
-} // BIP32PublicKey::ExtendedPublicKey
-
 auto BIP32PublicKey::fromBech32(std::string bech32_str) -> BIP32PublicKey
 {
     BIP32PublicKey k;
@@ -77,6 +55,60 @@ auto BIP32PublicKey::fromBech32(std::string bech32_str) -> BIP32PublicKey
     std::copy_n(data.begin() + k.pub_.size(), k.cc_.size(), k.cc_.begin());
     return k;
 } // BIP32PublicKey::fromBech32
+
+auto BIP32PublicKey::fromBase16(std::string_view xpub) -> BIP32PublicKey
+{
+    if (xpub.size() != (PUBLIC_KEY_SIZE + CHAIN_CODE_SIZE) * 2)
+        throw std::invalid_argument("Invalid hex public key size.");
+    const auto bytes = BASE16::decode(xpub);
+    auto pub = std::array<uint8_t, PUBLIC_KEY_SIZE>();
+    auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>();
+    std::copy_n(bytes.begin(), pub.size(), pub.begin());
+    std::copy_n(bytes.begin() + pub.size(), cc.size(), cc.begin());
+    return BIP32PublicKey(pub, cc);
+} // BIP32PublicKey::fromBase16
+
+auto BIP32PublicKey::fromBase16(const std::string& pub_hex,
+                                const std::string& cc_hex) -> BIP32PublicKey
+{
+    if (pub_hex.size() != PUBLIC_KEY_SIZE * 2)
+        throw std::invalid_argument("Invalid hex public key size.");
+    if (cc_hex.size() != CHAIN_CODE_SIZE * 2)
+        throw std::invalid_argument("Invalid hex chain code size.");
+    const auto bytes = BASE16::decode(pub_hex + cc_hex);
+    auto pub = std::array<uint8_t, PUBLIC_KEY_SIZE>();
+    auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>();
+    std::copy_n(bytes.begin(), pub.size(), pub.begin());
+    std::copy_n(bytes.begin() + pub.size(), cc.size(), cc.begin());
+    return BIP32PublicKey(pub, cc);
+} // BIP32PublicKey::fromBase16
+
+auto BIP32PublicKey::toBytes(bool with_cc) const -> std::vector<uint8_t>
+{
+    if (!with_cc)
+        return std::vector<uint8_t>(this->pub_.data(),
+                                    this->pub_.data() + this->pub_.size());
+    return concat_bytes(this->pub_, this->cc_);
+} // BIP32PublicKey::toBytes
+
+auto BIP32PublicKey::toBech32(std::string_view hrp) const -> std::string
+{
+    const auto data = concat_bytes(this->pub_, this->cc_);
+    return BECH32::encode(hrp, data);
+} // BIP32PublicKey::toBech32
+
+auto BIP32PublicKey::toBase16() const -> std::string
+{
+    const auto bytes = concat_bytes(this->pub_, this->cc_);
+    return BASE16::encode(bytes);
+} // ExtendedPublicKey::toBase16
+
+auto BIP32PublicKey::toCBOR(bool with_cc) const-> std::string
+{
+    if (!with_cc)
+        return "5820" + BASE16::encode(this->pub_);
+    return "5840" + this->toBase16();
+} // BIP32PublicKey::toCBOR
 
 auto BIP32PublicKey::deriveChild(uint32_t index, uint32_t derivation_mode) const
     -> BIP32PublicKey
@@ -90,7 +122,8 @@ auto BIP32PublicKey::deriveChild(uint32_t index, uint32_t derivation_mode) const
 
     // Derive the child public key for the soft index.
     derivation_scheme_mode mode;
-    switch (derivation_mode) {
+    switch (derivation_mode)
+    {
     case 1:
         mode = DERIVATION_V1;
         break;
@@ -107,26 +140,6 @@ auto BIP32PublicKey::deriveChild(uint32_t index, uint32_t derivation_mode) const
 
     return k;
 } // BIP32PublicKey::deriveChild
-
-auto BIP32PublicKey::toBech32(std::string_view hrp) const -> std::string
-{
-    const auto data = concat_bytes(this->pub_, this->cc_);
-    return BECH32::encode(hrp, data);
-} // BIP32PublicKey::toBech32
-
-auto BIP32PublicKey::toBase16() const -> std::string
-{
-    const auto bytes = concat_bytes(this->pub_, this->cc_);
-    return BASE16::encode(bytes);
-} // ExtendedPublicKey::toBase16
-
-auto BIP32PublicKey::toBytes(bool with_cc) const -> std::vector<uint8_t>
-{
-    if (!with_cc)
-        return std::vector<uint8_t>(this->pub_.data(), 
-                                    this->pub_.data() + this->pub_.size());
-    return concat_bytes(this->pub_, this->cc_);
-} // BIP32PublicKey::toBytes
 
 auto BIP32PrivateKey::clear() -> bool
 {

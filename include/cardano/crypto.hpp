@@ -46,34 +46,63 @@ class BIP32PublicKey;
 class BIP32PrivateKey;
 class BIP32PrivateKeyEncrypted;
 
-class BIP32PublicKey {
+/// Represent a BIP32 public key.
+class BIP32PublicKey
+{
   private:
-    std::array<uint8_t, PUBLIC_KEY_SIZE> pub_{}; // Public key hex (unencrypted)
-    std::array<uint8_t, CHAIN_CODE_SIZE> cc_{};  // Chain code hex (unencrypted)
+
+    /// Public key byte array (unencrypted).
+    std::array<uint8_t, PUBLIC_KEY_SIZE> pub_{};
+
+    // Chain code byte array (unencrypted).
+    std::array<uint8_t, CHAIN_CODE_SIZE> cc_{};
+
+    // Make the default constructor private so that it can only be used
+    // internally.
     BIP32PublicKey() = default;
 
   public:
-    explicit BIP32PublicKey(std::string_view xpub);
-    BIP32PublicKey(const std::string& pub, const std::string& cc);
+
     constexpr BIP32PublicKey(std::array<uint8_t, PUBLIC_KEY_SIZE> pub,
                              std::array<uint8_t, CHAIN_CODE_SIZE> cc)
         : pub_{pub}, cc_{cc} {}
 
-    /// Static factory method
-    static auto fromBech32(std::string bech32_str) -> BIP32PublicKey;
+    /// Factory method, create public key from a bech32 string.
+    /// @param xpub Bech32 encoded extended public key.
+    static auto fromBech32(std::string xpub) -> BIP32PublicKey;
 
-    // Key accessor
-    const std::array<uint8_t, PUBLIC_KEY_SIZE> &pkey = pub_;
+    /// Factory method, create public key from a base16 string.
+    /// @param xpub Extended public key (includes chain code) hex string.
+    static auto fromBase16(std::string_view xpub) -> BIP32PublicKey;
 
-    /// Access methods
-    [[nodiscard]] auto toBech32(std::string_view hrp) const -> std::string;
-    [[nodiscard]] auto toBase16() const -> std::string;
+    /// Factory method, create public key from a base16 string.
+    /// @param pub Public key hex string.
+    /// @param cc Chain code hex string.
+    static auto fromBase16(const std::string& pub, const std::string& cc)
+        -> BIP32PublicKey;
+
+    /// Return the public key as a byte vector.
+    /// @param with_cc Flag to include the chain code with the key.
     [[nodiscard]] auto toBytes(bool with_cc = true) const
         -> std::vector<uint8_t>;
 
-    /// Mutation methods
+    /// Encode the public key as a bech32 string.
+    /// @param hrp The bech32 human readable header.
+    [[nodiscard]] auto toBech32(std::string_view hrp) const -> std::string;
+    
+    /// Encode the public key as a hex string.
+    [[nodiscard]] auto toBase16() const -> std::string;
+
+    /// Encode the public key as CBOR hex string.
+    /// @param with_cc Flag to include the chain code with the key.
+    [[nodiscard]] auto toCBOR(bool with_cc = true) const-> std::string;
+
+    /// Derive a child (non-hardened) key from the public key.
+    /// @param index Non-hardened BIP32 derivation index.
+    /// @param derivation_mode 1 - Byron, 2 - Shelley
     [[nodiscard]] auto deriveChild(uint32_t index, uint32_t derivation_mode = 2)
         const -> BIP32PublicKey;
+
 }; // BIP32PublicKey
 
 class BIP32PrivateKey {
