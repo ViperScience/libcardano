@@ -54,11 +54,11 @@ class BIP32PublicKey
     /// Public key byte array (unencrypted).
     std::array<uint8_t, PUBLIC_KEY_SIZE> pub_{};
 
-    // Chain code byte array (unencrypted).
+    /// Chain code byte array (unencrypted).
     std::array<uint8_t, CHAIN_CODE_SIZE> cc_{};
 
-    // Make the default constructor private so that it can only be used
-    // internally.
+    /// Make the default constructor private so that it can only be used
+    /// internally.
     BIP32PublicKey() = default;
 
   public:
@@ -105,23 +105,34 @@ class BIP32PublicKey
 
 }; // BIP32PublicKey
 
-class BIP32PrivateKey {
+/// Represent a BIP32 private key.
+class BIP32PrivateKey
+{
   private:
-    // Private key hex (unencrypted)
+    /// Private key byte array (unencrypted)
     std::array<uint8_t, ENCRYPTED_KEY_SIZE> prv_{};
-    // Chain code hex (unencrypted)
+
+    /// Chain code byte array (unencrypted).
     std::array<uint8_t, CHAIN_CODE_SIZE> cc_{};
-    // keep the default constructor private
+
+    /// Make the default constructor private so that it can only be used
+    /// internally.
     BIP32PrivateKey() = default;
+
+    /// Clear the contents of the private key array.
     bool clear();
 
   public:
+
     constexpr BIP32PrivateKey(std::array<uint8_t, ENCRYPTED_KEY_SIZE> priv,
                               std::array<uint8_t, CHAIN_CODE_SIZE> cc)
         : prv_{priv}, cc_{cc} {}
+
     explicit BIP32PrivateKey(std::span<const uint8_t> xpriv); // prv + cc
     explicit BIP32PrivateKey(std::string_view xpriv); // prv + cc
     BIP32PrivateKey(const std::string& prv, const std::string& cc);
+
+    /// Destructor - clear the private key byte array.
     ~BIP32PrivateKey() { this->clear(); }
 
     /// Factory methods
@@ -133,37 +144,71 @@ class BIP32PrivateKey {
                              std::string_view passphrase) -> BIP32PrivateKey;
     // static BIP32PrivateKey fromCBOR(std::string bech32); // TODO
 
-    /// Access methods
+    /// Encode the private key as a bech32 string.
+    /// @param hrp The bech32 human readable header.
     [[nodiscard]] auto toBech32(std::string_view hrp) const -> std::string;
-    [[nodiscard]] auto toBase16() const -> std::string;
-    // auto toCBOR(std::string hrp) const -> std::string;
 
-    /// Conversion methods
+    /// Encode the private key as a hex string.
+    [[nodiscard]] auto toBase16() const -> std::string;
+
+    /// Encode the private key as a CBOR hex string.
+    /// @param with_cc Flag to include the chain code with the key.
+    [[nodiscard]] auto toCBOR(bool with_cc = true) const -> std::string;
+
+    /// Encode the private key, public key, and chain code all concatenated as
+    /// a CBOR hex string.
+    [[nodiscard]] auto toExtendedCBOR() const -> std::string;
+
+    /// Derive the Ed25519 public key from the private key.
     [[nodiscard]] auto toPublic() const -> BIP32PublicKey;
+
+    /// Derive a child key from the private key.
+    /// @param index BIP32 derivation index.
+    /// @param derivation_mode 1 - Byron, 2 - Shelley
     [[nodiscard]] auto deriveChild(uint32_t index, uint32_t derivation_mode = 2)
         const -> BIP32PrivateKey;
+
+    /// Encrypt the private key bytes with a password using the same method as
+    /// that used by the Daedalus wallet. This clears the unencrypted private
+    /// key of the calling object.
+    /// @param password The password to use for the encryption.
     auto encrypt(std::string_view password) -> BIP32PrivateKeyEncrypted;
+
 }; // BIP32PrivateKey
 
-class BIP32PrivateKeyEncrypted {
+class BIP32PrivateKeyEncrypted
+{
   private:
-    // Private key bytes (encrypted)
+
+    /// Private key byte array (encrypted)
     std::array<uint8_t, ENCRYPTED_KEY_SIZE> xprv_{};
-    // Chain code bytes (unencrypted)
+
+    /// Chain code byte array (unencrypted).
     std::array<uint8_t, CHAIN_CODE_SIZE> cc_{};
 
+    /// Make the default constructor private so that it can only be used
+    /// internally.
     BIP32PrivateKeyEncrypted() = default;
 
   public:
+
     constexpr BIP32PrivateKeyEncrypted(
         std::array<uint8_t, ENCRYPTED_KEY_SIZE> prv,
         std::array<uint8_t, CHAIN_CODE_SIZE> cc)
         : xprv_{prv}, cc_{cc} {}
+
     BIP32PrivateKeyEncrypted(const std::string& prv_enc, const std::string& cc);
     explicit BIP32PrivateKeyEncrypted(std::string_view xprv_enc);
 
     /// Access methods
     [[nodiscard]] auto toBase16() const -> std::string;
+
+    /// Encode the private key (encrypted), public key (unencrypted), and chain
+    /// code (unencrypted) all concatenated as a CBOR hex string.
+    /// @param password Password to decrypt the private key for public key
+    /// derivation.
+    [[nodiscard]] auto toExtendedCBOR(std::string_view password) const
+        -> std::string;
 
     /// Conversion methods
     [[nodiscard]] auto deriveChild(uint32_t index, std::string_view password,
