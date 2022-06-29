@@ -4,26 +4,26 @@
            margin-right: auto;
            width: 60%;"
     src="docs/img/logo.png" 
-    alt="Cardano++ logo">
+    alt="libcardano logo">
 </img>
 
-# Cardano++
+# libcardano
 
-A blazingly fast library of Cardano blockchain tools written in modern C++.
+A high-performance library of Cardano blockchain tools written in modern C++.
 
 ## Basic Usage
 
-The Cardano++ library is designed to be a simple plugin for C++ applications to include Cardano blockchain functionality. In your C++ code simply add `#include <cardano>` and then use library objects and methods under the `cardano` namespace. Then link against libcardano during build. A CMake file for including the Cardano++ library in your own C++ projects will be make availible soon.
+Libcardano is designed to be a simple plugin for C++ applications to include Cardano blockchain functionality. In your C++ code simply add `#include <cardano>` and then use library objects and methods under the `cardano` namespace. Then link against libcardano during build. A CMake file for including the libcardano library in your own C++ projects will be make availible soon.
 
 ## Building from Source
 
-The Cardano++ library currently relies on functionality provided in submodules. Prior to building, you must clone the repository including the submodules.
+The libcardano library currently relies on functionality provided in submodules. Prior to building, you must clone the repository including the submodules.
 
-    git clone --recurse-submodules -j8 https://gitlab.com/viper-staking/cardano-plus-plus.git
+    git clone --recurse-submodules -j8 https://gitlab.com/viper-staking/libcardano.git
 
 A CMake build file is included which simplifies the compilation process.
 
-    cd cardano-plus-plus
+    cd libcardano
     mkdir build && cd build \
     cmake -DCMAKE_BUILD_TYPE=Release ..
     make -j 8
@@ -32,11 +32,11 @@ A CMake build file is included which simplifies the compilation process.
 
 A Docker build option is also provided.
 
-    docker build -t cardano-plus-plus:latest .
+    docker build -t libcardano:latest .
 
 ### External Dependencies
 
-Cardano++ links with the following external dependencies. 
+Libcardano links with the following external dependencies. 
 
 * [Botan-2](https://botan.randombit.net/)
 * [libcbor v0.9.0](https://github.com/PJK/libcbor)
