@@ -196,27 +196,36 @@ auto create_checksum(std::string_view hrp, std::span<const uint8_t> values)
 } // create_checksum
 
 auto convertbits(std::span<const uint8_t> data, int frombits, int tobits, 
-                 bool pad) -> std::vector<uint8_t> {
+                 bool pad) -> std::vector<uint8_t>
+{
     int acc = 0;
     int bits = 0;
     std::vector<uint8_t> ret;
     int maxv = (1 << tobits) - 1;
     int max_acc = (1 << (frombits + tobits - 1)) - 1;
-    for (const auto& value: data) {
+    for (const auto& value: data)
+    {
         if (value < 0 or (value >> frombits))
             throw std::invalid_argument("Invalid bits.");
         acc = ((acc << frombits) | value) & max_acc;
         bits += frombits;
-        while (bits >= tobits) {
+        while (bits >= tobits)
+        {
             bits -= tobits;
             ret.push_back((acc >> bits) & maxv);
         }
     }
+
     if (pad)
+    {
         if (bits != 0)
             ret.push_back((acc << (tobits - bits)) & maxv);
+    }
     else if (bits >= frombits || ((acc << (tobits - bits)) & maxv))
+    {
         throw std::invalid_argument("Invalid bit conversion.");
+    }
+    
     return ret;
 } // convertbits
 
