@@ -22,17 +22,19 @@
 #define _CARDANO_MNEMONIC_HPP_
 
 // Standard Library Headers
-#include <array>
 #include <span>
 #include <string_view>
 #include <tuple>
+#include <vector>
 
 // Public Cardano++ Headers
 #include <cardano/bip39_dictionary.hpp>
 
-namespace cardano {
+namespace cardano
+{
 
-class Mnemonic {
+class Mnemonic
+{
   private:
     std::vector<std::string> word_list_;
     std::vector<uint16_t> word_indexes_;

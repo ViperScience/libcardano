@@ -82,6 +82,18 @@ ADD_TEST(cardano_byron_address test_cardano_byron_address)
 set(TEST_CARDANO_MNEMONIC_SOURCES 
     test_cardano_mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
+)
+ADD_EXECUTABLE(test_cardano_mnemonic ${TEST_CARDANO_MNEMONIC_SOURCES})
+target_link_libraries(test_cardano_mnemonic botan::botan)
+ADD_TEST(cardano_mnemonic test_cardano_mnemonic)
+
+########################################################################
+# Test address derivation from the Mnemonic
+########################################################################
+
+set(TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES 
+    test_cardano_mnemonic_to_address.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
@@ -90,9 +102,37 @@ set(TEST_CARDANO_MNEMONIC_SOURCES
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
 )
-ADD_EXECUTABLE(test_cardano_mnemonic ${TEST_CARDANO_MNEMONIC_SOURCES})
-target_link_libraries(test_cardano_mnemonic
+ADD_EXECUTABLE(test_cardano_mnemonic_to_address
+    ${TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES}
+)
+target_link_libraries(test_cardano_mnemonic_to_address
     cbor::cbor
     botan::botan
 )
-ADD_TEST(cardano_mnemonic test_cardano_mnemonic)
+ADD_TEST(cardano_mnemonic_to_address test_cardano_mnemonic_to_address)
+
+########################################################################
+# Test stake address derivation from the Mnemonic
+########################################################################
+
+set(TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES 
+    test_cardano_mnemonic_to_stake_address.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
+    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
+    ${CMAKE_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils.cpp
+    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${CARDANO_CRYPTO_CBITS_SOURCES}
+    ${CRYPTONITE_CBITS_SOURCES}
+)
+ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
+    ${TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES}
+)
+target_link_libraries(test_cardano_mnemonic_to_stake_address
+    cbor::cbor
+    botan::botan
+)
+ADD_TEST(cardano_mnemonic_to_stake_address 
+    test_cardano_mnemonic_to_stake_address
+)
