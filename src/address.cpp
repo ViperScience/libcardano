@@ -477,14 +477,14 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress
             auto attr_cbor = cbor_bytestring_handle(attrs_map[i].value);
             auto attr_item = cbor_load(attr_cbor, attr_cbor_len, &result);
 
-            if (cbor_get_uint32(attrs_map[i].key) == 1) {
+            if (cbor_get_uint8(attrs_map[i].key) == 1) {
                 // Key = 1: ciphered derivation path (double CBOR encoded)
                 auto n_bytes = cbor_bytestring_length(attr_item);
                 auto bytes_ptr = cbor_bytestring_handle(attr_item);
                 baddr.attrs_.derivation_path_ciphertext = std::vector<uint8_t>(
                     bytes_ptr, bytes_ptr + n_bytes
                 );
-            } else if (cbor_get_uint32(attrs_map[i].key) == 2) {
+            } else if (cbor_get_uint8(attrs_map[i].key) == 2) {
                 // Key = 2: network tag (CBOR encoded)
                 baddr.attrs_.protocol_magic = cbor_get_uint32(attr_item);
             }
