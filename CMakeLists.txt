@@ -15,6 +15,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Additional packages
 ########################################################################
 
+# Include a thread library for linking that is specific to the platform.
+find_package(Threads REQUIRED)
+
 # Add the local cmake directory to the path for custom search files
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -80,9 +83,10 @@ add_library(cardano ${SOURCES})
 ########################################################################
 
 # specify libraries for linking
-target_link_libraries(${PROJECT_NAME} PUBLIC
+target_link_libraries(${PROJECT_NAME} PRIVATE
     cbor::cbor
     botan::botan
+    Threads::Threads
 )
 
 ########################################################################

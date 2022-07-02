@@ -25,9 +25,10 @@ set(TEST_CARDANO_CRYPTO_SOURCES
     ${CRYPTONITE_CBITS_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_crypto ${TEST_CARDANO_CRYPTO_SOURCES})
-target_link_libraries(test_cardano_crypto
+target_link_libraries(test_cardano_crypto PRIVATE
     cbor::cbor
     botan::botan
+    Threads::Threads
 )
 ADD_TEST(cardano_crypto test_cardano_crypto)
 
@@ -47,9 +48,10 @@ set(TEST_CARDANO_ADDRESS_SOURCES
     ${CRYPTONITE_CBITS_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
-target_link_libraries(test_cardano_address
+target_link_libraries(test_cardano_address PRIVATE
     cbor::cbor
     botan::botan
+    Threads::Threads
 )
 ADD_TEST(cardano_address test_cardano_address)
 
@@ -69,9 +71,10 @@ set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
     ${CRYPTONITE_CBITS_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_byron_address ${TEST_CARDANO_BYRON_ADDRESS_SOURCES})
-target_link_libraries(test_cardano_byron_address
+target_link_libraries(test_cardano_byron_address PRIVATE
     cbor::cbor
     botan::botan
+    Threads::Threads
 )
 ADD_TEST(cardano_byron_address test_cardano_byron_address)
 
@@ -84,7 +87,10 @@ set(TEST_CARDANO_MNEMONIC_SOURCES
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
 )
 ADD_EXECUTABLE(test_cardano_mnemonic ${TEST_CARDANO_MNEMONIC_SOURCES})
-target_link_libraries(test_cardano_mnemonic botan::botan)
+target_link_libraries(test_cardano_mnemonic PRIVATE
+    botan::botan
+    Threads::Threads
+)
 ADD_TEST(cardano_mnemonic test_cardano_mnemonic)
 
 ########################################################################
@@ -105,9 +111,10 @@ set(TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES
 ADD_EXECUTABLE(test_cardano_mnemonic_to_address
     ${TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES}
 )
-target_link_libraries(test_cardano_mnemonic_to_address
+target_link_libraries(test_cardano_mnemonic_to_address PRIVATE
     cbor::cbor
     botan::botan
+    Threads::Threads
 )
 ADD_TEST(cardano_mnemonic_to_address test_cardano_mnemonic_to_address)
 
@@ -129,9 +136,10 @@ set(TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES
 ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
     ${TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES}
 )
-target_link_libraries(test_cardano_mnemonic_to_stake_address
+target_link_libraries(test_cardano_mnemonic_to_stake_address PRIVATE
     cbor::cbor
     botan::botan
+    Threads::Threads
 )
 ADD_TEST(cardano_mnemonic_to_stake_address 
     test_cardano_mnemonic_to_stake_address
