@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
 
 # set the project name, language,  and version
-project(cardano 
+project(Cardano 
     DESCRIPTION "A blazingly fast library of Cardano blockchain tools written in modern C++."
-    VERSION 1.0
+    VERSION 1.0.0
     LANGUAGES C CXX
 )
 
@@ -35,23 +35,30 @@ find_package(libcbor REQUIRED)
 # Add the submodules
 add_subdirectory(${CMAKE_SOURCE_DIR}/libs)
 
-########################################################################
+################################################################################
 # Include directories
-########################################################################
+################################################################################
+
+# Make cache variables for install destinations
+include(GNUInstallDirs)
 
 include_directories(${PROJECT_NAME}
     PRIVATE
-        ${CMAKE_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CARDANO_CRYPTO_CBITS_INCLUDE}
         ${CRYPTONITE_CBITS_INCLUDE}
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/include
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+# Note: We need to tell CMake that we want to use different include directories
+#       depending on if we're building the library or using it from an installed
+#       location.
 
-########################################################################
+################################################################################
 # Tests
-########################################################################
+################################################################################
 
 # Enable testing globally. Individual tests may be found in the `tests`
 # subdirectory of the repository.
@@ -59,12 +66,12 @@ ENABLE_TESTING()
 
 ADD_SUBDIRECTORY(test build)
 
-########################################################################
-# Target Build
-########################################################################
+################################################################################
+# Target Build and Link
+################################################################################
 
-# specify the source files
-set(SOURCES
+# Specify the libcardano source files (including submodules)
+set(CARDANO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
@@ -75,29 +82,72 @@ set(SOURCES
     ${CRYPTONITE_CBITS_SOURCES}
 )
 
-# add the library to build
-add_library(cardano ${SOURCES})
+# Add the library to build but do not specify STATIC vs. SHARED. A shared 
+# library will be built if CMake is run with: -DBUILD_SHARED_LIBS=ON
+add_library(${PROJECT_NAME} ${CARDANO_SOURCES})
 
-########################################################################
-# Target Link
-########################################################################
-
-# specify libraries for linking
+# Specify libraries for linking
 target_link_libraries(${PROJECT_NAME} PRIVATE
     cbor::cbor
     botan::botan
     Threads::Threads
 )
 
-########################################################################
-# Install Target
-########################################################################
+################################################################################
+# Install the Target
+################################################################################
+set(PROJECT_NAME_TARGETS ${PROJECT_NAME}Targets)
 
-install(TARGETS ${PROJECT_NAME} DESTINATION lib)
-set(HEADERS
-    ${CMAKE_SOURCE_DIR}/include/cardano/cardano.hpp
-    ${CMAKE_SOURCE_DIR}/include/cardano/encodings.hpp
-    ${CMAKE_SOURCE_DIR}/include/cardano/crypto.hpp
-    ${CMAKE_SOURCE_DIR}/include/cardano/address.hpp
+# Install the library file.
+install(TARGETS ${PROJECT_NAME}
+        EXPORT ${PROJECT_NAME_TARGETS}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cardano
 )
-install(FILES ${HEADERS} DESTINATION "include/cardano")
+
+# Install the header files. Use lowercase for the directory name.
+set(CARDANO_HEADERS
+    ${CMAKE_SOURCE_DIR}/include/cardano/cardano.hpp
+    ${CMAKE_SOURCE_DIR}/include/cardano/address.hpp
+    ${CMAKE_SOURCE_DIR}/include/cardano/bip39_dictionary.hpp
+    ${CMAKE_SOURCE_DIR}/include/cardano/crypto.hpp
+    ${CMAKE_SOURCE_DIR}/include/cardano/encodings.hpp
+    ${CMAKE_SOURCE_DIR}/include/cardano/mnemonic.hpp
+)
+install(FILES ${CARDANO_HEADERS} 
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cardano
+)
+# message(CMAKE_INSTALL_LIBDIR="${CMAKE_INSTALL_LIBDIR}")
+# message(CMAKE_INSTALL_INCLUDEDIR="${CMAKE_INSTALL_INCLUDEDIR}")
+
+################################################################################
+# Install the CMake Target files
+################################################################################
+
+# Install the CMake files required in order to use `find_package(Cardano)`
+install(EXPORT ${PROJECT_NAME_TARGETS}
+        FILE ${PROJECT_NAME_TARGETS}.cmake
+        NAMESPACE ${PROJECT_NAME}::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/CardanoConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/CardanoConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+# ${PROJECT_VERSION}
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/CardanoConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/CardanoConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)

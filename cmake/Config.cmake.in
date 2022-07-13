@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(libcbor)
+find_dependency(Botan)
+find_dependency(Threads)
+# Note: Some of the find_dependency calls above may need the custom Find files
+# included in the libCardano repository.
+
+include("${CMAKE_CURRENT_LIST_DIR}/CardanoTargets.cmake")
+
+check_required_components(cardano)

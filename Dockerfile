@@ -40,7 +40,7 @@ RUN git clone https://github.com/randombit/botan.git \
  && make install \
  && cd .. && rm -rf botan
 
-# Build the Cardano++ library
+# Build, test, and install the libcardano library
 WORKDIR /opt
 COPY . /opt
 ENV CTEST_OUTPUT_ON_FAILURE=1
@@ -49,3 +49,10 @@ RUN mkdir build && cd build \
  && make -j16 \
  && make test \
  && make install
+
+# Run the libcardano cmake integration test
+WORKDIR /opt/cmake/cmake_integration_test
+RUN mkdir build && cd build \
+ && cmake -DCMAKE_BUILD_TYPE=Release .. \
+ && make -j16
+RUN ./build/cmake_integration_test
