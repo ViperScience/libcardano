@@ -13,7 +13,7 @@ A high-performance library of Cardano blockchain tools written in modern C++.
 
 ## Basic Usage
 
-Libcardano is designed to be a simple plugin for C++ applications to include Cardano blockchain functionality. In your C++ code simply add `#include <cardano>` and then use library objects and methods under the `cardano` namespace. Then link against libcardano during build. A CMake file for including the libcardano library in your own C++ projects will be make availible soon.
+Libcardano is designed to be a simple plugin for C++ applications to include Cardano blockchain functionality. In your C++ code simply add `#include <cardano/cardano.hpp>` and then use library objects and methods under the `cardano` namespace. Finally, link against libcardano during build. If built and installed properly using the provided CMake configuration, libcardano may be included in your own CMake projects via `fing_package(Cardano)`.
 
 ## Building from Source
 
@@ -21,7 +21,7 @@ The libcardano library currently relies on functionality provided in submodules.
 
     git clone --recurse-submodules -j8 https://gitlab.com/viper-staking/libcardano.git
 
-A CMake build file is included which simplifies the compilation process.
+A CMake build file is included which simplifies the compilation, test, and install process.
 
     cd libcardano
     mkdir build && cd build \
