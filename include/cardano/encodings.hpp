@@ -28,17 +28,19 @@
 
 namespace cardano {
 
-class BASE16 {
+class BASE16
+{
   private:
-    BASE16() {}
+    BASE16() = default;
   public:
     static std::string encode(std::span<const uint8_t> bytes);
     static std::vector<uint8_t> decode(std::string_view str);
 }; // BASE16
 
-class BECH32 {
+class BECH32
+{
   private:
-    BECH32() {}
+    BECH32() = default;
   public:
     static std::string encode(std::string_view hrp, std::span<const uint8_t> values);
     static std::string encode_hex(std::string_view hrp, std::string_view hex_values);
@@ -46,15 +48,24 @@ class BECH32 {
     static std::tuple<std::string, std::string> decode_hex(std::string_view str);
 }; // BECH32
 
-class BASE58 {
+class BASE58
+{
   private:
-    BASE58() {}
+    BASE58() = default;
   public:
     static std::string encode(std::span<const uint8_t> values);
     static std::string encode_hex(std::string_view hex_values);
     static std::vector<uint8_t> decode(std::string_view str);
     static std::string decode_hex(std::string_view str);
 }; // BASE58
+
+class CBOR
+{
+  private:
+    CBOR() = default;
+  public:
+    static auto encodeBytes(std::span<const uint8_t> bytes) -> std::string;
+}; // CBOR
 
 } // namespace cardano
 

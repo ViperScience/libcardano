@@ -30,6 +30,9 @@
 #include <cardano/encodings.hpp>
 #include "utils.hpp"
 
+// Third-party QCBOR library for CBOR functionality
+#include "qcbor/qcbor_encode.h"
+
 using namespace cardano;
 
 auto bytes2hex(std::span<const uint8_t> bytes) -> std::string {
@@ -386,3 +389,24 @@ auto BASE58::decode_hex(std::string_view base58_str) -> std::string {
     auto data = cardano::BASE58::decode(base58_str);
     return bytes2hex(data);
 } // BASE58::decode_hex
+
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////// CBOR /////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+auto CBOR::encodeBytes(std::span<const uint8_t> data) -> std::string
+{
+    // We have to pre-allocate the buffer used for writing the CBOR and it 
+    // cannot be undersized. Here we assume that allocating on the stack is
+    // acceptible and just double the size of the input bytes. This could be
+    // optimized in the future.
+    UsefulBuf_MAKE_STACK_UB(buffer, 2*data.size());
+    QCBOREncodeContext encodeCtx;
+    QCBOREncode_Init(&encodeCtx, buffer);
+    QCBOREncode_AddBytes(&encodeCtx, (UsefulBufC) {data.data(), data.size()});
+    UsefulBufC encodedCBOR;
+    auto uErr = QCBOREncode_Finish(&encodeCtx, &encodedCBOR);
+    if(uErr != QCBOR_SUCCESS)
+        std::runtime_error("Invalid CBOR bytes.");
+    return BASE16::encode({(const uint8_t *)encodedCBOR.ptr, encodedCBOR.len});
+} // CBOR::encodeBytes

@@ -48,6 +48,7 @@ include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CARDANO_CRYPTO_CBITS_INCLUDE}
         ${CRYPTONITE_CBITS_INCLUDE}
+        ${QCBOR_INCLUDE}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -80,6 +81,7 @@ set(CARDANO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
+    ${QCBOR_SOURCES}
 )
 
 # Add the library to build but do not specify STATIC vs. SHARED. A shared 

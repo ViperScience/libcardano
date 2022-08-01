@@ -5,7 +5,9 @@
 set(TEST_CARDANO_ENCODINGS_SOURCES 
     test_cardano_encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp)
+    ${CMAKE_SOURCE_DIR}/src/utils.cpp
+    ${QCBOR_SOURCES}
+)
 ADD_EXECUTABLE(test_cardano_encodings ${TEST_CARDANO_ENCODINGS_SOURCES})
 ADD_TEST(cardano_encodings test_cardano_encodings)
 
@@ -23,6 +25,7 @@ set(TEST_CARDANO_CRYPTO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
+    ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_crypto ${TEST_CARDANO_CRYPTO_SOURCES})
 target_link_libraries(test_cardano_crypto PRIVATE
@@ -46,6 +49,7 @@ set(TEST_CARDANO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
+    ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_address PRIVATE
@@ -69,6 +73,7 @@ set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
+    ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_byron_address ${TEST_CARDANO_BYRON_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_byron_address PRIVATE
@@ -107,6 +112,7 @@ set(TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
+    ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_mnemonic_to_address
     ${TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES}
@@ -132,6 +138,7 @@ set(TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
+    ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
     ${TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES}
