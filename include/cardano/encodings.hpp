@@ -62,9 +62,44 @@ class BASE58
 class CBOR
 {
   private:
-    CBOR() = default;
+    
+    // This is a generic pointer that can be used to point to the data object 
+    // used by the underlying CBOR implementation. It is intentionally kept 
+    // general in order to completely separate the interface (header file) from
+    // the implementation. This way, in the event that a different CBOR backend
+    // it used, nothing else but that source code will need recompilation.
+    void* _cbor_context;
+
   public:
+    CBOR() : CBOR(256) {};
+    CBOR(const size_t buff_size);
+    ~CBOR();
+
+    // Static factory methods
+    static auto newArray() -> CBOR;
+    static auto newIndefiniteArray() -> CBOR;
+    static auto newMap() -> CBOR;
+    static auto newIndefiniteMap() -> CBOR;
+
+    // Encoding //
+
+    auto startArray() -> void;
+    auto endArray() -> void;
+
+    auto startIndefiniteArray() -> void;
+    auto endIndefiniteArray() -> void;
+
+    auto addUnsigned(uint64_t v) -> void;
+    auto addSigned(int64_t v) -> void;
+
+    auto serializeToBytes() -> std::vector<uint8_t>;
+
+    /// Static method to CBOR encode a byte string.
     static auto encodeBytes(std::span<const uint8_t> bytes) -> std::string;
+
+    // Decoding //
+
+    
 }; // CBOR
 
 } // namespace cardano

@@ -275,7 +275,32 @@ auto RewardsAddress::toBase16(bool include_header_byte) const -> std::string
 //
 // https://input-output-hk.github.io/cardano-wallet/concepts/byron-address-format
 
-auto byron_address_type_to_byte(ByronAddressType type) -> uint8_t
+#include <botan/pbkdf2.h>
+#include <botan/pwdhash.h>
+
+// The number of key derivation iterations when generating the key for 
+// encrypting the address derivation path.
+static constexpr size_t DP_KEY_ITERATIONS = 500;
+
+// Size of key to be used for encrypting the address derivation path.
+static constexpr size_t DP_KEY_SIZE = 32;
+
+// Salt parameter used during generation of the derivation path encryption key.
+// This value was hard coded in the legacy Byron code.
+// String value: "address-hashing"
+static constexpr auto DP_SALT = std::array<uint8_t, 15>{
+    0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2d, 0x68, 0x61, 0x73, 0x68,
+    0x69, 0x6e, 0x67
+};
+
+// Nonce (hardcoded in legacy Bryon code) used for the address derivation path
+// encryption cipher.
+// String value: "serokellfore"
+static constexpr auto DP_NONCE = std::array<uint8_t, 12>{
+    0x73, 0x65, 0x72, 0x6f, 0x6b, 0x65, 0x6c, 0x6c, 0x66, 0x6f, 0x72, 0x65
+};
+
+static constexpr auto byron_address_type_to_byte(ByronAddressType type) -> uint8_t
 {
     uint32_t type_val; 
     switch (type)
@@ -383,53 +408,33 @@ ByronAddressAttributes::ByronAddressAttributes(BIP32PublicKey xpub,
                                                uint32_t magic)
 {
     // Create the passphrase for encrypting the derivation path.
-    const uint32_t num_iterations = 500;
-    const size_t key_size = 32;
-    std::vector<uint8_t> key;
-    key.resize(key_size);
-    const std::array<uint8_t, 15> salt = {
-        0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2d, 0x68, 0x61, 0x73, 0x68,
-        0x69, 0x6e, 0x67
-    }; // as string -> address-hashing
+    auto key = Botan::SecureVector<uint8_t>(DP_KEY_SIZE);
     auto xpub_bytes = xpub.toBytes(); // <- get vector of pub key and chain code
-    cryptonite_fastpbkdf2_hmac_sha512(xpub_bytes.data(), xpub_bytes.size(),
-                                      salt.data(), salt.size(), num_iterations,
-                                      key.data(), key_size);
+    auto fam = Botan::PasswordHashFamily::create("PBKDF2(SHA-512)");
+    const auto pbkdf2 = fam->from_params(DP_KEY_ITERATIONS);
+    pbkdf2->derive_key(key.data(), key.size(), (const char*)xpub_bytes.data(),
+                       xpub_bytes.size(), DP_SALT.data(), DP_SALT.size());
 
-    // CBOR encode the derivation path.
-    // Let libcbor allocate all the memory it needs. Then manually free the
-    // buffer.
-    cbor_item_t *path_cbor_item = cbor_new_indefinite_array();
+    // CBOR encode the derivation path(s). The CBOR is what is encrypted.
+    auto cbor = CBOR::newIndefiniteArray();
     for (auto idx : path)
-        cbor_array_push(path_cbor_item, cbor_move(cbor_build_uint32(idx)));
-    size_t buff_size;
-    uint8_t *path_cbor_buff;
-    auto cbor_len = cbor_serialize_alloc(path_cbor_item, &path_cbor_buff,
-                                         &buff_size);
+        cbor.addUnsigned(idx);
+    cbor.endIndefiniteArray();
+    const auto bytes = cbor.serializeToBytes();
 
-    // Create the nonce (hardcoded in legacy Bryon code) used for the
-    // encryption cipher.
-    std::string nonce_str = "serokellfore";
-    Botan::secure_vector<uint8_t> iv(nonce_str.data(),
-                                     nonce_str.data() + nonce_str.length());
+    // The encryption function needs a Botan::secure_vector as input.
+    auto pt = Botan::secure_vector<uint8_t>(bytes.begin(), bytes.end());
 
     // Encrypt the derivation path (CBOR encoded) using a ChaCha20Poly1305
     // cipher.
-    Botan::secure_vector<uint8_t> pt(path_cbor_buff, path_cbor_buff + cbor_len);
-    auto enc = Botan::Cipher_Mode::create("ChaCha20Poly1305",
-                                          Botan::ENCRYPTION);
-    enc->set_key(key);
-    enc->start(iv);
-    enc->finish(pt);
-
-    // Clean up memory
-    free(path_cbor_buff);
-    cbor_decref(&path_cbor_item);
+    auto cm = Botan::Cipher_Mode::create("ChaCha20Poly1305", Botan::ENCRYPTION);
+    cm->set_key(key);
+    cm->start(DP_NONCE.data(), DP_NONCE.size());
+    cm->finish(pt);
 
     // Set the object members
     this->protocol_magic = magic;
-    this->derivation_path_ciphertext = std::vector(pt.data(),
-                                                   pt.data() + pt.size());
+    this->derivation_path_ciphertext = std::vector(pt.begin(), pt.end());
 } // ByronAddressAttributes::ByronAddressAttributes
 
 auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress

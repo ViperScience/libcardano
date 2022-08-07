@@ -394,6 +394,81 @@ auto BASE58::decode_hex(std::string_view base58_str) -> std::string {
 ///////////////////////////////////// CBOR /////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+CBOR::CBOR(const size_t buff_size)
+{
+    this->_cbor_context = new QCBOREncodeContext();
+    auto *buff_ptr = new uint8_t[buff_size];
+    QCBOREncode_Init((QCBOREncodeContext *)this->_cbor_context, 
+                      (UsefulBuf){buff_ptr, buff_size});
+}
+
+CBOR::~CBOR()
+{
+    // Delete heap allocated memory
+    auto *ptr = (QCBOREncodeContext *)this->_cbor_context;
+    delete [] (uint8_t *)ptr->OutBuf.UB.ptr;
+    delete ptr;
+    ptr = nullptr;
+}
+
+auto CBOR::startIndefiniteArray() -> void
+{
+    QCBOREncode_OpenArrayIndefiniteLength(
+        (QCBOREncodeContext *)this->_cbor_context);
+}
+
+auto CBOR::endIndefiniteArray() -> void
+{
+    QCBOREncode_CloseArrayIndefiniteLength(
+        (QCBOREncodeContext *)this->_cbor_context);
+}
+
+auto CBOR::startArray() -> void
+{
+    QCBOREncode_OpenArray((QCBOREncodeContext *)this->_cbor_context);
+}
+
+auto CBOR::endArray() -> void
+{
+    QCBOREncode_CloseArray((QCBOREncodeContext *)this->_cbor_context);
+}
+
+auto CBOR::newArray() -> CBOR 
+{
+    auto cbor_obj = CBOR();
+    cbor_obj.startArray();
+    return cbor_obj;
+}
+
+auto CBOR::newIndefiniteArray() -> CBOR 
+{
+    auto cbor_obj = CBOR();
+    cbor_obj.startIndefiniteArray();
+    return cbor_obj;
+}
+
+auto CBOR::addUnsigned(uint64_t v) -> void
+{
+    QCBOREncode_AddUInt64((QCBOREncodeContext *)this->_cbor_context, v);
+}
+
+auto CBOR::addSigned(int64_t v) -> void
+{
+    QCBOREncode_AddInt64((QCBOREncodeContext *)this->_cbor_context, v);
+}
+
+auto CBOR::serializeToBytes() -> std::vector<uint8_t>
+{
+    UsefulBufC encodedCBOR;
+    auto uErr = QCBOREncode_Finish((QCBOREncodeContext *)this->_cbor_context, 
+                                   &encodedCBOR);
+    if(uErr != QCBOR_SUCCESS)
+        std::runtime_error(
+            "The CBOR structure is invalid and connt be serialized.");
+    return std::vector<uint8_t>((uint8_t *)encodedCBOR.ptr,
+                                (uint8_t *)encodedCBOR.ptr + encodedCBOR.len);
+}
+
 auto CBOR::encodeBytes(std::span<const uint8_t> data) -> std::string
 {
     // We have to pre-allocate the buffer used for writing the CBOR and it 
