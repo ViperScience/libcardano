@@ -106,9 +106,9 @@ auto BIP32PublicKey::toBase16() const -> std::string
 auto BIP32PublicKey::toCBOR(bool with_cc) const-> std::string
 {
     if (!with_cc)
-        return CBOR::encodeBytes(this->pub_);
+        return  BASE16::encode(CBOR::encode(this->pub_));
     const auto bytes = concat_bytes(this->pub_, this->cc_);
-    return CBOR::encodeBytes(bytes);
+    return  BASE16::encode(CBOR::encode(bytes));
 } // BIP32PublicKey::toCBOR
 
 auto BIP32PublicKey::deriveChild(uint32_t index, uint32_t derivation_mode) const
@@ -314,16 +314,16 @@ auto BIP32PrivateKey::toBase16() const -> std::string
 auto BIP32PrivateKey::toCBOR(bool with_cc) const -> std::string
 {
     if (!with_cc)
-        return CBOR::encodeBytes(this->prv_);
+        return  BASE16::encode(CBOR::encode(this->prv_));
     const auto bytes = concat_bytes(this->prv_, this->cc_);
-    return CBOR::encodeBytes(bytes);
+    return  BASE16::encode(CBOR::encode(bytes));
 } // BIP32PrivateKey::toCBOR
 
 auto BIP32PrivateKey::toExtendedCBOR() const -> std::string
 {
     auto pubkey = this->toPublic().toBytes(); // <- includes the chain code
     auto bytes = concat_bytes(this->prv_, pubkey);
-    return CBOR::encodeBytes(bytes);
+    return  BASE16::encode(CBOR::encode(bytes));
 } // BIP32PrivateKey::toExtendedCBOR
 
 auto BIP32PrivateKey::toPublic() const -> BIP32PublicKey
@@ -451,5 +451,5 @@ auto BIP32PrivateKeyEncrypted::toExtendedCBOR(std::string_view password) const
 {
     auto pubkey = this->toPublic(password).toBytes(); // <- includes the chain code
     auto bytes = concat_bytes(this->xprv_, pubkey);
-    return CBOR::encodeBytes(bytes);
+    return  BASE16::encode(CBOR::encode(bytes));
 } // BIP32PrivateKeyEncrypted::toExtendedCBOR

@@ -6,7 +6,8 @@
 #include <src/debug_utils.hpp>
 #include <test/tests.hpp>
 
-void testBasic() {
+auto testBasic() -> void
+{
     // The tests setup here verify the data supplied in the Cardano documentation at:
     // https://input-output-hk.github.io/cardano-wallet/concepts/byron-address-format
 
@@ -36,7 +37,8 @@ void testBasic() {
     TEST_ASSERT_THROW( addr_from_cbor.toBase58() == addr_base58 )
 }
 
-void testAdvanced() {
+auto testAdvanced() -> void
+{
     std::string root_prv_base16 = "5079457179b48efd3be6bfe351959c490df067defba703b5e8264ad7fc4b304c175f5a248c8762de70feae23b647b33f63ea478c16803eb7137afd194166eabf";
     std::string root_pub_base16 = "e34ccf1393dc758f0042d9e9c0a7f7151e0f046e3ca1c6b0764475e1d03e0372";
     std::string root_cc_base16 = "da644915ce8c9b7333b43a05d029064f570b2ff1d865165968e06f10cb4894d8";
@@ -81,7 +83,8 @@ void testAdvanced() {
     TEST_ASSERT_THROW( addr_0H492230898H_from_key.toBase58() == addr_0H492230898H_base58 )
 }
 
-int main() {
+auto main() -> int
+{
   testBasic();
   testAdvanced();
   return 0;

@@ -35,7 +35,8 @@ constexpr size_t KEY_HASH_LENGTH = 28;
 
 enum class NetworkID { mainnet, testnet };
 
-class BaseAddress {
+class BaseAddress
+{
   private:
     uint8_t header_byte_;
     std::array<uint8_t, KEY_HASH_LENGTH> pmt_key_hash_{};
@@ -56,7 +57,8 @@ class BaseAddress {
     std::string toBase16(bool with_header = false) const;
 }; // BaseAddress
 
-class EnterpriseAddress {
+class EnterpriseAddress
+{
   private:
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
     uint8_t header_byte_;
@@ -74,7 +76,8 @@ class EnterpriseAddress {
 
 class PointerAddress {};
 
-class RewardsAddress {
+class RewardsAddress
+{
   private:
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
     uint8_t header_byte_;
@@ -90,35 +93,78 @@ class RewardsAddress {
     std::string toBase16(bool with_header = false) const;
 };
 
-enum class ByronAddressType { pubkey, script, redeem };
-
-struct ByronAddressAttributes {
-    std::vector<uint8_t> derivation_path_ciphertext;
-    uint32_t protocol_magic = 0;
-    ByronAddressAttributes() = default;
-    ByronAddressAttributes(std::vector<uint8_t> path, uint32_t magic)
-        : derivation_path_ciphertext{std::move(path)}, protocol_magic{magic} {}
-    ByronAddressAttributes(BIP32PublicKey xprv, std::span<const uint32_t> path, uint32_t magic = 0);
-};
-
-class ByronAddress {
-  private:
-    std::array<uint8_t, KEY_HASH_LENGTH> root_;
-    ByronAddressAttributes attrs_;
-    ByronAddressType type_;
-
-    // Make the default constructor private so it can only be used by the static factory methods.
-    ByronAddress() = default;
-
+class ByronAddress
+{
   public:
-    ByronAddress(std::array<uint8_t, KEY_HASH_LENGTH> root, ByronAddressAttributes attrs,
-                 ByronAddressType type)
+
+    struct Attributes
+    {
+        /// Address derivation path ciphertext.
+        std::vector<uint8_t> ciphertext;
+
+        /// Protocol magic (if not 0, then its a testnet).
+        uint32_t magic = 0;
+
+        /// Default Constructor
+        /// The default constructor is needed for the default ByronAddress
+        /// constructor to exist.
+        Attributes() = default;
+
+        /// Constructor
+        /// Take ownership of the chipertext vector (move it into the object).
+        Attributes(std::vector<uint8_t> bytes, uint32_t magic)
+            : ciphertext{std::move(bytes)}, magic{magic} {}
+
+        /// Factory method to create an attributes object from a root public key
+        /// and unencrypted path. The key is used to encrypt the address 
+        /// derivation path and the resulting ciphertext stored in the object.
+        static auto fromKey(BIP32PublicKey xpub, std::span<const uint32_t> path, 
+                            uint32_t magic = 0) -> Attributes;
+        
+        /// Serialize the object to CBOR bytes.
+        auto toCBOR() const -> std::vector<uint8_t>;
+    };
+
+    /// Address type enum contained within the ByronAddress class scope.
+    enum class Type 
+    {
+        pubkey,
+        script,
+        redeem
+    };
+
+    /// 
+    ByronAddress(std::array<uint8_t, KEY_HASH_LENGTH> root, 
+                 ByronAddress::Attributes attrs,
+                 ByronAddress::Type type)
         : root_{std::move(root)}, attrs_{std::move(attrs)}, type_{type} {}
+    
+    /// Facotry methods
     static ByronAddress fromRootKey(BIP32PrivateKey xprv, std::span<const uint32_t> derivation_path, uint32_t network_magic = 0);
     static ByronAddress fromCBOR(std::span<const uint8_t> cbor_data);
     static ByronAddress fromBase58(std::string addr);
+
+    ///
     std::vector<uint8_t> toCBOR() const;
+
+    /// 
     std::string toBase58() const;
+
+  private:
+    std::array<uint8_t, KEY_HASH_LENGTH> root_;
+    ByronAddress::Attributes attrs_;
+    ByronAddress::Type type_;
+
+    /// Convert an ByronAddress::Type enum to unsigned int for CBOR encoding.
+    static constexpr auto typeToUint(ByronAddress::Type t) -> uint8_t;
+
+    /// Convert a unsigned int to ByronAddress::Type enum for CBOR decoding.
+    static constexpr auto uintToType(uint64_t v) -> ByronAddress::Type;
+
+    /// Make the default constructor private so it can only be used by the
+    /// static factory methods.
+    ByronAddress() = default;
+
 };
 
 } // namespace cardano

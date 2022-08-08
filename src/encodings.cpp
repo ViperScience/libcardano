@@ -447,15 +447,86 @@ auto CBOR::newIndefiniteArray() -> CBOR
     return cbor_obj;
 }
 
-auto CBOR::addUnsigned(uint64_t v) -> void
+auto CBOR::startMap() -> void
 {
-    QCBOREncode_AddUInt64((QCBOREncodeContext *)this->_cbor_context, v);
+    QCBOREncode_OpenMap((QCBOREncodeContext *)this->_cbor_context);
 }
 
-auto CBOR::addSigned(int64_t v) -> void
+auto CBOR::endMap() -> void
+{
+    QCBOREncode_CloseMap((QCBOREncodeContext *)this->_cbor_context);
+}
+
+auto CBOR::newMap() -> CBOR
+{
+    auto cbor_obj = CBOR();
+    cbor_obj.startMap();
+    return cbor_obj;
+}
+
+auto CBOR::add(int64_t v) -> void
 {
     QCBOREncode_AddInt64((QCBOREncodeContext *)this->_cbor_context, v);
-}
+} // CBOR::add
+
+auto CBOR::add(uint64_t v) -> void
+{
+    QCBOREncode_AddUInt64((QCBOREncodeContext *)this->_cbor_context, v);
+} // CBOR::add
+
+auto CBOR::add(std::span<const uint8_t> bytes) -> void
+{
+    QCBOREncode_AddBytes((QCBOREncodeContext *)this->_cbor_context, 
+                         ((UsefulBufC) {bytes.data(), bytes.size()}));
+} // CBOR::add
+
+auto CBOR::addToMap(std::string_view k, int64_t v) -> void
+{
+    QCBOREncode_AddInt64ToMap((QCBOREncodeContext *)this->_cbor_context, 
+                              k.data(), v);
+} // CBOR::addToMap
+
+auto CBOR::addToMap(std::string_view k, uint64_t v) -> void
+{
+    QCBOREncode_AddUInt64ToMap((QCBOREncodeContext *)this->_cbor_context, 
+                               k.data(), v);
+} // CBOR::addToMap
+
+auto CBOR::addToMap(std::string_view k, std::span<const uint8_t> v) -> void
+{
+    QCBOREncode_AddBytesToMap((QCBOREncodeContext *)this->_cbor_context, 
+                              k.data(), ((UsefulBufC) {v.data(), v.size()}));
+} // CBOR::addToMap
+
+auto CBOR::addToMap(int64_t k, int64_t v) -> void
+{
+    QCBOREncode_AddInt64((QCBOREncodeContext *)this->_cbor_context, k);
+    QCBOREncode_AddInt64((QCBOREncodeContext *)this->_cbor_context, v);
+} // CBOR::addToMap
+
+auto CBOR::addToMap(int64_t k, uint64_t v) -> void
+{
+    QCBOREncode_AddInt64((QCBOREncodeContext *)this->_cbor_context, k);
+    QCBOREncode_AddUInt64((QCBOREncodeContext *)this->_cbor_context, v);
+} // CBOR::addToMap
+
+auto CBOR::addToMap(int64_t k, std::span<const uint8_t> v) -> void
+{
+    QCBOREncode_AddBytesToMapN((QCBOREncodeContext *)this->_cbor_context, k, 
+                               ((UsefulBufC) {v.data(), v.size()}));
+} // CBOR::addToMap
+
+auto CBOR::addEncoded(std::span<const uint8_t> v) -> void
+{
+    QCBOREncode_AddEncoded((QCBOREncodeContext *)this->_cbor_context,
+                           ((UsefulBufC) {v.data(), v.size()}));
+} // CBOR::addEncoded
+
+auto CBOR::addTagged(uint64_t t, std::span<const uint8_t> v) -> void
+{
+    QCBOREncode_AddTag((QCBOREncodeContext *)this->_cbor_context, t);
+    this->add(v);
+} // CBOR::addTagged
 
 auto CBOR::serializeToBytes() -> std::vector<uint8_t>
 {
@@ -467,9 +538,14 @@ auto CBOR::serializeToBytes() -> std::vector<uint8_t>
             "The CBOR structure is invalid and connt be serialized.");
     return std::vector<uint8_t>((uint8_t *)encodedCBOR.ptr,
                                 (uint8_t *)encodedCBOR.ptr + encodedCBOR.len);
-}
+} // CBOR::serializeToBytes
 
-auto CBOR::encodeBytes(std::span<const uint8_t> data) -> std::string
+auto CBOR::serializeToString() -> std::string
+{
+    return BASE16::encode(this->serializeToBytes());
+} // CBOR::string
+
+auto CBOR::encode(std::span<const uint8_t> data) -> std::vector<uint8_t>
 {
     // We have to pre-allocate the buffer used for writing the CBOR and it 
     // cannot be undersized. Here we assume that allocating on the stack is
@@ -483,5 +559,20 @@ auto CBOR::encodeBytes(std::span<const uint8_t> data) -> std::string
     auto uErr = QCBOREncode_Finish(&encodeCtx, &encodedCBOR);
     if(uErr != QCBOR_SUCCESS)
         std::runtime_error("Invalid CBOR bytes.");
-    return BASE16::encode({(const uint8_t *)encodedCBOR.ptr, encodedCBOR.len});
+    return std::vector<uint8_t>((uint8_t *)encodedCBOR.ptr,
+                                (uint8_t *)encodedCBOR.ptr + encodedCBOR.len);
 } // CBOR::encodeBytes
+
+auto CBOR::encode(uint64_t v) -> std::vector<uint8_t>
+{
+    UsefulBuf_MAKE_STACK_UB(buffer, sizeof(uint64_t));
+    QCBOREncodeContext encodeCtx;
+    QCBOREncode_Init(&encodeCtx, buffer);
+    QCBOREncode_AddUInt64(&encodeCtx, v);
+    UsefulBufC encodedCBOR;
+    auto uErr = QCBOREncode_Finish(&encodeCtx, &encodedCBOR);
+    if(uErr != QCBOR_SUCCESS)
+        std::runtime_error("Invalid CBOR bytes.");
+    return std::vector<uint8_t>((uint8_t *)encodedCBOR.ptr,
+                                (uint8_t *)encodedCBOR.ptr + encodedCBOR.len);
+}

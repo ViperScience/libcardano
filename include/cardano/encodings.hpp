@@ -89,13 +89,32 @@ class CBOR
     auto startIndefiniteArray() -> void;
     auto endIndefiniteArray() -> void;
 
-    auto addUnsigned(uint64_t v) -> void;
-    auto addSigned(int64_t v) -> void;
+    auto startMap() -> void;
+    auto endMap() -> void;
+
+    /// Add an item to the CBOR data structure.
+    auto add(int64_t v) -> void;
+    auto add(uint64_t v) -> void;
+    auto add(std::span<const uint8_t> v) -> void;
+
+    auto addEncoded(std::span<const uint8_t> v) -> void;
+
+    auto addTagged(uint64_t t, std::span<const uint8_t> v) -> void;
+
+    /// Add an item to a CBOR map (key-value pair)
+    auto addToMap(std::string_view k, int64_t v) -> void;
+    auto addToMap(std::string_view k, uint64_t v) -> void;
+    auto addToMap(std::string_view key, std::span<const uint8_t> v) -> void;
+    auto addToMap(int64_t k, int64_t v) -> void;
+    auto addToMap(int64_t k, uint64_t v) -> void;
+    auto addToMap(int64_t k, std::span<const uint8_t> v) -> void;
 
     auto serializeToBytes() -> std::vector<uint8_t>;
+    auto serializeToString() -> std::string;
 
     /// Static method to CBOR encode a byte string.
-    static auto encodeBytes(std::span<const uint8_t> bytes) -> std::string;
+    static auto encode(std::span<const uint8_t> b) -> std::vector<uint8_t>;
+    static auto encode(uint64_t v) -> std::vector<uint8_t>;
 
     // Decoding //
 
