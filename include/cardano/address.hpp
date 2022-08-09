@@ -133,22 +133,24 @@ class ByronAddress
         redeem
     };
 
-    /// 
+    /// Constructor - take ownership of the inputs.
     ByronAddress(std::array<uint8_t, KEY_HASH_LENGTH> root, 
                  ByronAddress::Attributes attrs,
                  ByronAddress::Type type)
         : root_{std::move(root)}, attrs_{std::move(attrs)}, type_{type} {}
     
     /// Facotry methods
-    static ByronAddress fromRootKey(BIP32PrivateKey xprv, std::span<const uint32_t> derivation_path, uint32_t network_magic = 0);
+    static ByronAddress fromRootKey(BIP32PrivateKey xprv, 
+                                    std::span<const uint32_t> derivation_path,
+                                    uint32_t network_magic = 0);
     static ByronAddress fromCBOR(std::span<const uint8_t> cbor_data);
     static ByronAddress fromBase58(std::string addr);
 
-    ///
-    std::vector<uint8_t> toCBOR() const;
+    /// Serialize to vector of CBOR bytes.
+    auto toCBOR() const -> std::vector<uint8_t>;
 
-    /// 
-    std::string toBase58() const;
+    /// Serialize to Base58 encoded string.
+    auto toBase58() const -> std::string;
 
   private:
     std::array<uint8_t, KEY_HASH_LENGTH> root_;
@@ -160,6 +162,9 @@ class ByronAddress
 
     /// Convert a unsigned int to ByronAddress::Type enum for CBOR decoding.
     static constexpr auto uintToType(uint64_t v) -> ByronAddress::Type;
+
+    /// Compute the CRC of the provided CBOR and verify it with the given CRC.
+    static auto crc_check(std::span<const uint8_t> cbor, uint32_t crc) -> bool;
 
     /// Make the default constructor private so it can only be used by the
     /// static factory methods.

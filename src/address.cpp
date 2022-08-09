@@ -299,6 +299,16 @@ static constexpr auto DP_NONCE = std::array<uint8_t, 12>{
     0x73, 0x65, 0x72, 0x6f, 0x6b, 0x65, 0x6c, 0x6c, 0x66, 0x6f, 0x72, 0x65
 };
 
+/// Compute the CRC32 checksum of the provided bytes
+static auto compute_crc32(std::span<const uint8_t> bytes) -> uint32_t
+{
+    auto crc32 = Botan::HashFunction::create("CRC32");
+    crc32->update(bytes.data(), bytes.size());
+    auto hash = crc32->final();
+    uint32_t val = (hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3];
+    return val;
+} // compute_crc32
+
 constexpr auto ByronAddress::typeToUint(ByronAddress::Type t) -> uint8_t
 {
     uint8_t type_val; 
@@ -341,17 +351,7 @@ constexpr auto ByronAddress::uintToType(uint64_t v) -> ByronAddress::Type
     return type;
 } // ByronAddress::uintToType
 
-/// Compute the CRC32 checksum of the provided bytes
-auto compute_crc32(std::span<const uint8_t> bytes) -> uint32_t
-{
-    auto crc32 = Botan::HashFunction::create("CRC32");
-    crc32->update(bytes.data(), bytes.size());
-    auto hash = crc32->final();
-    uint32_t val = (hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3];
-    return val;
-} // compute_crc32
-
-auto check_byron_address_crc(std::span<const uint8_t> cbor, uint32_t crc)
+auto ByronAddress::crc_check(std::span<const uint8_t> cbor, uint32_t crc)
     -> bool
 {
     auto cbor_crc32 = compute_crc32(cbor);
@@ -372,11 +372,11 @@ auto ByronAddress::Attributes::fromKey(BIP32PublicKey xpub,
                        xpub_bytes.size(), DP_SALT.data(), DP_SALT.size());
 
     // CBOR encode the derivation path(s). The CBOR is what is encrypted.
-    auto cbor = CBOR::newIndefiniteArray();
+    auto cbor = CBOR::Encoder::newIndefArray();
     for (auto idx : path)
         cbor.add((uint64_t)idx);
-    cbor.endIndefiniteArray();
-    const auto bytes = cbor.serializeToBytes();
+    cbor.endIndefArray();
+    const auto bytes = cbor.serialize();
 
     // The encryption function needs a Botan::secure_vector as input.
     auto pt = Botan::secure_vector<uint8_t>(bytes.begin(), bytes.end());
@@ -396,7 +396,7 @@ auto ByronAddress::Attributes::fromKey(BIP32PublicKey xpub,
 /// Serialize the object to CBOR bytes.
 auto ByronAddress::Attributes::toCBOR() const -> std::vector<uint8_t>
 {
-    auto cbor = CBOR::newMap();
+    auto cbor = CBOR::Encoder::newMap();
     if (this->ciphertext.size() > 0)
     {
         // The ciphertext is double CBOR encoded
@@ -410,8 +410,16 @@ auto ByronAddress::Attributes::toCBOR() const -> std::vector<uint8_t>
     }
     cbor.endMap();
 
-    return cbor.serializeToBytes();
+    return cbor.serialize();
 } // ByronAddress::Attributes::toCBOR
+
+// auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress
+// {
+//     auto baddr = ByronAddress();
+
+
+//     return baddr;
+// }
 
 auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress
 {
@@ -434,7 +442,7 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress
 
     // Check the CRC32 of the payload.
     auto crc32 = cbor_get_uint32(cbor_array_get(addr_item, 1));    
-    if (!check_byron_address_crc({payload, payload_len}, crc32))
+    if (!ByronAddress::crc_check({payload, payload_len}, crc32))
         throw std::invalid_argument(
             "Provided CBOR data is not a valid bootstrap address.");
 
@@ -496,7 +504,7 @@ auto ByronAddress::toCBOR() const -> std::vector<uint8_t>
 {
     // Create the payload item, which constists of the root, attributes, and
     // address type in a three item array.
-    auto payload_cbor = CBOR::newArray();
+    auto payload_cbor = CBOR::Encoder::newArray();
 
     // Add the hash of the root key to the CBOR payload as the first element.
     payload_cbor.add(this->root_);
@@ -510,16 +518,16 @@ auto ByronAddress::toCBOR() const -> std::vector<uint8_t>
     
     // Serialize the payload to a vector of bytes.
     payload_cbor.endArray();
-    auto payload_vec = payload_cbor.serializeToBytes();
+    auto payload_vec = payload_cbor.serialize();
 
     // Finally, pack the tagged payload and CRC32 into a two element array.
-    auto addr_cbor = CBOR::newArray();
+    auto addr_cbor = CBOR::Encoder::newArray();
     addr_cbor.addTagged(24, payload_vec);
     addr_cbor.add((uint64_t)compute_crc32(payload_vec));
     addr_cbor.endArray();
 
     // CBOR encode the CBOR-serialized object with CRC.
-    return addr_cbor.serializeToBytes();
+    return addr_cbor.serialize();
 } // ByronAddress::toCBOR
 
 auto ByronAddress::toBase58() const -> std::string
@@ -565,21 +573,21 @@ auto ByronAddress::fromRootKey(BIP32PrivateKey xprv,
                          .toPublic();
 
     // CBOR encode the address spending data
-    auto spending_cbor = CBOR::newArray();
+    auto spending_cbor = CBOR::Encoder::newArray();
     spending_cbor.add(addr_type_int);
     spending_cbor.add(addr_xpub.toBytes());
     spending_cbor.endArray();
 
     // Create the address root
-    auto root_cbor = CBOR::newArray();
+    auto root_cbor = CBOR::Encoder::newArray();
     root_cbor.add(addr_type_int);
-    root_cbor.addEncoded(spending_cbor.serializeToBytes());
+    root_cbor.addEncoded(spending_cbor.serialize());
     root_cbor.addEncoded(attrs.toCBOR());
     root_cbor.endArray();
 
     // Serialize the address root to CBOR data.
     // Hash the address root
-    auto root = sha3_then_blake2b224(root_cbor.serializeToBytes());    
+    auto root = sha3_then_blake2b224(root_cbor.serialize());    
 
     return ByronAddress(root, attrs, addr_type);
 } // ByronAddress::fromKey
