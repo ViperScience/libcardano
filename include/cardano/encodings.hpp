@@ -63,7 +63,8 @@ class BASE58
 class CBOR
 {
   private:
-    CBOR() = default;
+    constexpr CBOR() = default;
+    inline ~CBOR() = default;
 
   public:
 
@@ -78,8 +79,8 @@ class CBOR
         /// Default constructor. Working buffer defaults to 256 bytes.
         Encoder() : Encoder(256) {};
 
-        /// Destructor (deletes heap allocated memory)
-        ~Encoder();
+        /// Destructor
+        inline ~Encoder() = default;
 
         /// Factory method: returns a new CBOR::Encoder with an opened array.
         static auto newArray(const size_t buff_size = 256) -> Encoder;
@@ -156,13 +157,12 @@ class CBOR
         auto serialize() -> std::vector<uint8_t>;
 
       private:
-        // This is a generic pointer that can be used to point to the data 
-        // object used by the underlying CBOR implementation. It is 
-        // intentionally kept general in order to completely separate the
-        // interface (header file) from the implementation. This way, in the
-        // event that a different CBOR backend it used, nothing else but that
-        // source code will need recompilation.
-        void* _cbor_ctx;
+        // Smart pointers to a generic data type (void) are used to 
+        // intentionally separate the interface (header file) from the 
+        // implementation. This way, in the event that a different CBOR backend
+        // is used, only the implementation source code will need recompilation.
+        std::shared_ptr<void> _cbor_ctx;
+        std::shared_ptr<void> _cbor_buf;
     }; // Encoder
 
     /// API for CBOR decoding complex data structures. All working buffers are
@@ -170,20 +170,30 @@ class CBOR
     class Decoder
     {
       public:
-        /// Prefered constructor. Sets the size of the working buffer.
-        Decoder(const size_t buff_size);
+        /// Prefered constructor. Provide the data to decode as bytes.
+        Decoder(std::span<const uint8_t> data);
+        inline ~Decoder() = default;
 
-        /// Default constructor. Working buffere defaults to 256 bytes.
-        Decoder() : Decoder(256) {};
+        static auto fromArrayData(std::span<const uint8_t> data) -> Decoder;
+
+        static auto fromMapData(std::span<const uint8_t> data) -> Decoder;
+
+        auto enterArray() -> void;
+        auto exitArray() -> void;
+        auto enterMap() -> void;
+        auto exitMap() -> void;
+
+        auto getSkip() -> void;
+        auto getInt() -> int64_t;
+        auto getTaggedCborBytes() -> std::vector<uint8_t>;
 
       private:
-        // This is a generic pointer that can be used to point to the data 
-        // object used by the underlying CBOR implementation. It is 
-        // intentionally kept general in order to completely separate the
-        // interface (header file) from the implementation. This way, in the
-        // event that a different CBOR backend it used, nothing else but that
-        // source code will need recompilation.
-        void* _cbor_ctx;
+        // Smart pointers to a generic data type (void) are used to 
+        // intentionally separate the interface (header file) from the 
+        // implementation. This way, in the event that a different CBOR backend
+        // is used, only the implementation source code will need recompilation.
+        std::shared_ptr<void> _cbor_ctx;
+        std::shared_ptr<void> _cbor_itm;
     }; // Decoder
 
     /// Static methods for encoding and decoding objects.

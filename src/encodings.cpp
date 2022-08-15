@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// Standard library headers
 #include <algorithm>
 #include <charconv>
 #include <iomanip>
@@ -27,15 +28,19 @@
 #include <string>
 #include <map>
 
+// Third-party QCBOR library for CBOR functionality
+#include "qcbor/qcbor_encode.h"
+#include "qcbor/qcbor_decode.h"
+#include "qcbor/qcbor_spiffy_decode.h"
+
+// Libcardano headers
 #include <cardano/encodings.hpp>
 #include "utils.hpp"
 
-// Third-party QCBOR library for CBOR functionality
-#include "qcbor/qcbor_encode.h"
-
 using namespace cardano;
 
-auto bytes2hex(std::span<const uint8_t> bytes) -> std::string {
+auto bytes2hex(std::span<const uint8_t> bytes) -> std::string
+{
     std::ostringstream ss;
     ss << std::hex << std::setfill('0');
     auto first = bytes.begin();
@@ -44,7 +49,8 @@ auto bytes2hex(std::span<const uint8_t> bytes) -> std::string {
     return ss.str();
 } // bytes2hex
 
-auto hex2bytes(std::string_view hex) -> std::vector<uint8_t> {
+auto hex2bytes(std::string_view hex) -> std::vector<uint8_t>
+{
     // Ensure an even number of characters in the string
     if (hex.size() % 2 != 0)
         throw std::invalid_argument("Not a valid hexadecimal string.");
@@ -69,11 +75,13 @@ auto hex2bytes(std::string_view hex) -> std::vector<uint8_t> {
 //////////////////////////////////// BASE16 ////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-auto BASE16::encode(std::span<const uint8_t> bytes) -> std::string {
+auto BASE16::encode(std::span<const uint8_t> bytes) -> std::string
+{
     return bytes2hex(bytes);
 } // BASE16::encode
 
-std::vector<uint8_t> BASE16::decode(std::string_view hex) {
+std::vector<uint8_t> BASE16::decode(std::string_view hex)
+{
     return hex2bytes(hex);
 } // BASE16::decode
 
@@ -100,7 +108,8 @@ static constexpr int8_t B32_CHARSET_REV[128] = {
 /// This function will compute what 6 5-bit values to XOR into the last 6 input
 /// values, in order to make the checksum 0. These 6 values are packed together
 /// in a single 30-bit integer. The higher bits correspond to earlier values.
-static constexpr auto polymod(std::span<const uint8_t> values) -> uint32_t {
+static constexpr auto polymod(std::span<const uint8_t> values) -> uint32_t
+{
     // The input is interpreted as a list of coefficients of a polynomial over F = GF(32), with an
     // implicit 1 in front. If the input is [v0,v1,v2,v3,v4], that polynomial is v(x) =
     // 1*x^5 + v0*x^4 + v1*x^3 + v2*x^2 + v3*x + v4. The implicit 1 guarantees that
@@ -156,10 +165,11 @@ static constexpr auto polymod(std::span<const uint8_t> values) -> uint32_t {
         if (c0 & 16) c ^= 0x2a1462b3; // {16}k(x) = {21}x^5 +     x^4 +  {8}x^3 + {24}x^2 + {21}x + {19}
     }
     return c;
-}
+} // polymod
 
 /// Expand a HRP for use in checksum computation.
-auto expand_hrp(std::string_view hrp) -> std::vector<uint8_t> {
+auto expand_hrp(std::string_view hrp) -> std::vector<uint8_t>
+{
     std::vector<uint8_t> ret;
     ret.reserve(hrp.size() + 90);
     ret.resize(hrp.size() * 2 + 1);
@@ -170,11 +180,12 @@ auto expand_hrp(std::string_view hrp) -> std::vector<uint8_t> {
     }
     ret[hrp.size()] = 0;
     return ret;
-}
+} // expand_hrp
 
 /// Verify a checksum.
 auto verify_checksum(std::string_view hrp, std::span<const uint8_t> values)
--> bool {
+    -> bool
+{
     // PolyMod computes what value to xor into the final values to make the
     // checksum 0. However, if we required that the checksum was 0, it would be
     // the case that appending a 0 to a valid list of values would result in a
@@ -182,10 +193,11 @@ auto verify_checksum(std::string_view hrp, std::span<const uint8_t> values)
     // to be 1 instead.
     const uint32_t check = polymod(concat_bytes(expand_hrp(hrp), values));
     return check == 1;
-}
+} // verify_checksum
 
 auto create_checksum(std::string_view hrp, std::span<const uint8_t> values)
--> std::vector<uint8_t> {
+    -> std::vector<uint8_t>
+{
     std::vector<uint8_t> enc = concat_bytes(expand_hrp(hrp), values);
     enc.resize(enc.size() + 6);
     const uint32_t mod = polymod(enc) ^ 1;
@@ -233,7 +245,8 @@ auto convertbits(std::span<const uint8_t> data, int frombits, int tobits,
 } // convertbits
 
 auto BECH32::encode(std::string_view hrp, std::span<const uint8_t> values)
--> std::string {
+    -> std::string 
+{
     // First ensure that the HRP is all lowercase. BIP-173 requires an encoder
     // to return a lowercase Bech32 string, but if given an uppercase HRP, the
     // result will always be invalid.
@@ -252,7 +265,8 @@ auto BECH32::encode(std::string_view hrp, std::span<const uint8_t> values)
 } // BECH32::encode
 
 auto BECH32::decode(std::string_view str)
--> std::tuple<std::string, std::vector<uint8_t>> {
+    -> std::tuple<std::string, std::vector<uint8_t>> 
+{
     // Ensure the string characters are all lower case.
     auto bech32_str = str_tolower(std::string(str));
 
@@ -288,7 +302,8 @@ auto BECH32::decode(std::string_view str)
 } // BECH32::decode
 
 auto BECH32::encode_hex(std::string_view hrp, std::string_view hex_values) 
--> std::string {
+    -> std::string
+{
     auto values_bytes = hex2bytes(hex_values);
     return BECH32::encode(hrp, values_bytes);
 } // BECH32::encode_hex
@@ -327,7 +342,8 @@ static constexpr int8_t B58_CHARSET_REV[128] = {
     47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1
 };
 
-auto BASE58::encode(std::span<const uint8_t> values) -> std::string {
+auto BASE58::encode(std::span<const uint8_t> values) -> std::string
+{
     std::vector<uint8_t> digits((values.size() * 138 / 100) + 1);
     size_t digitslen = 1;
     for (size_t i = 0; i < values.size(); i++) {
@@ -348,7 +364,8 @@ auto BASE58::encode(std::span<const uint8_t> values) -> std::string {
     return result;
 } // BASE58::encode
 
-auto BASE58::decode(std::string_view str) -> std::vector<uint8_t> {
+auto BASE58::decode(std::string_view str) -> std::vector<uint8_t>
+{
     std::vector<uint8_t> result;
     result.push_back(0);
     int res_len = 1;
@@ -380,12 +397,14 @@ auto BASE58::decode(std::string_view str) -> std::vector<uint8_t> {
     return result;
 } // BASE58::decode
 
-auto BASE58::encode_hex(std::string_view hex_values) -> std::string {
+auto BASE58::encode_hex(std::string_view hex_values) -> std::string
+{
     auto values_bytes = hex2bytes(hex_values);
     return BASE58::encode(values_bytes);
 } // BASE58::encode_hex
 
-auto BASE58::decode_hex(std::string_view base58_str) -> std::string {
+auto BASE58::decode_hex(std::string_view base58_str) -> std::string
+{
     auto data = cardano::BASE58::decode(base58_str);
     return bytes2hex(data);
 } // BASE58::decode_hex
@@ -410,7 +429,7 @@ auto CBOR::encode(std::span<const uint8_t> data) -> std::vector<uint8_t>
         std::runtime_error("Invalid CBOR bytes.");
     return std::vector<uint8_t>((uint8_t *)encodedCBOR.ptr,
                                 (uint8_t *)encodedCBOR.ptr + encodedCBOR.len);
-} // CBOR::encodeBytes
+} // CBOR::encode
 
 auto CBOR::encode(uint64_t v) -> std::vector<uint8_t>
 {
@@ -424,33 +443,29 @@ auto CBOR::encode(uint64_t v) -> std::vector<uint8_t>
         std::runtime_error("Invalid CBOR bytes.");
     return std::vector<uint8_t>((uint8_t *)encodedCBOR.ptr,
                                 (uint8_t *)encodedCBOR.ptr + encodedCBOR.len);
-}
+} // CBOR::encode
 
 CBOR::Encoder::Encoder(const size_t buff_size)
 {
-    this->_cbor_ctx = new QCBOREncodeContext();
-    auto *buff_ptr = new uint8_t[buff_size];
-    QCBOREncode_Init((QCBOREncodeContext *)this->_cbor_ctx, 
-                      (UsefulBuf){buff_ptr, buff_size});
-}
-
-CBOR::Encoder::~Encoder()
-{
-    // Delete heap allocated memory
-    auto *ptr = (QCBOREncodeContext *)this->_cbor_ctx;
-    delete [] (uint8_t *)ptr->OutBuf.UB.ptr;
-    delete ptr;
-    ptr = nullptr;
-}
+    this->_cbor_ctx = std::make_shared<QCBOREncodeContext>();
+    this->_cbor_buf = std::shared_ptr<uint8_t>(
+        new uint8_t[buff_size], 
+        [](uint8_t* p) { delete[] p; }
+    );
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_Init(ctx.get(), (UsefulBuf){this->_cbor_buf.get(), buff_size});
+} // CBOR::Encoder::Encoder
 
 auto CBOR::Encoder::startArray() -> void
 {
-    QCBOREncode_OpenArray((QCBOREncodeContext *)this->_cbor_ctx);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_OpenArray(ctx.get());
 } // CBOR::Encoder::startArray
 
 auto CBOR::Encoder::endArray() -> void
 {
-    QCBOREncode_CloseArray((QCBOREncodeContext *)this->_cbor_ctx);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_CloseArray(ctx.get());
 } // CBOR::Encoder::endArray
 
 auto CBOR::Encoder::newArray(const size_t buff_size) -> CBOR::Encoder
@@ -462,14 +477,14 @@ auto CBOR::Encoder::newArray(const size_t buff_size) -> CBOR::Encoder
 
 auto CBOR::Encoder::startIndefArray() -> void
 {
-    QCBOREncode_OpenArrayIndefiniteLength(
-        (QCBOREncodeContext *)this->_cbor_ctx);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_OpenArrayIndefiniteLength(ctx.get());
 } // CBOR::Encoder::startIndefArray
 
 auto CBOR::Encoder::endIndefArray() -> void
 {
-    QCBOREncode_CloseArrayIndefiniteLength(
-        (QCBOREncodeContext *)this->_cbor_ctx);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_CloseArrayIndefiniteLength(ctx.get());
 } // CBOR::Encoder::endIndefArray
 
 auto CBOR::Encoder::newIndefArray(const size_t buff_size) -> CBOR::Encoder
@@ -481,12 +496,14 @@ auto CBOR::Encoder::newIndefArray(const size_t buff_size) -> CBOR::Encoder
 
 auto CBOR::Encoder::startMap() -> void
 {
-    QCBOREncode_OpenMap((QCBOREncodeContext *)this->_cbor_ctx);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_OpenMap(ctx.get());
 } // CBOR::Encoder::startMap
 
 auto CBOR::Encoder::endMap() -> void
 {
-    QCBOREncode_CloseMap((QCBOREncodeContext *)this->_cbor_ctx);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_CloseMap(ctx.get());
 } // CBOR::Encoder::endMap
 
 auto CBOR::Encoder::newMap(const size_t buff_size) -> CBOR::Encoder
@@ -496,62 +513,168 @@ auto CBOR::Encoder::newMap(const size_t buff_size) -> CBOR::Encoder
     return cbor_obj;
 } // CBOR::Encoder::newMap
 
+auto CBOR::Encoder::startIndefMap() -> void
+{
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_OpenMapIndefiniteLength(ctx.get());
+} // CBOR::Encoder::startMap
+
+auto CBOR::Encoder::endIndefMap() -> void
+{
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_CloseMapIndefiniteLength(ctx.get());
+} // CBOR::Encoder::endMap
+
+auto CBOR::Encoder::newIndefMap(const size_t buff_size) -> CBOR::Encoder
+{
+    auto cbor_obj = CBOR::Encoder(buff_size);
+    cbor_obj.startIndefMap();
+    return cbor_obj;
+} // CBOR::Encoder::newMap
+
 auto CBOR::Encoder::add(int64_t v) -> void
 {
-    QCBOREncode_AddInt64((QCBOREncodeContext *)this->_cbor_ctx, v);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddInt64(ctx.get(), v);
 } // CBOR::Encoder::add
 
 auto CBOR::Encoder::add(std::span<const uint8_t> bytes) -> void
 {
-    QCBOREncode_AddBytes((QCBOREncodeContext *)this->_cbor_ctx, 
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddBytes(ctx.get(),
                          ((UsefulBufC) {bytes.data(), bytes.size()}));
 } // CBOR::Encoder::add
 
 auto CBOR::Encoder::addToMap(std::string_view k, int64_t v) -> void
 {
-    QCBOREncode_AddInt64ToMap((QCBOREncodeContext *)this->_cbor_ctx, 
-                              k.data(), v);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddInt64ToMap(ctx.get(), k.data(), v);
 } // CBOR::Encoder::addToMap
 
 auto CBOR::Encoder::addToMap(std::string_view k, std::span<const uint8_t> v)
     -> void
 {
-    QCBOREncode_AddBytesToMap((QCBOREncodeContext *)this->_cbor_ctx, 
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddBytesToMap(ctx.get(), 
                               k.data(), ((UsefulBufC) {v.data(), v.size()}));
 } // CBOR::Encoder::addToMap
 
 auto CBOR::Encoder::addToMap(int64_t k, int64_t v) -> void
 {
-    QCBOREncode_AddInt64((QCBOREncodeContext *)this->_cbor_ctx, k);
-    QCBOREncode_AddInt64((QCBOREncodeContext *)this->_cbor_ctx, v);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddInt64(ctx.get(), k);
+    QCBOREncode_AddInt64(ctx.get(), v);
 } // CBOR::Encoder::addToMap
 
-auto CBOR::Encoder::addToMap(int64_t k, std::span<const uint8_t> v) -> void
+auto CBOR::Encoder::addToMap(int64_t key, std::span<const uint8_t> v) -> void
 {
-    QCBOREncode_AddBytesToMapN((QCBOREncodeContext *)this->_cbor_ctx, k, 
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddBytesToMapN(ctx.get(), key, 
                                ((UsefulBufC) {v.data(), v.size()}));
 } // CBOR::Encoder::addToMap
 
 auto CBOR::Encoder::addEncoded(std::span<const uint8_t> v) -> void
 {
-    QCBOREncode_AddEncoded((QCBOREncodeContext *)this->_cbor_ctx,
-                           ((UsefulBufC) {v.data(), v.size()}));
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddEncoded(ctx.get(), ((UsefulBufC) {v.data(), v.size()}));
 } // CBOR::Encoder::addEncoded
 
-auto CBOR::Encoder::addTagged(int64_t t, std::span<const uint8_t> v) -> void
+auto CBOR::Encoder::addTagged(int64_t tag, std::span<const uint8_t> v) -> void
 {
-    QCBOREncode_AddTag((QCBOREncodeContext *)this->_cbor_ctx, t);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddTag(ctx.get(), tag);
     this->add(v);
 } // CBOR::Encoder::addTagged
 
 auto CBOR::Encoder::serialize() -> std::vector<uint8_t>
 {
     UsefulBufC encodedCBOR;
-    auto uErr = QCBOREncode_Finish((QCBOREncodeContext *)this->_cbor_ctx, 
-                                   &encodedCBOR);
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    auto uErr = QCBOREncode_Finish(ctx.get(), &encodedCBOR);
     if(uErr != QCBOR_SUCCESS)
         std::runtime_error(
-            "The CBOR structure is invalid and connt be serialized.");
+            "The CBOR structure is invalid and can not be serialized.");
     return std::vector<uint8_t>((uint8_t *)encodedCBOR.ptr,
                                 (uint8_t *)encodedCBOR.ptr + encodedCBOR.len);
 } // CBOR::Encoder::serialize
+
+CBOR::Decoder::Decoder(std::span<const uint8_t> data)
+{
+    this->_cbor_ctx = std::make_shared<QCBORDecodeContext>();
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_Init(ctx.get(), (UsefulBufC){data.data(), data.size()},
+                     QCBOR_DECODE_MODE_NORMAL);
+} // CBOR::Decoder::Decoder
+
+auto CBOR::Decoder::enterArray() -> void
+{
+    QCBORItem item;
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_EnterArray(ctx.get(), &item);
+    if(item.uDataType != QCBOR_TYPE_ARRAY)
+        std::invalid_argument("Not a valid CBOR array.");
+} // CBOR::Decoder::enterMap
+
+auto CBOR::Decoder::exitArray() -> void
+{
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_ExitArray(ctx.get());
+} // CBOR::Decoder::exitArray
+
+auto CBOR::Decoder::fromArrayData(std::span<const uint8_t> cbor_data)
+    -> CBOR::Decoder
+{
+    auto decoder = CBOR::Decoder(cbor_data);
+    decoder.enterArray();
+    return decoder;
+} // CBOR::Decoder::fromArrayData
+
+auto CBOR::Decoder::enterMap() -> void
+{
+    QCBORItem item;
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_EnterMap(ctx.get(), &item);
+    if(item.uDataType != QCBOR_TYPE_MAP)
+        std::invalid_argument("Not a valid CBOR map.");
+} // CBOR::Decoder::enterMap
+
+auto CBOR::Decoder::exitMap() -> void
+{
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_ExitMap(ctx.get());
+} // CBOR::Decoder::exitMap
+
+auto CBOR::Decoder::fromMapData(std::span<const uint8_t> cbor_data)
+    -> CBOR::Decoder
+{
+    auto decoder = CBOR::Decoder(cbor_data);
+    decoder.enterMap();
+    return decoder;
+} // CBOR::Decoder::fromMapData
+
+auto CBOR::Decoder::getSkip() -> void
+{
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetNext(ctx.get(), NULL);
+} // CBOR::Decoder::getSkip
+
+auto CBOR::Decoder::getInt() -> int64_t
+{
+    int64_t retVal;
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetInt64(ctx.get(), &retVal);
+    return retVal;
+} // CBOR::Decoder::getInt
+
+auto CBOR::Decoder::getTaggedCborBytes() -> std::vector<uint8_t>
+{
+    auto buf = UsefulBufC();
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_EnterBstrWrapped(ctx.get(), QCBOR_TAG_REQUIREMENT_TAG, &buf);
+    auto tag = QCBORDecode_GetNthTagOfLast(ctx.get(), 0);
+    if (tag != 24)
+        std::runtime_error("Invalid tag");
+    QCBORDecode_ExitBstrWrapped(ctx.get());
+    auto ptr = (uint8_t *)buf.ptr;
+    return std::vector<uint8_t>(ptr, ptr + buf.len);;
+} // CBOR::Decoder::getTaggedCborBytes
