@@ -184,8 +184,39 @@ class CBOR
         auto exitMap() -> void;
 
         auto getSkip() -> void;
+
         auto getInt() -> int64_t;
+        auto getInt8() -> int8_t;
+        auto getInt16() -> int16_t;
+        auto getInt32() -> int32_t;
+        auto getInt64() -> int64_t;
+
+        auto getUint8() -> uint8_t;
+        auto getUint16() -> uint16_t;
+        auto getUint32() -> uint32_t;
+        auto getUint64() -> uint64_t;
+
         auto getTaggedCborBytes() -> std::vector<uint8_t>;
+        auto getBytes() -> std::vector<uint8_t>;
+
+        // Must have "entered" a map.
+        auto getMapSize() -> size_t;
+        auto keyInMap(int64_t k) -> bool;
+        auto keyInMap(std::string_view k) -> bool;
+        // must have entered map
+        // throws error if does not exist. make sure map has key
+        auto getBytesFromMap(int64_t k) -> std::vector<uint8_t>;
+        auto getBytesFromMap(std::string_view) -> std::vector<uint8_t>;
+        
+        auto getUint8FromMap(int64_t k) -> uint8_t;
+        auto getUint16FromMap(int64_t k) -> uint16_t;
+        auto getUint32FromMap(int64_t k) -> uint32_t;
+        auto getUint64FromMap(int64_t k) -> uint64_t;
+
+        auto getInt8FromMap(int64_t k) -> int8_t;
+        auto getInt16FromMap(int64_t k) -> int16_t;
+        auto getInt32FromMap(int64_t k) -> int32_t;
+        auto getInt64FromMap(int64_t k) -> int64_t;
 
       private:
         // Smart pointers to a generic data type (void) are used to 
@@ -204,6 +235,9 @@ class CBOR
 
     /// Static method to CBOR encode an unsigned integer.
     static auto encode(uint64_t v) -> std::vector<uint8_t>;
+
+    static auto decodeUint32(std::span<const uint8_t> b) -> uint32_t;
+    static auto decodeBytes(std::span<const uint8_t> b) -> std::vector<uint8_t>;
     
 }; // CBOR
 

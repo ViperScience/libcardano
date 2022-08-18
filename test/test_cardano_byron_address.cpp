@@ -85,7 +85,7 @@ auto testAdvanced() -> void
 
 auto main() -> int
 {
-  testBasic();
-  testAdvanced();
-  return 0;
+    testBasic();
+    testAdvanced();
+    return 0;
 }

@@ -29,7 +29,6 @@ set(TEST_CARDANO_CRYPTO_SOURCES
 )
 ADD_EXECUTABLE(test_cardano_crypto ${TEST_CARDANO_CRYPTO_SOURCES})
 target_link_libraries(test_cardano_crypto PRIVATE
-    cbor::cbor
     botan::botan
     Threads::Threads
 )
@@ -53,7 +52,6 @@ set(TEST_CARDANO_ADDRESS_SOURCES
 )
 ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_address PRIVATE
-    cbor::cbor
     botan::botan
     Threads::Threads
 )
@@ -77,7 +75,6 @@ set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
 )
 ADD_EXECUTABLE(test_cardano_byron_address ${TEST_CARDANO_BYRON_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_byron_address PRIVATE
-    cbor::cbor
     botan::botan
     Threads::Threads
 )
@@ -118,7 +115,6 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_address
     ${TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES}
 )
 target_link_libraries(test_cardano_mnemonic_to_address PRIVATE
-    cbor::cbor
     botan::botan
     Threads::Threads
 )
@@ -144,7 +140,6 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
     ${TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES}
 )
 target_link_libraries(test_cardano_mnemonic_to_stake_address PRIVATE
-    cbor::cbor
     botan::botan
     Threads::Threads
 )

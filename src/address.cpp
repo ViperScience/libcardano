@@ -27,7 +27,6 @@
 #include <botan/hash.h>
 #include <botan/pbkdf2.h>
 #include <botan/pwdhash.h>
-#include <cbor.h>
 
 // Public Cardano++ Headers 
 #include <cardano/address.hpp>
@@ -413,82 +412,56 @@ auto ByronAddress::Attributes::toCBOR() const -> std::vector<uint8_t>
     return cbor.serialize();
 } // ByronAddress::Attributes::toCBOR
 
-// auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress
-// {
-//     auto baddr = ByronAddress();
-
-
-//     return baddr;
-// }
-
 auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress
 {
     auto baddr = ByronAddress();
+    
+    try
+    {
+        auto addr_decoder = CBOR::Decoder::fromArrayData(addr_cbor);
+        auto payload_bytes = addr_decoder.getTaggedCborBytes();
+        auto payload_crc32 = addr_decoder.getInt();
 
-    struct cbor_load_result result;
-    auto addr_item = cbor_load(addr_cbor.data(), addr_cbor.size(), &result);
-    if (result.error.code != CBOR_ERR_NONE)
-        throw std::invalid_argument("Provided CBOR data is invalid.");
-    // Also check if the array is the right size?
+        // Check the CRC32 of the payload.
+        if (!ByronAddress::crc_check(payload_bytes, payload_crc32))
+            throw std::logic_error("");
 
-    // Get the tagged CBOR metadata (check for the CBOR tag)
-    auto tag = cbor_tag_value(cbor_array_get(addr_item, 0));
-    if (tag != 24)
-        throw std::invalid_argument(
-            "Provided CBOR data is not a valid bootstrap address.");
-    auto tagged_item = cbor_tag_item(cbor_array_get(addr_item, 0));
-    auto payload = cbor_bytestring_handle(tagged_item);
-    auto payload_len = cbor_bytestring_length(tagged_item);
+        // Decode the address payload which is itself CBOR data
+        auto payload_decoder = CBOR::Decoder::fromArrayData(payload_bytes);
 
-    // Check the CRC32 of the payload.
-    auto crc32 = cbor_get_uint32(cbor_array_get(addr_item, 1));    
-    if (!ByronAddress::crc_check({payload, payload_len}, crc32))
-        throw std::invalid_argument(
-            "Provided CBOR data is not a valid bootstrap address.");
+        // Access the address root (hash of address data)
+        auto root_bytes = payload_decoder.getBytes();
+        std::copy(root_bytes.begin(), root_bytes.end(), baddr.root_.begin());
 
-    // Decode the address payload which is itself CBOR data
-    auto payload_item = cbor_load(payload, payload_len, &result);
-    if (result.error.code != CBOR_ERR_NONE)
-        throw std::invalid_argument("Provided CBOR data is invalid.");
-
-    // Access the address root (hash of address data)
-    auto root_ptr = std::span(
-            cbor_bytestring_handle(cbor_array_get(payload_item, 0)), 28);
-    std::copy(root_ptr.begin(), root_ptr.end(), baddr.root_.begin());
-
-    // Access the address attributes (if present)
-    auto map_size = cbor_map_size(cbor_array_get(payload_item, 1));
-    if (map_size > 0) {
-        auto attrs_map = cbor_map_handle(cbor_array_get(payload_item, 1));
-        for (size_t i = 0; i < map_size; ++i) {
+        // Access the address attributes (if present)
+        payload_decoder.enterMap();
+        auto map_size1 = payload_decoder.getMapSize();
+        if (map_size1 > 0)
+        {
             // Each of the attributes are themselves CBOR encoded.
-            auto attr_cbor_len = cbor_bytestring_length(attrs_map[i].value);
-            auto attr_cbor = cbor_bytestring_handle(attrs_map[i].value);
-            auto attr_item = cbor_load(attr_cbor, attr_cbor_len, &result);
-
-            if (cbor_get_uint8(attrs_map[i].key) == 1) {
-                // Key = 1: ciphered derivation path (double CBOR encoded)
-                auto n_bytes = cbor_bytestring_length(attr_item);
-                auto bytes_ptr = cbor_bytestring_handle(attr_item);
-                baddr.attrs_.ciphertext = std::vector<uint8_t>(
-                    bytes_ptr, bytes_ptr + n_bytes
-                );
-            } else if (cbor_get_uint8(attrs_map[i].key) == 2) {
-                // Key = 2: network tag (CBOR encoded)
-                baddr.attrs_.magic = cbor_get_uint32(attr_item);
+            if (payload_decoder.keyInMap(1))
+            {
+                auto cbor_bytes1 = payload_decoder.getBytesFromMap(1);
+                baddr.attrs_.ciphertext = CBOR::decodeBytes(cbor_bytes1);
             }
-
-            cbor_decref(&attr_item);
+            if (payload_decoder.keyInMap(2))
+            {
+                auto cbor_bytes2 = payload_decoder.getBytesFromMap(2);
+                baddr.attrs_.magic = CBOR::decodeUint32(cbor_bytes2);
+            }
         }
+        payload_decoder.exitMap();
+
+        // Get the address type
+        auto addr_type_val = payload_decoder.getUint64();
+        baddr.type_ = ByronAddress::uintToType(addr_type_val);
     }
-
-    // Get the address type
-    auto addr_type_val = cbor_get_uint8(cbor_array_get(payload_item, 2));
-    baddr.type_ = ByronAddress::uintToType(addr_type_val);
-
-    // Clean up memory 
-    cbor_decref(&addr_item);
-    cbor_decref(&payload_item);
+    catch(const std::exception& e)
+    {
+        throw std::invalid_argument(
+            "Provided CBOR data is not a valid Byron-era address."
+        );
+    }
 
     return baddr;
 } // ByronAddress::fromCBOR

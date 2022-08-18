@@ -445,6 +445,33 @@ auto CBOR::encode(uint64_t v) -> std::vector<uint8_t>
                                 (uint8_t *)encodedCBOR.ptr + encodedCBOR.len);
 } // CBOR::encode
 
+auto CBOR::decodeUint32(std::span<const uint8_t> b) -> uint32_t
+{
+    int64_t temp;
+    uint32_t ret_val;
+    QCBORDecodeContext ctx;
+    auto bytes = (UsefulBufC){b.data(), b.size()};
+    QCBORDecode_Init(&ctx, bytes, QCBOR_DECODE_MODE_NORMAL);
+    QCBORDecode_GetInt64(&ctx, &temp);
+    if (ctx.uLastError != QCBOR_SUCCESS)
+        throw std::logic_error("Unexpected CBOR data");
+    QCBOR_Int64ToUInt32(temp, &ret_val);
+    return ret_val;
+} // CBOR::decodeUint32
+
+auto CBOR::decodeBytes(std::span<const uint8_t> b) -> std::vector<uint8_t>
+{
+    auto ctx = QCBORDecodeContext();
+    auto buf = UsefulBufC();
+    auto bytes = (UsefulBufC){b.data(), b.size()};
+    QCBORDecode_Init(&ctx, bytes, QCBOR_DECODE_MODE_NORMAL);
+    QCBORDecode_GetByteString(&ctx, &buf);
+    if (ctx.uLastError != QCBOR_SUCCESS)
+        throw std::logic_error("Unexpected CBOR data");
+    auto ptr = (uint8_t *)buf.ptr;
+    return std::vector<uint8_t>(ptr, ptr + buf.len);
+} // CBOR::decodeBytes
+
 CBOR::Encoder::Encoder(const size_t buff_size)
 {
     this->_cbor_ctx = std::make_shared<QCBOREncodeContext>();
@@ -588,18 +615,19 @@ auto CBOR::Encoder::addTagged(int64_t tag, std::span<const uint8_t> v) -> void
 
 auto CBOR::Encoder::serialize() -> std::vector<uint8_t>
 {
-    UsefulBufC encodedCBOR;
+    UsefulBufC buf;
     auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
-    auto uErr = QCBOREncode_Finish(ctx.get(), &encodedCBOR);
-    if(uErr != QCBOR_SUCCESS)
+    auto uErr = QCBOREncode_Finish(ctx.get(), &buf);
+    if (uErr != QCBOR_SUCCESS)
         std::runtime_error(
             "The CBOR structure is invalid and can not be serialized.");
-    return std::vector<uint8_t>((uint8_t *)encodedCBOR.ptr,
-                                (uint8_t *)encodedCBOR.ptr + encodedCBOR.len);
+    auto buf_ptr = (uint8_t *)buf.ptr;
+    return std::vector<uint8_t>(buf_ptr, buf_ptr + buf.len);
 } // CBOR::Encoder::serialize
 
 CBOR::Decoder::Decoder(std::span<const uint8_t> data)
 {
+    this->_cbor_itm = std::make_shared<QCBORItem>();
     this->_cbor_ctx = std::make_shared<QCBORDecodeContext>();
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
     QCBORDecode_Init(ctx.get(), (UsefulBufC){data.data(), data.size()},
@@ -608,10 +636,10 @@ CBOR::Decoder::Decoder(std::span<const uint8_t> data)
 
 auto CBOR::Decoder::enterArray() -> void
 {
-    QCBORItem item;
+    auto itm = std::static_pointer_cast<QCBORItem>(this->_cbor_itm);
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
-    QCBORDecode_EnterArray(ctx.get(), &item);
-    if(item.uDataType != QCBOR_TYPE_ARRAY)
+    QCBORDecode_EnterArray(ctx.get(), itm.get());
+    if (itm->uDataType != QCBOR_TYPE_ARRAY)
         std::invalid_argument("Not a valid CBOR array.");
 } // CBOR::Decoder::enterMap
 
@@ -631,10 +659,10 @@ auto CBOR::Decoder::fromArrayData(std::span<const uint8_t> cbor_data)
 
 auto CBOR::Decoder::enterMap() -> void
 {
-    QCBORItem item;
+    auto itm = std::static_pointer_cast<QCBORItem>(this->_cbor_itm);
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
-    QCBORDecode_EnterMap(ctx.get(), &item);
-    if(item.uDataType != QCBOR_TYPE_MAP)
+    QCBORDecode_EnterMap(ctx.get(), itm.get());
+    if (itm->uDataType != QCBOR_TYPE_MAP)
         std::invalid_argument("Not a valid CBOR map.");
 } // CBOR::Decoder::enterMap
 
@@ -652,10 +680,19 @@ auto CBOR::Decoder::fromMapData(std::span<const uint8_t> cbor_data)
     return decoder;
 } // CBOR::Decoder::fromMapData
 
+auto CBOR::Decoder::getMapSize() -> size_t
+{
+    const auto pMe = (QCBORItem *)this->_cbor_itm.get();
+    if (pMe->uDataType != QCBOR_TYPE_MAP)
+        throw std::invalid_argument("Not in a CBOR map structure.");
+    return (size_t)pMe->val.uCount;
+} // CBOR::Decoder::getMapSize
+
 auto CBOR::Decoder::getSkip() -> void
 {
+    auto itm = std::static_pointer_cast<QCBORItem>(this->_cbor_itm);
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
-    QCBORDecode_GetNext(ctx.get(), NULL);
+    QCBORDecode_GetNext(ctx.get(), itm.get());
 } // CBOR::Decoder::getSkip
 
 auto CBOR::Decoder::getInt() -> int64_t
@@ -665,6 +702,92 @@ auto CBOR::Decoder::getInt() -> int64_t
     QCBORDecode_GetInt64(ctx.get(), &retVal);
     return retVal;
 } // CBOR::Decoder::getInt
+
+auto CBOR::Decoder::getUint32() -> uint32_t
+{
+    int64_t temp;
+    uint32_t retVal;
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetInt64(ctx.get(), &temp);
+    QCBOR_Int64ToUInt32(temp, &retVal);
+    return retVal;
+} // CBOR::Decoder::getUint32()
+
+auto CBOR::Decoder::getUint64() -> uint64_t
+{
+    int64_t temp;
+    uint64_t retVal;
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetInt64(ctx.get(), &temp);
+    QCBOR_Int64ToUInt64(temp, &retVal);
+    return retVal;
+} // CBOR::Decoder::getUint32()
+
+auto CBOR::Decoder::getBytes() -> std::vector<uint8_t>
+{
+    auto buf = UsefulBufC();
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetByteString(ctx.get(), &buf);
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::invalid_argument("");
+    auto ptr = (uint8_t *)buf.ptr;
+    return std::vector<uint8_t>(ptr, ptr + buf.len);;
+} // CBOR::Decoder::getBytes
+
+auto CBOR::Decoder::getInt64FromMap(int64_t k) -> int64_t
+{
+    int64_t ret_val;
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetInt64InMapN(ctx.get(), k, &ret_val);
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::logic_error("Unexpected CBOR data format.");
+    return ret_val;
+} // CBOR::Decoder::getInt64FromMap
+
+auto CBOR::Decoder::getUint8FromMap(int64_t k) -> uint8_t
+{
+    uint8_t ret_val;
+    int64_t temp = this->getInt64FromMap(k);
+    QCBOR_Int64ToUInt8(temp, &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getUint8FromMap
+
+auto CBOR::Decoder::getUint16FromMap(int64_t k) -> uint16_t
+{
+    uint16_t ret_val;
+    int64_t temp = this->getInt64FromMap(k);
+    QCBOR_Int64UToInt16(temp, &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getUint16FromMap
+
+auto CBOR::Decoder::getUint32FromMap(int64_t k) -> uint32_t
+{
+    uint32_t ret_val;
+    int64_t temp = this->getInt64FromMap(k);
+    QCBOR_Int64ToUInt32(temp, &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getUint32FromMap
+
+auto CBOR::Decoder::getUint64FromMap(int64_t k) -> uint64_t
+{
+    uint64_t ret_val;
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetUInt64InMapN(ctx.get(), k, &ret_val);
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::logic_error("Unexpected CBOR data format.");
+    return ret_val;
+} // CBOR::Decoder::getUint64FromMap
+
+auto CBOR::Decoder::getBytesFromMap(int64_t k) -> std::vector<uint8_t>
+{
+    auto buf = UsefulBufC();
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetByteStringInMapN(ctx.get(), k, &buf);
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::invalid_argument("Unexpected CBOR data format.");
+    auto ptr = (uint8_t *)buf.ptr;
+    return std::vector<uint8_t>(ptr, ptr + buf.len);
+} // CBOR::Decoder::getBytesFromMap
 
 auto CBOR::Decoder::getTaggedCborBytes() -> std::vector<uint8_t>
 {
@@ -676,5 +799,15 @@ auto CBOR::Decoder::getTaggedCborBytes() -> std::vector<uint8_t>
         std::runtime_error("Invalid tag");
     QCBORDecode_ExitBstrWrapped(ctx.get());
     auto ptr = (uint8_t *)buf.ptr;
-    return std::vector<uint8_t>(ptr, ptr + buf.len);;
+    return std::vector<uint8_t>(ptr, ptr + buf.len);
 } // CBOR::Decoder::getTaggedCborBytes
+
+auto CBOR::Decoder::keyInMap(int64_t k) -> bool
+{
+    QCBORItem item;
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetItemInMapN(ctx.get(), k, QCBOR_TYPE_ANY, &item);
+    auto ret_val = (ctx->uLastError == QCBOR_SUCCESS);
+    QCBORDecode_GetAndResetError(ctx.get());
+    return ret_val;
+} // CBOR::Decoder::keyInMap

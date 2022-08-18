@@ -30,7 +30,7 @@ endif()
 
 # Add 3rd party libraries that should be installed on the system
 find_package(Botan REQUIRED)
-find_package(libcbor REQUIRED)
+# find_package(libcbor REQUIRED)
 
 # Add the submodules
 add_subdirectory(${CMAKE_SOURCE_DIR}/libs)
@@ -90,7 +90,6 @@ add_library(${PROJECT_NAME} ${CARDANO_SOURCES})
 
 # Specify libraries for linking
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    cbor::cbor
     botan::botan
     Threads::Threads
 )

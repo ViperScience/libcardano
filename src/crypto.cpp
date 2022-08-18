@@ -30,7 +30,6 @@
 #include <botan/pwdhash.h>
 #include "botan/secmem.h"
 #include "botan/stream_cipher.h"
-#include <cbor.h>
 
 // Public Cardano++ Headers 
 #include <cardano/crypto.hpp>
@@ -244,26 +243,15 @@ auto hash_repeatedly(const std::vector<uint8_t>& key, size_t count)
 auto hash_seed(std::span<const uint8_t> seed) -> std::vector<uint8_t>
 {
     // CBOR encode the seed.
-    uint8_t *buffer;
-    size_t buffer_size;
-    auto cbor_seed = cbor_build_bytestring(seed.data(), seed.size());
-    auto cbor_len = cbor_serialize_alloc(cbor_seed, &buffer, &buffer_size);
-    cbor_decref(&cbor_seed);
+    auto buffer = CBOR::encode(seed);
 
     // Blake2b-SHA256 encode the CBOR encoded seed (32 byte result).
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
-    blake2b->update(buffer, cbor_len);
+    blake2b->update(buffer.data(), buffer.size());
     const auto hashed = blake2b->final();
-    free(buffer);
     
     // CBOR encode the hashed seed (34 bytes after CBOR encoding).
-    auto cbor_hash = cbor_build_bytestring(hashed.data(), hashed.size());
-    cbor_len = cbor_serialize_alloc(cbor_hash, &buffer, &buffer_size);
-    cbor_decref(&cbor_hash);
-
-    // Store the result in a std::vector container.
-    auto hashed_seed = std::vector<uint8_t>(buffer, buffer + cbor_len);
-    free(buffer);
+    auto hashed_seed = CBOR::encode(hashed);
 
     return hashed_seed;
 } // hash_seed
