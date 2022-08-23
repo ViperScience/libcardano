@@ -146,3 +146,18 @@ target_link_libraries(test_cardano_mnemonic_to_stake_address PRIVATE
 ADD_TEST(cardano_mnemonic_to_stake_address 
     test_cardano_mnemonic_to_stake_address
 )
+
+########################################################################
+# Test the CBOR encoding functionality
+########################################################################
+
+set(TEST_CARDANO_CBOR_ENCODINGS_SOURCES 
+    test_cardano_cbor_encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils.cpp
+    ${QCBOR_SOURCES}
+)
+ADD_EXECUTABLE(test_cardano_cbor_encodings
+    ${TEST_CARDANO_CBOR_ENCODINGS_SOURCES}
+)
+ADD_TEST(cardano_cbor_encodings test_cardano_cbor_encodings)

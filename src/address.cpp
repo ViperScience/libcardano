@@ -420,7 +420,7 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress
     {
         auto addr_decoder = CBOR::Decoder::fromArrayData(addr_cbor);
         auto payload_bytes = addr_decoder.getTaggedCborBytes();
-        auto payload_crc32 = addr_decoder.getInt();
+        auto payload_crc32 = addr_decoder.getUint32();
 
         // Check the CRC32 of the payload.
         if (!ByronAddress::crc_check(payload_bytes, payload_crc32))

@@ -627,11 +627,14 @@ auto CBOR::Encoder::serialize() -> std::vector<uint8_t>
 
 CBOR::Decoder::Decoder(std::span<const uint8_t> data)
 {
+    this->_cbor_bytes.assign(data.begin(), data.end());
     this->_cbor_itm = std::make_shared<QCBORItem>();
     this->_cbor_ctx = std::make_shared<QCBORDecodeContext>();
-    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
-    QCBORDecode_Init(ctx.get(), (UsefulBufC){data.data(), data.size()},
-                     QCBOR_DECODE_MODE_NORMAL);
+    QCBORDecode_Init(
+        std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx).get(),
+        (UsefulBufC){this->_cbor_bytes.data(), this->_cbor_bytes.size()},
+        QCBOR_DECODE_MODE_NORMAL
+    );
 } // CBOR::Decoder::Decoder
 
 auto CBOR::Decoder::enterArray() -> void
@@ -693,35 +696,73 @@ auto CBOR::Decoder::getSkip() -> void
     auto itm = std::static_pointer_cast<QCBORItem>(this->_cbor_itm);
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
     QCBORDecode_GetNext(ctx.get(), itm.get());
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::invalid_argument("Invalid CBOR data.");
 } // CBOR::Decoder::getSkip
 
-auto CBOR::Decoder::getInt() -> int64_t
+auto CBOR::Decoder::getInt64() -> int64_t
 {
     int64_t retVal;
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
     QCBORDecode_GetInt64(ctx.get(), &retVal);
     return retVal;
-} // CBOR::Decoder::getInt
+} // CBOR::Decoder::getInt64
 
-auto CBOR::Decoder::getUint32() -> uint32_t
+auto CBOR::Decoder::getInt32() -> int32_t
 {
-    int64_t temp;
-    uint32_t retVal;
-    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
-    QCBORDecode_GetInt64(ctx.get(), &temp);
-    QCBOR_Int64ToUInt32(temp, &retVal);
-    return retVal;
-} // CBOR::Decoder::getUint32()
+    int32_t ret_val;
+    int64_t temp = this->getInt64();
+    QCBOR_Int64ToInt32(temp, &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getInt32
+
+auto CBOR::Decoder::getInt16() -> int16_t
+{
+    int16_t ret_val;
+    int64_t temp = this->getInt64();
+    QCBOR_Int64ToInt16(temp, &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getInt16
+
+auto CBOR::Decoder::getInt8() -> int8_t
+{
+    int8_t ret_val;
+    int64_t temp = this->getInt64();
+    QCBOR_Int64ToInt8(temp, &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getInt8
 
 auto CBOR::Decoder::getUint64() -> uint64_t
 {
-    int64_t temp;
-    uint64_t retVal;
+    uint64_t ret_val;
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
-    QCBORDecode_GetInt64(ctx.get(), &temp);
-    QCBOR_Int64ToUInt64(temp, &retVal);
-    return retVal;
-} // CBOR::Decoder::getUint32()
+    QCBORDecode_GetUInt64(ctx.get(), &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getUint64
+
+auto CBOR::Decoder::getUint32() -> uint32_t
+{
+    uint32_t ret_val;
+    int64_t temp = this->getInt64();
+    QCBOR_Int64ToUInt32(temp, &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getUint32
+
+auto CBOR::Decoder::getUint16() -> uint16_t
+{
+    uint16_t ret_val;
+    int64_t temp = this->getInt64();
+    QCBOR_Int64UToInt16(temp, &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getUint16
+
+auto CBOR::Decoder::getUint8() -> uint8_t
+{
+    uint8_t ret_val;
+    int64_t temp = this->getInt64();
+    QCBOR_Int64ToUInt8(temp, &ret_val);
+    return ret_val;
+} // CBOR::Decoder::getUint8
 
 auto CBOR::Decoder::getBytes() -> std::vector<uint8_t>
 {

@@ -170,30 +170,73 @@ class CBOR
     class Decoder
     {
       public:
-        /// Prefered constructor. Provide the data to decode as bytes.
+
+        /// Prefered constructor. Provide the data to decode as bytes. The data
+        /// is copied to an internal buffer for preservation during decoding.
         Decoder(std::span<const uint8_t> data);
+
+        /// Destructor
         inline ~Decoder() = default;
 
+        /// Factory method: returns a new CBOR::Decoder with an opened array.
         static auto fromArrayData(std::span<const uint8_t> data) -> Decoder;
 
+        /// Factory method: returns a new CBOR::Decoder with an opened map.
         static auto fromMapData(std::span<const uint8_t> data) -> Decoder;
 
+        /// Decode the next item in a CBOR data structure as the start of an
+        /// array. The next decode calls will operate on items in the array.
+        /// This must be eventually followed by exitArray.
+        /// @throws A std::invalid_argument exception if the next CBOR item is
+        ///         not an array object.
         auto enterArray() -> void;
+
+        /// Leave the array being decoded, i.e., go back up one nesting level. 
+        /// Subsequent decoding calls will consume the items after the array.
         auto exitArray() -> void;
+        
+        /// Decode the next item in a CBOR data structure as the start of a
+        /// map. The next decode calls will operate on items in the map.
+        /// This must be eventually followed by exitMap.
+        /// @throws A std::invalid_argument exception if the next CBOR item is
+        ///         not a map object.
         auto enterMap() -> void;
+        
+        /// Leave the map being decoded, i.e., go back up one nesting level. 
+        /// Subsequent decoding calls will consume the items after the map.
         auto exitMap() -> void;
 
+        /// Consume the next item in the CBOR data structure.
+        /// @throws A std::invalid_argument exception if the get item call is
+        ///         not successful. Do not use to find the end of an object.
         auto getSkip() -> void;
 
-        auto getInt() -> int64_t;
+        /// Decode the next item in the CBOR structure as an 8-bit integer.
         auto getInt8() -> int8_t;
+
+        /// Decode the next item in the CBOR structure as an 16-bit integer.
         auto getInt16() -> int16_t;
+
+        /// Decode the next item in the CBOR structure as an 32-bit integer.
         auto getInt32() -> int32_t;
+
+        /// Decode the next item in the CBOR structure as an 64-bit integer.
         auto getInt64() -> int64_t;
 
+        /// Decode the next item in the CBOR structure as an unsigned 8-bit 
+        /// integer.
         auto getUint8() -> uint8_t;
+
+        /// Decode the next item in the CBOR structure as an unsigned 16-bit 
+        /// integer.
         auto getUint16() -> uint16_t;
+
+        /// Decode the next item in the CBOR structure as an unsigned 32-bit 
+        /// integer.
         auto getUint32() -> uint32_t;
+
+        /// Decode the next item in the CBOR structure as an unsigned 64-bit 
+        /// integer.
         auto getUint64() -> uint64_t;
 
         auto getTaggedCborBytes() -> std::vector<uint8_t>;
@@ -219,6 +262,11 @@ class CBOR
         auto getInt64FromMap(int64_t k) -> int64_t;
 
       private:
+        /// Store an internal copy of the CBOR data byte string. This is 
+        /// required in order to prevent modification or deletion of the data
+        /// during the decoding process.
+        std::vector<uint8_t> _cbor_bytes;
+
         // Smart pointers to a generic data type (void) are used to 
         // intentionally separate the interface (header file) from the 
         // implementation. This way, in the event that a different CBOR backend
@@ -227,8 +275,8 @@ class CBOR
         std::shared_ptr<void> _cbor_itm;
     }; // Decoder
 
-    /// Static methods for encoding and decoding objects.
-    /// These methods use stack memory.
+    /// Static methods for encoding and decoding objects. These methods 
+    /// primarily use stack memory.
 
     /// Static method to CBOR encode a byte string.
     static auto encode(std::span<const uint8_t> b) -> std::vector<uint8_t>;
@@ -236,7 +284,10 @@ class CBOR
     /// Static method to CBOR encode an unsigned integer.
     static auto encode(uint64_t v) -> std::vector<uint8_t>;
 
+    /// Static method to decode a CBOR encoded UInt32.
     static auto decodeUint32(std::span<const uint8_t> b) -> uint32_t;
+
+    /// Static method to decode a CBOR encoded byte string.
     static auto decodeBytes(std::span<const uint8_t> b) -> std::vector<uint8_t>;
     
 }; // CBOR
