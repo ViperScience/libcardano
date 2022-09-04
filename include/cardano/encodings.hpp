@@ -32,8 +32,10 @@ namespace cardano {
 class BASE16
 {
   private:
+    /// The constructor should remain private since this is a static class.
     BASE16() = default;
   public:
+    // what endianess?
     static std::string encode(std::span<const uint8_t> bytes);
     static std::vector<uint8_t> decode(std::string_view str);
 }; // BASE16
@@ -41,23 +43,43 @@ class BASE16
 class BECH32
 {
   private:
+    /// The constructor should remain private since this is a static class.
     BECH32() = default;
   public:
-    static std::string encode(std::string_view hrp, std::span<const uint8_t> values);
-    static std::string encode_hex(std::string_view hrp, std::string_view hex_values);
-    static std::tuple<std::string, std::vector<uint8_t>> decode(std::string_view str);
-    static std::tuple<std::string, std::string> decode_hex(std::string_view str);
+    /// Bech32 encode raw bytes and hrp to a string.
+    static auto encode(std::string_view hrp, std::span<const uint8_t> values) 
+        -> std::string;
+    
+    /// Bech32 encode raw bytes (as hex string) and hrp to a string.
+    static auto encode_hex(std::string_view hrp, std::string_view hex_values)
+        -> std::string;
+    
+    /// Decode a bech32 encoded string to its raw bytes and hrp.
+    static auto decode(std::string_view str)
+        -> std::tuple<std::string, std::vector<uint8_t>>;
+    
+    /// Decode a bech32 encoded string to its raw bytes (as hex string) and hrp.
+    static auto decode_hex(std::string_view str)
+        -> std::tuple<std::string, std::string>;
 }; // BECH32
 
 class BASE58
 {
   private:
+    /// The constructor should remain private since this is a static class.
     BASE58() = default;
   public:
-    static std::string encode(std::span<const uint8_t> values);
-    static std::string encode_hex(std::string_view hex_values);
-    static std::vector<uint8_t> decode(std::string_view str);
-    static std::string decode_hex(std::string_view str);
+    /// Static method to encode a raw byte string into a base58 hex string.
+    static auto encode(std::span<const uint8_t> values) -> std::string;
+
+    /// Static method to encode a raw hex string into a base58 hex string.
+    static auto encode_hex(std::string_view hex_values) -> std::string;
+
+    /// Static method to decode a base58 hex string to a raw byte string.
+    static auto decode(std::string_view str) -> std::vector<uint8_t>;
+
+    /// Static method to decode a base58 hex string to a raw hex string.
+    static auto decode_hex(std::string_view str) -> std::string;
 }; // BASE58
 
 class CBOR
@@ -239,32 +261,73 @@ class CBOR
         /// integer.
         auto getUint64() -> uint64_t;
 
+        /// Decode the next item in the CBOR structure as tagged CBOR, i.e., a
+        /// byte string which is itself encoded CBOR and therefore has the tag
+        /// 24.
         auto getTaggedCborBytes() -> std::vector<uint8_t>;
-        auto getBytes() -> std::vector<uint8_t>;
 
-        // Must have "entered" a map.
+        /// Decode the next item in the CBOR structure as a byte string.
+        auto getBytes() -> std::vector<uint8_t>;
+        
+        /// Get the number of key-value pairs in the current map. This does not 
+        /// count nested maps, only the current nesting level. Must have 
+        /// "entered" a map object.
         auto getMapSize() -> size_t;
+
+        /// Return true if the current map (must have entered a map object)
+        /// contains the provided integer-type key.
         auto keyInMap(int64_t k) -> bool;
+
+        /// Return true if the current map (must have entered a map object)
+        /// contains the provided string-type key.
         auto keyInMap(std::string_view k) -> bool;
-        // must have entered map
-        // throws error if does not exist. make sure map has key
+
+        /// Access the bytes stored in the map object for the supplied 
+        /// integer-type key. Must have "entered" a map object. Throws an 
+        /// exception if the key does not exist in the map.
         auto getBytesFromMap(int64_t k) -> std::vector<uint8_t>;
+
+        /// Access the bytes stored in the map object for the supplied 
+        /// string-type key. Must have "entered" a map object. Throws an 
+        /// exception if the key does not exist in the map.
         auto getBytesFromMap(std::string_view) -> std::vector<uint8_t>;
         
+        /// Decode the item in the CBOR map structure for the given integer-type
+        /// key as an unsigned 8-bit integer.
         auto getUint8FromMap(int64_t k) -> uint8_t;
+
+        /// Decode the item in the CBOR map structure for the given integer-type
+        /// key as an unsigned 16-bit integer.
         auto getUint16FromMap(int64_t k) -> uint16_t;
+
+        /// Decode the item in the CBOR map structure for the given integer-type
+        /// key as an unsigned 32-bit integer.
         auto getUint32FromMap(int64_t k) -> uint32_t;
+
+        /// Decode the item in the CBOR map structure for the given integer-type
+        /// key as an unsigned 64-bit integer.
         auto getUint64FromMap(int64_t k) -> uint64_t;
 
+        /// Decode the item in the CBOR map structure for the given integer-type
+        /// key as an 8-bit integer.
         auto getInt8FromMap(int64_t k) -> int8_t;
+
+        /// Decode the item in the CBOR map structure for the given integer-type
+        /// key as an 16-bit integer.
         auto getInt16FromMap(int64_t k) -> int16_t;
+
+        /// Decode the item in the CBOR map structure for the given integer-type
+        /// key as an 32-bit integer.
         auto getInt32FromMap(int64_t k) -> int32_t;
+
+        /// Decode the item in the CBOR map structure for the given integer-type
+        /// key as an 64-bit integer.
         auto getInt64FromMap(int64_t k) -> int64_t;
 
       private:
         /// Store an internal copy of the CBOR data byte string. This is 
-        /// required in order to prevent modification or deletion of the data
-        /// during the decoding process.
+        /// required to prevent modification or deletion of the data during the
+        /// decoding process.
         std::vector<uint8_t> _cbor_bytes;
 
         // Smart pointers to a generic data type (void) are used to 

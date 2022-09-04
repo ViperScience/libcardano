@@ -852,3 +852,14 @@ auto CBOR::Decoder::keyInMap(int64_t k) -> bool
     QCBORDecode_GetAndResetError(ctx.get());
     return ret_val;
 } // CBOR::Decoder::keyInMap
+
+auto CBOR::Decoder::keyInMap(std::string_view k) -> bool
+{
+    QCBORItem item;
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    auto kstr = std::string(k); // Need NULL terminated string
+    QCBORDecode_GetItemInMapSZ(ctx.get(), kstr.c_str(), QCBOR_TYPE_ANY, &item);
+    auto ret_val = (ctx->uLastError == QCBOR_SUCCESS);
+    QCBORDecode_GetAndResetError(ctx.get());
+    return ret_val;
+} // CBOR::Decoder::keyInMap
