@@ -36,7 +36,21 @@ auto concat_bytes(SizedRange1 const &r1, SizedRange2 const &r2) {
     return ret;
 } // concat_bytes
 
-std::string str_tolower(std::string s);
+static auto lowercase(std::string& s) -> void
+{
+    auto make_lower = [](unsigned char c){ return std::tolower(c); };
+    std::transform(s.begin(), s.end(), s.begin(), make_lower);
+} // lowercase
+
+static constexpr auto strcmpi(std::string_view h1, std::string_view h2) -> bool
+{
+    if (h1.size() != h2.size())
+        return false;
+    for (size_t i = 0; i < h1.size(); ++i)
+        if (std::tolower((char)h1[i]) != std::tolower((char)h2[i]))
+            return false;
+    return true;
+} // strcmpi
 
 } // namespace cardano
 

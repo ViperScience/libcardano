@@ -267,8 +267,10 @@ auto BECH32::encode(std::string_view hrp, std::span<const uint8_t> values)
 auto BECH32::decode(std::string_view str)
     -> std::tuple<std::string, std::vector<uint8_t>> 
 {
-    // Ensure the string characters are all lower case.
-    auto bech32_str = str_tolower(std::string(str));
+    auto bech32_str = std::string(str);
+
+    // Ensure the string characters are all lower case.    
+    lowercase(bech32_str);
 
     // Find the separator.
     size_t bech32_str_size = str.size();
