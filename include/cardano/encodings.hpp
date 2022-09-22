@@ -213,17 +213,31 @@ class CBOR
         ///         not an array object.
         auto enterArray() -> void;
 
+        /// Access the array item stored in the current map object for the
+        /// supplied integer-type key. Must have "entered" a map object. This
+        /// must be eventually followed by exitArray.
+        /// @throws A std::invalid_argument exception if the key does not exist
+        ///         or the CBOR item is not an array object.
+        auto enterArrayFromMap(int64_t k) -> void;
+
         /// Leave the array being decoded, i.e., go back up one nesting level. 
         /// Subsequent decoding calls will consume the items after the array.
         auto exitArray() -> void;
-        
+
         /// Decode the next item in a CBOR data structure as the start of a
         /// map. The next decode calls will operate on items in the map.
         /// This must be eventually followed by exitMap.
         /// @throws A std::invalid_argument exception if the next CBOR item is
         ///         not a map object.
         auto enterMap() -> void;
-        
+
+        /// Access the map item stored in the current map object for the
+        /// supplied integer-type key. Must have "entered" a map object. This
+        /// must be eventually followed by exitMap.
+        /// @throws A std::invalid_argument exception if the key does not exist
+        ///         or the CBOR item is not a map object.
+        auto enterMapFromMap(int64_t k) -> void;
+
         /// Leave the map being decoded, i.e., go back up one nesting level. 
         /// Subsequent decoding calls will consume the items after the map.
         auto exitMap() -> void;
@@ -269,6 +283,15 @@ class CBOR
         /// Decode the next item in the CBOR structure as a byte string.
         auto getBytes() -> std::vector<uint8_t>;
         
+        /// Decode the next item in the CBOR structure as a NULL. Return true if
+        /// the item is a simple NULL type.
+        auto getNULL() -> bool;
+
+        /// Get the number of elements in the current array. This does not 
+        /// count nested arrays, only the current nesting level. Must have 
+        /// "entered" an array object.
+        auto getArraySize() -> size_t;
+
         /// Get the number of key-value pairs in the current map. This does not 
         /// count nested maps, only the current nesting level. Must have 
         /// "entered" a map object.
@@ -290,7 +313,7 @@ class CBOR
         /// Access the bytes stored in the map object for the supplied 
         /// string-type key. Must have "entered" a map object. Throws an 
         /// exception if the key does not exist in the map.
-        auto getBytesFromMap(std::string_view) -> std::vector<uint8_t>;
+        auto getBytesFromMap(std::string_view k) -> std::vector<uint8_t>;
         
         /// Decode the item in the CBOR map structure for the given integer-type
         /// key as an unsigned 8-bit integer.

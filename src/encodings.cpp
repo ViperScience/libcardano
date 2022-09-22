@@ -648,6 +648,18 @@ auto CBOR::Decoder::enterArray() -> void
         std::invalid_argument("Not a valid CBOR array.");
 } // CBOR::Decoder::enterMap
 
+auto CBOR::Decoder::enterArrayFromMap(int64_t k) -> void
+{
+    auto itm = std::static_pointer_cast<QCBORItem>(this->_cbor_itm);
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetItemInMapN(ctx.get(), k, QCBOR_TYPE_ARRAY, itm.get());
+    if (itm.get()->uDataType != QCBOR_TYPE_ARRAY)
+        throw std::invalid_argument("Not in a CBOR array structure.");
+    QCBORDecode_EnterArrayFromMapN(ctx.get(), k);
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::invalid_argument("Invalid CBOR data.");
+} // CBOR::Decoder::enterArrayFromMap
+
 auto CBOR::Decoder::exitArray() -> void
 {
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
@@ -662,6 +674,14 @@ auto CBOR::Decoder::fromArrayData(std::span<const uint8_t> cbor_data)
     return decoder;
 } // CBOR::Decoder::fromArrayData
 
+auto CBOR::Decoder::getArraySize() -> size_t
+{
+    const auto pMe = (QCBORItem *)this->_cbor_itm.get();
+    if (pMe->uDataType != QCBOR_TYPE_ARRAY)
+        throw std::invalid_argument("Not in a CBOR array structure.");
+    return (size_t)pMe->val.uCount;
+} // CBOR::Decoder::getArraySize
+
 auto CBOR::Decoder::enterMap() -> void
 {
     auto itm = std::static_pointer_cast<QCBORItem>(this->_cbor_itm);
@@ -670,6 +690,18 @@ auto CBOR::Decoder::enterMap() -> void
     if (itm->uDataType != QCBOR_TYPE_MAP)
         std::invalid_argument("Not a valid CBOR map.");
 } // CBOR::Decoder::enterMap
+
+auto CBOR::Decoder::enterMapFromMap(int64_t k) -> void
+{
+    auto itm = std::static_pointer_cast<QCBORItem>(this->_cbor_itm);
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetItemInMapN(ctx.get(), k, QCBOR_TYPE_MAP, itm.get());
+    if (itm.get()->uDataType != QCBOR_TYPE_MAP)
+        throw std::invalid_argument("Not in a CBOR map structure.");
+    QCBORDecode_EnterMapFromMapN(ctx.get(), k);
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::invalid_argument("Invalid CBOR data.");
+} // CBOR::Decoder::enterMapFromMap
 
 auto CBOR::Decoder::exitMap() -> void
 {
@@ -776,6 +808,18 @@ auto CBOR::Decoder::getBytes() -> std::vector<uint8_t>
     auto ptr = (uint8_t *)buf.ptr;
     return std::vector<uint8_t>(ptr, ptr + buf.len);;
 } // CBOR::Decoder::getBytes
+
+auto CBOR::Decoder::getNULL() -> bool
+{
+    auto itm = std::static_pointer_cast<QCBORItem>(this->_cbor_itm);
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetNext(ctx.get(), itm.get());
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::invalid_argument("Invalid CBOR data.");
+    if (itm->uDataType != QCBOR_TYPE_NULL)
+        return false; // Not a CBOR simple NULL type.
+    return true;
+} // CBOR::Decoder::getNULL
 
 auto CBOR::Decoder::getInt64FromMap(int64_t k) -> int64_t
 {
