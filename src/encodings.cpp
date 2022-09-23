@@ -804,10 +804,20 @@ auto CBOR::Decoder::getBytes() -> std::vector<uint8_t>
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
     QCBORDecode_GetByteString(ctx.get(), &buf);
     if (ctx->uLastError != QCBOR_SUCCESS)
-        throw std::invalid_argument("");
+        throw std::invalid_argument("Invalid CBOR data.");
     auto ptr = (uint8_t *)buf.ptr;
-    return std::vector<uint8_t>(ptr, ptr + buf.len);;
+    return std::vector<uint8_t>(ptr, ptr + buf.len);
 } // CBOR::Decoder::getBytes
+
+auto CBOR::Decoder::getString() -> std::string
+{
+    auto buf = UsefulBufC();
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_GetTextString(ctx.get(), &buf);
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::invalid_argument("Invalid CBOR data.");
+    return std::string(reinterpret_cast<char const*>(buf.ptr), buf.len);
+} // CBOR::Decoder::getString
 
 auto CBOR::Decoder::getNULL() -> bool
 {

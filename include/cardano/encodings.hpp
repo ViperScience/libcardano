@@ -287,6 +287,9 @@ class CBOR
 
         /// Decode the next item in the CBOR structure as a byte string.
         auto getBytes() -> std::vector<uint8_t>;
+
+        /// Decode the next item in the CBOR structure as a character string.
+        auto getString() -> std::string;
         
         /// Decode the next item in the CBOR structure as a NULL. Return true if
         /// the item is a simple NULL type.

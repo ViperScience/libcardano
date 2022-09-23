@@ -6,7 +6,9 @@ using namespace cardano;
 
 auto testStatic() -> void
 {
-    auto hex = "D50FD5896BE4FBB14CEF53EB6B8D0F025B6A4D9B1F17FDEC28F1BF027508777D728AB0DEF208321AF02E406F0AF83AF6123A1A55FEFAA4D9FB4096220D40B0F0";
+    auto hex = 
+        "D50FD5896BE4FBB14CEF53EB6B8D0F025B6A4D9B1F17FDEC28F1BF027508777D728AB0"
+        "DEF208321AF02E406F0AF83AF6123A1A55FEFAA4D9FB4096220D40B0F0";
     auto cbor_bytes = CBOR::encode(BASE16::decode(hex));
     auto decoded_cbor = BASE16::encode(CBOR::decodeBytes(cbor_bytes));
     TEST_ASSERT_THROW( strcmpi(hex, decoded_cbor) )
@@ -69,13 +71,19 @@ auto testDecode() -> void
         "6A755909ACB6803B6558FE2E8C7C9F7EF65B4465AF071B741DCC778852E52F21";
 
     auto tx_output_addr_bech32 = 
-        "addr1qxjmymnx07p90hvpuql63q74lqvhqkv0sj4hden2h2nzjude2atwkf284f6y64a9lhu5h350td3v95n3a00kxj8cz38q6j544x";
+        "addr1qxjmymnx07p90hvpuql63q74lqvhqkv0sj4hden2h2nzjude2atwkf284f6y64a9l"
+        "hu5h350td3v95n3a00kxj8cz38q6j544x";
 
     auto stake_pool_id = 
         "D69B6B16C6A135C4157365DED9B0D772D44C7628A05B49741D3AE25C";
     
     auto stake_pool_vrf = 
         "D6901EB064A2233D11F007BA3BC634F42D90016AB585EAB5C471F91C292562DF";
+    
+    auto stake_pool_relay_dns = "relay0.viperstaking.com";
+
+    auto stake_pool_metadata_url = 
+        "https://viperstaking.com/assets/files/VIPER_metadata.json";
     
     // Create a CBOR decoder with the transaction CBOR data. The transaction is
     // a CBOR array at the top level.
@@ -129,7 +137,7 @@ auto testDecode() -> void
     // Examine the certificate in this transaction (stake pool registration).
     tx_decoder.enterArrayFromMap(4);
     TEST_ASSERT_THROW( tx_decoder.getArraySize() == 1 )
-    tx_decoder.enterArray();
+    tx_decoder.enterArray(); // Certificate object (array)
     TEST_ASSERT_THROW( tx_decoder.getArraySize() == 10 )
     TEST_ASSERT_THROW( tx_decoder.getUint8() == 3 ) // stake pool registration
     TEST_ASSERT_THROW( tx_decoder.getBytes() == BASE16::decode(stake_pool_id) )
@@ -138,8 +146,26 @@ auto testDecode() -> void
     TEST_ASSERT_THROW( tx_decoder.getUint64() == 340000000 ) // min fixed fee
     auto [num, den] = tx_decoder.getRational(); // Margin
     TEST_ASSERT_THROW( ((double)num)/((double)den) == 0.02 )
-    tx_decoder.exitArray();
-    tx_decoder.exitArray();
+    TEST_ASSERT_THROW( tx_decoder.getBytes().size() == 29 ) // reward account
+    tx_decoder.enterArray(); // Array of pool owner key hashes.
+    TEST_ASSERT_THROW( tx_decoder.getArraySize() == 4 )
+    tx_decoder.exitArray(); // Array of pool owner key hashes
+    tx_decoder.enterArray(); // Array of pool relays
+    TEST_ASSERT_THROW( tx_decoder.getArraySize() == 1 )
+    tx_decoder.enterArray(); // Relay object (array)
+    TEST_ASSERT_THROW( tx_decoder.getArraySize() == 3 )
+    TEST_ASSERT_THROW( tx_decoder.getUint64() == 1 ) // single host name
+    TEST_ASSERT_THROW( tx_decoder.getUint64() == 4444 ) // Port number
+    TEST_ASSERT_THROW( tx_decoder.getString() == stake_pool_relay_dns) // DNS
+    tx_decoder.exitArray(); // Relay object (array)
+    tx_decoder.exitArray(); // Array of pool relays
+    tx_decoder.enterArray(); // Pool metadata
+    TEST_ASSERT_THROW( tx_decoder.getArraySize() == 2 )
+    TEST_ASSERT_THROW( tx_decoder.getString() == stake_pool_metadata_url)
+    TEST_ASSERT_THROW( tx_decoder.getBytes().size() == 32 )
+    tx_decoder.exitArray(); // Pool metadata
+    tx_decoder.exitArray(); // Certificate object (array)
+    tx_decoder.exitArray(); // Array of certificates
 
     // Exit the transaction body.
     tx_decoder.exitMap();
