@@ -265,7 +265,7 @@ auto BECH32::encode(std::string_view hrp, std::span<const uint8_t> values)
 } // BECH32::encode
 
 auto BECH32::decode(std::string_view str)
-    -> std::tuple<std::string, std::vector<uint8_t>> 
+    -> std::pair<std::string, std::vector<uint8_t>> 
 {
     auto bech32_str = std::string(str);
 
@@ -300,7 +300,7 @@ auto BECH32::decode(std::string_view str)
     // Pack the bits (cardano needs to pack the bits...)
     values.resize(values.size() - 6); // trim the checksum
     auto packed_values = convertbits(values, 5, 8, false);
-    return std::make_tuple(hrp, packed_values);
+    return std::make_pair(hrp, packed_values);
 } // BECH32::decode
 
 auto BECH32::encode_hex(std::string_view hrp, std::string_view hex_values) 
@@ -311,10 +311,10 @@ auto BECH32::encode_hex(std::string_view hrp, std::string_view hex_values)
 } // BECH32::encode_hex
 
 auto BECH32::decode_hex(std::string_view bech32_str)
--> std::tuple<std::string, std::string> {
+-> std::pair<std::string, std::string> {
     auto [ hrp, data ] = cardano::BECH32::decode(bech32_str);
     auto hex_str = bytes2hex(data);
-    return std::make_tuple(hrp, hex_str);
+    return std::make_pair(hrp, hex_str);
 } // BECH32::decode_hex
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -888,6 +888,29 @@ auto CBOR::Decoder::getTaggedCborBytes() -> std::vector<uint8_t>
     auto ptr = (uint8_t *)buf.ptr;
     return std::vector<uint8_t>(ptr, ptr + buf.len);
 } // CBOR::Decoder::getTaggedCborBytes
+
+auto CBOR::Decoder::getRational() -> std::pair<uint64_t, uint64_t>
+{
+    auto itm = std::static_pointer_cast<QCBORItem>(this->_cbor_itm);
+    auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
+    QCBORDecode_EnterArray(ctx.get(), itm.get());
+    auto tag = QCBORDecode_GetNthTagOfLast(ctx.get(), 0);
+    if ((tag != 30) || (itm->uDataType != QCBOR_TYPE_ARRAY) ||
+        (ctx->uLastError != QCBOR_SUCCESS))
+        std::runtime_error("Invalid rational number CBOR structure.");
+    // The numerator can be a Uint, Int, or BigNum.
+    // The denominator can be a Uint or positive BigNum (not equal to Zero!).
+    // TODO: Handle non-Uint types.
+    uint64_t num, den;
+    QCBORDecode_GetUInt64(ctx.get(), &num);
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::invalid_argument("Unexpected data type.");
+    QCBORDecode_GetUInt64(ctx.get(), &den);
+    if (ctx->uLastError != QCBOR_SUCCESS)
+        throw std::invalid_argument("Unexpected data type.");
+    QCBORDecode_ExitArray(ctx.get());
+    return std::make_pair(num, den);
+} // CBOR::Decoder::getRational
 
 auto CBOR::Decoder::keyInMap(int64_t k) -> bool
 {

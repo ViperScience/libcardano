@@ -136,7 +136,8 @@ auto testDecode() -> void
     TEST_ASSERT_THROW( tx_decoder.getBytes() == BASE16::decode(stake_pool_vrf) )
     TEST_ASSERT_THROW( tx_decoder.getUint64() == 297000000000 ) // pledge
     TEST_ASSERT_THROW( tx_decoder.getUint64() == 340000000 ) // min fixed fee
-    // margin
+    auto [num, den] = tx_decoder.getRational(); // Margin
+    TEST_ASSERT_THROW( ((double)num)/((double)den) == 0.02 )
     tx_decoder.exitArray();
     tx_decoder.exitArray();
 

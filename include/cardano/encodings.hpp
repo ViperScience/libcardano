@@ -25,6 +25,7 @@
 #include <span>
 #include <string_view>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace cardano {
@@ -36,8 +37,8 @@ class BASE16
     BASE16() = default;
   public:
     // what endianess?
-    static std::string encode(std::span<const uint8_t> bytes);
-    static std::vector<uint8_t> decode(std::string_view str);
+    static auto encode(std::span<const uint8_t> bytes) -> std::string;
+    static auto decode(std::string_view str) -> std::vector<uint8_t>;
 }; // BASE16
 
 class BECH32
@@ -56,11 +57,11 @@ class BECH32
     
     /// Decode a bech32 encoded string to its raw bytes and hrp.
     static auto decode(std::string_view str)
-        -> std::tuple<std::string, std::vector<uint8_t>>;
+        -> std::pair<std::string, std::vector<uint8_t>>;
     
     /// Decode a bech32 encoded string to its raw bytes (as hex string) and hrp.
     static auto decode_hex(std::string_view str)
-        -> std::tuple<std::string, std::string>;
+        -> std::pair<std::string, std::string>;
 }; // BECH32
 
 class BASE58
@@ -279,6 +280,10 @@ class CBOR
         /// byte string which is itself encoded CBOR and therefore has the tag
         /// 24.
         auto getTaggedCborBytes() -> std::vector<uint8_t>;
+
+        // Decode the next item in the CBOR structure as a rational number,
+        // i.e., Tag = 30.
+        auto getRational() -> std::pair<uint64_t, uint64_t>;
 
         /// Decode the next item in the CBOR structure as a byte string.
         auto getBytes() -> std::vector<uint8_t>;
