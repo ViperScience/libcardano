@@ -39,7 +39,6 @@ A Docker build option is also provided.
 Libcardano links with the following external dependencies. 
 
 * [Botan-2](https://botan.randombit.net/)
-* [libcbor v0.9.0](https://github.com/PJK/libcbor)
 
 The provided Docker file demonstrates how to build and install the required dependencies and Cmake find scripts are also provided.
 
