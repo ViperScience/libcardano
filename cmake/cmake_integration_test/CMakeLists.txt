@@ -18,7 +18,6 @@ endif()
 find_package(Cardano REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Botan REQUIRED)
-find_package(libcbor REQUIRED)
 
 if (APPLE)
     include_directories("/usr/local/include")

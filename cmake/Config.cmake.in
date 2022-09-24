@@ -1,7 +1,6 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(libcbor)
 find_dependency(Botan)
 find_dependency(Threads)
 # Note: Some of the find_dependency calls above may need the custom Find files

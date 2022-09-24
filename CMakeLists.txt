@@ -30,7 +30,6 @@ endif()
 
 # Add 3rd party libraries that should be installed on the system
 find_package(Botan REQUIRED)
-# find_package(libcbor REQUIRED)
 
 # Add the submodules
 add_subdirectory(${CMAKE_SOURCE_DIR}/libs)
