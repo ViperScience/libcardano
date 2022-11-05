@@ -21,10 +21,10 @@
 #ifndef _CARDANO_CARDANO_HPP_
 #define _CARDANO_CARDANO_HPP_
 
-#include <cardano/encodings.hpp>
-#include <cardano/crypto.hpp>
 #include <cardano/address.hpp>
-#include <cardano/mnemonic.hpp>
 #include <cardano/bip39_dictionary.hpp>
+#include <cardano/crypto.hpp>
+#include <cardano/encodings.hpp>
+#include <cardano/mnemonic.hpp>
 
-#endif // _CARDANO_CARDANO_HPP_
+#endif  // _CARDANO_CARDANO_HPP_

@@ -38,24 +38,27 @@ class Mnemonic
   private:
     std::vector<std::string> word_list_;
     std::vector<uint16_t> word_indexes_;
-    
+
     Mnemonic() = default;
 
   public:
-
     /// Constructors
     Mnemonic(std::string_view seed_phrase, BIP39Language lang);
     Mnemonic(std::span<std::string_view> seed_phrase, BIP39Language lang);
     Mnemonic(std::span<std::string> seed_phrase, BIP39Language lang);
-    Mnemonic(std::span<std::string_view> seed_phrase, 
-             std::span<const uint16_t> word_indexes);
-    Mnemonic(std::span<std::string> seed_phrase, 
-             std::span<const uint16_t> word_indexes);
+    Mnemonic(
+        std::span<std::string_view> seed_phrase,
+        std::span<const uint16_t> word_indexes
+    );
+    Mnemonic(
+        std::span<std::string> seed_phrase,
+        std::span<const uint16_t> word_indexes
+    );
 
     /// Factory methods
-    static auto generate(size_t mnemonic_size = 24, 
-                         BIP39Language lang = BIP39Language::English)
-        -> Mnemonic;
+    static auto generate(
+        size_t mnemonic_size = 24, BIP39Language lang = BIP39Language::English
+    ) -> Mnemonic;
 
     const std::vector<uint16_t>& i() const { return this->word_indexes_; }
     const std::vector<std::string>& w() const { return this->word_list_; }
@@ -68,8 +71,8 @@ class Mnemonic
     auto toSeed() const -> std::vector<uint8_t>;
     auto toEntropy() const -> std::tuple<std::vector<uint8_t>, uint8_t>;
 
-}; // Mnemonic
+};  // Mnemonic
 
-} // namespace cardano
+}  // namespace cardano
 
-#endif // _CARDANO_MNEMONIC_HPP_
+#endif  // _CARDANO_MNEMONIC_HPP_

@@ -22,18 +22,22 @@
 #define _CARDANO_ADDRESS_HPP_
 
 #include <array>
+#include <cardano/crypto.hpp>
 #include <cstdint>
 #include <span>
 #include <string>
 #include <vector>
 
-#include <cardano/crypto.hpp>
-
-namespace cardano {
+namespace cardano
+{
 
 constexpr size_t KEY_HASH_LENGTH = 28;
 
-enum class NetworkID { mainnet, testnet };
+enum class NetworkID
+{
+    mainnet,
+    testnet
+};
 
 class BaseAddress
 {
@@ -42,20 +46,24 @@ class BaseAddress
     std::array<uint8_t, KEY_HASH_LENGTH> pmt_key_hash_{};
     std::array<uint8_t, KEY_HASH_LENGTH> stk_key_hash_{};
 
-    // Make the default constructor private so it can only be used by the static factory methods.
+    // Make the default constructor private so it can only be used by the static
+    // factory methods.
     BaseAddress() = default;
 
   public:
-    BaseAddress(NetworkID nid,
-                std::array<uint8_t, KEY_HASH_LENGTH> pmt_key_hash,
-                std::array<uint8_t, KEY_HASH_LENGTH> stake_key_hash);
+    BaseAddress(
+        NetworkID nid,
+        std::array<uint8_t, KEY_HASH_LENGTH> pmt_key_hash,
+        std::array<uint8_t, KEY_HASH_LENGTH> stake_key_hash
+    );
 
-    static BaseAddress fromKeys(NetworkID nid, BIP32PublicKey pmt_key,
-                                BIP32PublicKey stake_key);
+    static BaseAddress fromKeys(
+        NetworkID nid, BIP32PublicKey pmt_key, BIP32PublicKey stake_key
+    );
     static BaseAddress fromBech32(std::string addr);
     std::string toBech32(std::string hrp) const;
     std::string toBase16(bool with_header = false) const;
-}; // BaseAddress
+};  // BaseAddress
 
 class EnterpriseAddress
 {
@@ -63,18 +71,23 @@ class EnterpriseAddress
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
     uint8_t header_byte_;
 
-    // Make the default constructor private so it can only be used by the static factory methods.
+    // Make the default constructor private so it can only be used by the static
+    // factory methods.
     EnterpriseAddress() = default;
 
   public:
-    EnterpriseAddress(NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash);
+    EnterpriseAddress(
+        NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
+    );
     static EnterpriseAddress fromKey(NetworkID nid, BIP32PublicKey pub_key);
     static EnterpriseAddress fromBech32(std::string addr);
     std::string toBech32(std::string hrp) const;
     std::string toBase16(bool with_header = false) const;
-}; // EnterpriseAddress
+};  // EnterpriseAddress
 
-class PointerAddress {};
+class PointerAddress
+{
+};
 
 class RewardsAddress
 {
@@ -82,11 +95,14 @@ class RewardsAddress
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
     uint8_t header_byte_;
 
-    // Make the default constructor private so it can only be used by the static factory methods.
+    // Make the default constructor private so it can only be used by the static
+    // factory methods.
     RewardsAddress() = default;
 
   public:
-    RewardsAddress(NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash);
+    RewardsAddress(
+        NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
+    );
     static RewardsAddress fromKey(NetworkID nid, BIP32PublicKey stake_key);
     static RewardsAddress fromBech32(std::string addr);
     std::string toBech32(std::string hrp) const;
@@ -96,7 +112,6 @@ class RewardsAddress
 class ByronAddress
 {
   public:
-
     struct Attributes
     {
         /// Address derivation path ciphertext.
@@ -113,20 +128,25 @@ class ByronAddress
         /// Constructor
         /// Take ownership of the chipertext vector (move it into the object).
         Attributes(std::vector<uint8_t> bytes, uint32_t magic)
-            : ciphertext{std::move(bytes)}, magic{magic} {}
+            : ciphertext{std::move(bytes)}, magic{magic}
+        {
+        }
 
         /// Factory method to create an attributes object from a root public key
-        /// and unencrypted path. The key is used to encrypt the address 
+        /// and unencrypted path. The key is used to encrypt the address
         /// derivation path and the resulting ciphertext stored in the object.
-        static auto fromKey(BIP32PublicKey xpub, std::span<const uint32_t> path, 
-                            uint32_t magic = 0) -> Attributes;
-        
+        static auto fromKey(
+            BIP32PublicKey xpub,
+            std::span<const uint32_t> path,
+            uint32_t magic = 0
+        ) -> Attributes;
+
         /// Serialize the object to CBOR bytes.
         auto toCBOR() const -> std::vector<uint8_t>;
     };
 
     /// Address type enum contained within the ByronAddress class scope.
-    enum class Type 
+    enum class Type
     {
         pubkey,
         script,
@@ -134,15 +154,21 @@ class ByronAddress
     };
 
     /// Constructor - take ownership of the inputs.
-    ByronAddress(std::array<uint8_t, KEY_HASH_LENGTH> root, 
-                 ByronAddress::Attributes attrs,
-                 ByronAddress::Type type)
-        : root_{std::move(root)}, attrs_{std::move(attrs)}, type_{type} {}
-    
+    ByronAddress(
+        std::array<uint8_t, KEY_HASH_LENGTH> root,
+        ByronAddress::Attributes attrs,
+        ByronAddress::Type type
+    )
+        : root_{std::move(root)}, attrs_{std::move(attrs)}, type_{type}
+    {
+    }
+
     /// Facotry methods
-    static ByronAddress fromRootKey(BIP32PrivateKey xprv, 
-                                    std::span<const uint32_t> derivation_path,
-                                    uint32_t network_magic = 0);
+    static ByronAddress fromRootKey(
+        BIP32PrivateKey xprv,
+        std::span<const uint32_t> derivation_path,
+        uint32_t network_magic = 0
+    );
     static ByronAddress fromCBOR(std::span<const uint8_t> cbor_data);
     static ByronAddress fromBase58(std::string addr);
 
@@ -169,9 +195,8 @@ class ByronAddress
     /// Make the default constructor private so it can only be used by the
     /// static factory methods.
     ByronAddress() = default;
-
 };
 
-} // namespace cardano
+}  // namespace cardano
 
 #endif

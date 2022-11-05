@@ -19,28 +19,33 @@
 // THE SOFTWARE.
 
 #include <cstdint>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <span>
 
 #ifndef _CARDANO_DEBUG_UTILS_HPP_
 #define _CARDANO_DEBUG_UTILS_HPP_
 
-namespace cardano_debug {
+namespace cardano_debug
+{
 
-static void print_bytes(std::span<const uint8_t> data, size_t line_width = 16) {
+static void print_bytes(std::span<const uint8_t> data, size_t line_width = 16)
+{
     size_t counter = 0;
-    for (auto v : data) {
-        std::cout << "0x" << std::hex << std::setfill('0') << std::setw(2) << (int)v << " ";
+    for (auto v : data)
+    {
+        std::cout << "0x" << std::hex << std::setfill('0') << std::setw(2)
+                  << (int)v << " ";
         counter++;
-        if (counter > line_width - 1) {
+        if (counter > line_width - 1)
+        {
             std::cout << std::endl;
             counter = 0;
         }
-    } 
+    }
     std::cout << std::endl;
 }
 
-} // namespace cardano_debug
+}  // namespace cardano_debug
 
-#endif // _CARDANO_DEBUG_UTILS_HPP_
+#endif  // _CARDANO_DEBUG_UTILS_HPP_
