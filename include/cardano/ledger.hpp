@@ -350,6 +350,9 @@ class Transaction
       private:
     };
 
+    // datum_option = [ 0, $hash32 // 1, data ]
+    // script_ref = #6.24(bytes .cbor script)
+    
     // post_alonzo_transaction_output =
     //   { 0 : address
     //   , 1 : value
@@ -360,6 +363,8 @@ class Transaction
     {
       public:
         bytes address_;
+        uint value_;
+
       private:
 
     };
@@ -441,6 +446,9 @@ class Transaction
     /// Create a transaction object by parsing the CBOR representation.
     static auto fromCBOR() -> Transaction;
 
+    /// Factory methods
+    static auto newPaymentTx(bytes to_addr, bytes from_addr, coin amt_love) -> Transaction;
+
     /// Serialize a transaction to CBOR.
     auto toCBOR() -> std::vector<uint8_t> const;
 
@@ -484,7 +492,7 @@ class Block
         {
             uint64_t block_number_;
             uint64_t slot_;
-            //
+            std::unique_ptr<hash32> prev_hash{nullptr};
             vkey issuer_vkey_;
             vrf_vkey vrf_vkey_;
             //

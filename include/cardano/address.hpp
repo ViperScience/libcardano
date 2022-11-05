@@ -164,13 +164,13 @@ class ByronAddress
     }
 
     /// Facotry methods
-    static ByronAddress fromRootKey(
+    static auto fromRootKey(
         BIP32PrivateKey xprv,
         std::span<const uint32_t> derivation_path,
         uint32_t network_magic = 0
-    );
-    static ByronAddress fromCBOR(std::span<const uint8_t> cbor_data);
-    static ByronAddress fromBase58(std::string addr);
+    ) -> ByronAddress;
+    static auto fromCBOR(std::span<const uint8_t> cbor_data) -> ByronAddress;
+    static auto fromBase58(std::string addr) -> ByronAddress;
 
     /// Serialize to vector of CBOR bytes.
     auto toCBOR() const -> std::vector<uint8_t>;
