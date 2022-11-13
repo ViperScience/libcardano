@@ -102,19 +102,25 @@ auto BaseAddress::fromBech32(std::string addr_bech32) -> BaseAddress
     return addr;
 }  // BaseAddress::fromBech32
 
+auto BaseAddress::toBytes(bool include_header_byte) const
+    -> std::vector<uint8_t>
+{
+    auto bytes = concat_bytes(this->pmt_key_hash_, this->stk_key_hash_);
+    if (include_header_byte) bytes.insert(bytes.begin(), this->header_byte_);
+    return bytes;
+}  // BaseAddress::toBytes
+
+auto BaseAddress::toBase16(bool include_header_byte) const -> std::string
+{
+    return BASE16::encode(this->toBytes(include_header_byte));
+}  // BaseAddress::toBase16
+
 auto BaseAddress::toBech32(std::string hrp) const -> std::string
 {
     auto bytes = concat_bytes(this->pmt_key_hash_, this->stk_key_hash_);
     bytes.insert(bytes.begin(), this->header_byte_);
     return BECH32::encode(hrp, bytes);
 }  // BaseAddress::toBech32
-
-auto BaseAddress::toBase16(bool include_header_byte) const -> std::string
-{
-    auto bytes = concat_bytes(this->pmt_key_hash_, this->stk_key_hash_);
-    if (include_header_byte) bytes.insert(bytes.begin(), this->header_byte_);
-    return BASE16::encode(bytes);
-}  // BaseAddress::toBase16
 
 EnterpriseAddress::EnterpriseAddress(
     NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
@@ -151,31 +157,30 @@ auto EnterpriseAddress::fromBech32(std::string addr_bech32) -> EnterpriseAddress
     return addr;
 }  // EnterpriseAddress::fromBech32
 
-auto EnterpriseAddress::toBech32(std::string hrp) const -> std::string
+auto EnterpriseAddress::toBytes(bool include_header_byte) const
+    -> std::vector<uint8_t>
 {
-    std::vector<uint8_t> bytes;
-    bytes.reserve(KEY_HASH_LENGTH + 1);
-    bytes.insert(bytes.begin(), this->header_byte_);
-    bytes.insert(
-        bytes.begin() + 1, this->key_hash_.begin(), this->key_hash_.end()
+    auto offset = (size_t)include_header_byte;
+    auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH + offset);
+    if (include_header_byte)
+    {
+        bytes[0] = this->header_byte_;
+    }
+    std::copy_n(
+        this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + offset
     );
-    return BECH32::encode(hrp, bytes);
-}  // EnterpriseAddress::toBech32
+    return bytes;
+}  // EnterpriseAddress::toBytes
 
 auto EnterpriseAddress::toBase16(bool include_header_byte) const -> std::string
 {
-    if (include_header_byte)
-    {
-        std::vector<uint8_t> bytes;
-        bytes.reserve(KEY_HASH_LENGTH + 1);
-        bytes.insert(bytes.begin(), this->header_byte_);
-        bytes.insert(
-            bytes.begin() + 1, this->key_hash_.begin(), this->key_hash_.end()
-        );
-        return BASE16::encode(bytes);
-    }
-    return BASE16::encode(this->key_hash_);
+    return BASE16::encode(this->toBytes(include_header_byte));
 }  // EnterpriseAddress::toBase16
+
+auto EnterpriseAddress::toBech32(std::string hrp) const -> std::string
+{
+    return BECH32::encode(hrp, this->toBytes(true));
+}  // EnterpriseAddress::toBech32
 
 RewardsAddress::RewardsAddress(
     NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
@@ -214,69 +219,69 @@ auto RewardsAddress::fromBech32(std::string addr_bech32) -> RewardsAddress
     return addr;
 }  // RewardsAddress::fromBech32
 
-auto RewardsAddress::toBech32(std::string hrp) const -> std::string
+auto RewardsAddress::toBytes(bool include_header_byte) const
+    -> std::vector<uint8_t>
 {
-    std::vector<uint8_t> bytes;
-    bytes.reserve(KEY_HASH_LENGTH + 1);
-    bytes.insert(bytes.begin(), this->header_byte_);
-    bytes.insert(
-        bytes.begin() + 1, this->key_hash_.begin(), this->key_hash_.end()
+    auto offset = (size_t)include_header_byte;
+    auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH + offset);
+    if (include_header_byte)
+    {
+        bytes[0] = this->header_byte_;
+    }
+    std::copy_n(
+        this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + offset
     );
-    return BECH32::encode(hrp, bytes);
-}  // RewardsAddress::toBech32
+    return bytes;
+}  // RewardsAddress::toBytes
 
 auto RewardsAddress::toBase16(bool include_header_byte) const -> std::string
 {
-    if (include_header_byte)
-    {
-        std::vector<uint8_t> bytes;
-        bytes.reserve(KEY_HASH_LENGTH + 1);
-        bytes.insert(bytes.begin(), this->header_byte_);
-        bytes.insert(
-            bytes.begin() + 1, this->key_hash_.begin(), this->key_hash_.end()
-        );
-        return BASE16::encode(bytes);
-    }
-    return BASE16::encode(this->key_hash_);
+    return BASE16::encode(this->toBytes(include_header_byte));
 }  // RewardsAddress::toBase16
 
-//////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////// Byron Era Addresses
-//////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
+auto RewardsAddress::toBech32(std::string hrp) const -> std::string
+{
+    return BECH32::encode(hrp, this->toBytes(true));
+}  // RewardsAddress::toBech32
 
-// +-------------------------------------------------------------------------------+
-// | | |                        CBOR-Serialized Object with CRC | | |
-// +-------------------------------------------------------------------------------+
-//                                         |
-//                                         |
-//                                         v
-// +-------------------------------------------------------------------------------+
-// |     Address Root    |     Address Attributes    |           AddrType | | |
-// |                             | |   Hash (224 bits)   |  Der. Path  + Stake +
-// NM  |  PubKey | (Script) | Redeem | |                     |    (open for
-// extension)   |     (open for extension)    |
-// +-------------------------------------------------------------------------------+
-//              |                 |
-//              |                 |     +----------------------------------+
-//              v                 |     |        Derivation Path           |
-// +---------------------------+  |---->|                                  |
-// | SHA3-256                  |  |     | ChaChaPoly⁴ AccountIx/AddressIx  |
-// |   |> Blake2b 224          |  |     +----------------------------------+
-// |   |> CBOR                 |  |
-// |                           |  |
-// |  -AddrType                |  |     +----------------------------------+
-// |  -ASD  (~AddrType+PubKey) |  |     |       Stake Distribution         |
-// |  -Address Attributes      |  |     |                                  |
-// +---------------------------+  |---->|  BootstrapEra | (Single | Multi) |
-//                                |     +----------------------------------+
-//                                |
-//                                |
-//                                |     +----------------------------------+
-//                                |     |          Network Magic           |
-//                                |---->|                                  |
-//                                      | Addr Discr: MainNet vs TestNet   |
-//                                      +----------------------------------+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////// Byron Era Addresses ///////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// +---------------------------------------------------------------------------+
+// |                                                                           |
+// |                      CBOR-Serialized Object with CRC¹                     |
+// |                                                                           |
+// +---------------------------------------------------------------------------+
+//                                       |
+//                                       |
+//                                       v
+// +---------------------------------------------------------------------------+
+// |    Address Root   |    Address Attributes    |          AddrType          |
+// |                   |                          |                            |
+// |  Hash (224 bits)  | Der. Path² + Stake + NM  | PubKey | (Script) | Redeem |
+// |                   |   (open for extension)   |    (open for extension)    |
+// +---------------------------------------------------------------------------+
+//              |                |
+//              |                |     +----------------------------------+
+//              v                |     |        Derivation Path           |
+// +--------------------------+  |---->|                                  |
+// |SHA3-256                  |  |     | ChaChaPoly⁴ AccountIx/AddressIx  |
+// |  |> Blake2b 224          |  |     +----------------------------------+
+// |  |> CBOR                 |  |
+// |                          |  |
+// | -AddrType                |  |     +----------------------------------+
+// | -ASD³ (~AddrType+PubKey) |  |     |       Stake Distribution         |
+// | -Address Attributes      |  |     |                                  |
+// +--------------------------+  |---->|  BootstrapEra | (Single | Multi) |
+//                               |     +----------------------------------+
+//                               |
+//                               |
+//                               |     +----------------------------------+
+//                               |     |          Network Magic           |
+//                               |---->|                                  |
+//                                     | Addr Discr: MainNet vs TestNet   |
+//                                     +----------------------------------+
 //
 // CRC: Cyclic Redundancy Check; sort of checksum, a bit (pun intended) more
 // reliable. ASD: Address Spending Data; Some data that are bound to an address.

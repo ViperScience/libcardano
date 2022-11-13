@@ -513,6 +513,12 @@ auto CBOR::Encoder::startArray() -> void
     QCBOREncode_OpenArray(ctx.get());
 }  // CBOR::Encoder::startArray
 
+auto CBOR::Encoder::startArrayInMap(int64_t k) -> void
+{
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_OpenArrayInMapN(ctx.get(), k);
+} // CBOR::Encoder::startArrayInMap
+
 auto CBOR::Encoder::endArray() -> void
 {
     auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
@@ -550,6 +556,12 @@ auto CBOR::Encoder::startMap() -> void
     auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
     QCBOREncode_OpenMap(ctx.get());
 }  // CBOR::Encoder::startMap
+
+auto CBOR::Encoder::startMapInMap(int64_t k) -> void
+{
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_OpenMapInMapN(ctx.get(), k);
+} // CBOR::Encoder::startMapInMap
 
 auto CBOR::Encoder::endMap() -> void
 {
@@ -594,6 +606,18 @@ auto CBOR::Encoder::add(std::span<const uint8_t> bytes) -> void
     auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
     QCBOREncode_AddBytes(ctx.get(), ((UsefulBufC){bytes.data(), bytes.size()}));
 }  // CBOR::Encoder::add
+
+auto CBOR::Encoder::addBool(bool v) -> void
+{
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddBool(ctx.get(), v);
+} // CBOR::Encoder::addBool
+
+auto CBOR::Encoder::addNULL() -> void
+{
+    auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
+    QCBOREncode_AddNULL(ctx.get());
+} // CBOR::Encoder::addNULL
 
 auto CBOR::Encoder::addToMap(std::string_view k, int64_t v) -> void
 {

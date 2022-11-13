@@ -119,8 +119,6 @@ set(CARDANO_HEADERS
 install(FILES ${CARDANO_HEADERS} 
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cardano
 )
-# message(CMAKE_INSTALL_LIBDIR="${CMAKE_INSTALL_LIBDIR}")
-# message(CMAKE_INSTALL_INCLUDEDIR="${CMAKE_INSTALL_INCLUDEDIR}")
 
 ################################################################################
 # Install the CMake Target files
@@ -144,7 +142,6 @@ write_basic_package_version_file(
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion
 )
-# ${PROJECT_VERSION}
 
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/CardanoConfig.cmake"

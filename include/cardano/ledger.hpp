@@ -29,14 +29,15 @@
 #include <tuple>
 #include <vector>
 
+// Official Spec (Babbage Era):
 // https://github.com/input-output-hk/cardano-ledger/blob/master/eras/babbage/test-suite/cddl-files/babbage.cddl#L13
+//
+// This code takes the approach of trying to represent the CDDL spec in C++
+// structures. These structures will be used by logic in other classes and
+// files.
 
-// TODO:
-// ?. Each item should be able to transform itself into a CBOR item. This will 
-//    depend on the CBOR implementation and require something other than the 
-//    streaming implementation we currently have.
-
-namespace cardano {
+namespace cardano
+{
 
 using uint = uint64_t;
 using coin = uint;
@@ -88,6 +89,9 @@ using plutus_v2_script = bytes;
 
 using url = std::string;
 
+namespace babbage
+{
+
 // CDDL: pool_metadata = [url, pool_metadata_hash]
 using pool_metadata = std::tuple<url, pool_metadata_hash>;
 
@@ -115,13 +119,13 @@ struct Relay
         single_host_addr,
         single_host_name,
         multi_host_name
-    }; // Type
+    };  // Type
     Relay::Type type_{};
     uint16_t port_{};
     bytes4 ipv4_{};
     bytes16 ipv6_{};
-    std::string dns_name_{};    
-}; // Relay
+    std::string dns_name_{};
+};  // Relay
 
 // CDDL:
 //     pool_params = ( operator:       pool_keyhash
@@ -157,7 +161,7 @@ struct StakeCredential
     {
         addr_keyhash,
         scripthash
-    }; // Type
+    };  // Type
     StakeCredential::Type type_;
     addr_keyhash addr_keyhash_;
     scripthash scripthash_;
@@ -166,16 +170,16 @@ struct StakeCredential
 // delta_coin = int
 using delta_coin = int64_t;
 
-// move_instantaneous_reward = [ 0 / 1, { * stake_credential => delta_coin } / coin ]
-// ; The first field determines where the funds are drawn from.
-// ; 0 denotes the reserves, 1 denotes the treasury.
-// ; If the second field is a map, funds are moved to stake credentials,
-// ; otherwise the funds are given to the other accounting pot.
+// move_instantaneous_reward = [ 0 / 1, { * stake_credential => delta_coin } /
+// coin ] ; The first field determines where the funds are drawn from. ; 0
+// denotes the reserves, 1 denotes the treasury. ; If the second field is a map,
+// funds are moved to stake credentials, ; otherwise the funds are given to the
+// other accounting pot.
 class MoveInstantaneousReward
 {
   private:
     uint source_;
-    coin coin_; // Use this if map is empty
+    coin coin_;  // Use this if map is empty
     std::map<StakeCredential, coin> stake_credentials_;
 };
 
@@ -199,8 +203,8 @@ class MoveInstantaneousReward
 //
 class Certificate
 {
-public:
-    enum Type 
+  public:
+    enum Type
     {
         stake_registration = 0,
         stake_deregistration = 1,
@@ -211,33 +215,33 @@ public:
         move_instantaneous_rewards_cert = 6
     };
 
-protected:
+  protected:
     Certificate::Type type_;
 };
 
 // CDDL: stake_registration = (0, stake_credential)
 class StakeRegistration : Certificate
 {
-public:
-    StakeRegistration(StakeCredential cred)
-        : stake_credential_ { cred }
-    { 
+  public:
+    StakeRegistration(StakeCredential cred) : stake_credential_{cred}
+    {
         type_ = Certificate::stake_registration;
     }
-private:
+
+  private:
     StakeCredential stake_credential_;
 };
 
 // CDDL: stake_registration = (0, stake_credential)
 class StakeDeregistration : Certificate
 {
-public:
-    StakeDeregistration(StakeCredential cred)
-        : stake_credential_ { cred }
-    { 
+  public:
+    StakeDeregistration(StakeCredential cred) : stake_credential_{cred}
+    {
         type_ = Certificate::stake_deregistration;
     }
-private:
+
+  private:
     StakeCredential stake_credential_;
 };
 
@@ -279,7 +283,8 @@ using vkeywitness = std::tuple<vkey, signature>;
 //   , chain_code : bytes .size 32
 //   , attributes : bytes
 //   ]
-struct bootstrap_witness {
+struct bootstrap_witness
+{
     vkey public_key_;
     signature signature_;
     bytes32 chain_code_;
@@ -327,46 +332,43 @@ using withdrawals = std::map<reward_account, coin>;
 //   , bool
 //   , auxiliary_data / null
 //   ]
-class Transaction
+struct Transaction
 {
-  public:
 
-    // transaction_output = legacy_transaction_output / post_alonzo_transaction_output ; New
-    class Output {
-      public:
-        virtual ~Output() = default;
-    };
+    // // datum_option = [ 0, $hash32 // 1, data ]
+    // // script_ref = #6.24(bytes .cbor script)
 
+    // CDDL:
+    // transaction_output = legacy_transaction_output /
+    // post_alonzo_transaction_output ; New
+    //
     // legacy_transaction_output =
     //   [ address
     //   , amount : value
     //   , ? datum_hash : $hash32
     //   ]
-    class LegacyOuput : Output
-    {
-      public:
-        bytes address_;
-        hash32 datum_hash_{};
-      private:
-    };
-
-    // datum_option = [ 0, $hash32 // 1, data ]
-    // script_ref = #6.24(bytes .cbor script)
-    
+    //
     // post_alonzo_transaction_output =
     //   { 0 : address
     //   , 1 : value
     //   , ? 2 : datum_option ; New; datum option
     //   , ? 3 : script_ref   ; New; script reference
     //   }
-    class PostAlonzoOuput : Output
+    //
+    struct Output
     {
-      public:
-        bytes address_;
-        uint value_;
+        enum class Type
+        {
+            legacy_transaction_output,
+            post_alonzo_transaction_output
+        };
 
-      private:
-
+        Output::Type type;
+        bytes address;
+        coin value;
+        std::shared_ptr<hash32> datum_hash{nullptr};
+        // std::shared_ptr<datum_option> datum_option_{nullptr};
+        // std::shared_ptr<script_ref> script_ref_{nullptr};
     };
 
     // transaction_input = [ transaction_id : $hash32
@@ -374,10 +376,14 @@ class Transaction
     //                     ]
     struct Input
     {
-        hash32 transaction_id_{};
-        uint index_;
+        hash32 transaction_id{};
+        uint index;
+        coin value;
+
+        // This is required for using with a std::set.
+        bool operator<(const Input& rhs) const { return value < rhs.value; }
     };
-    
+
     // transaction_body =
     //   { 0 : set<transaction_input>    ; inputs
     //   , 1 : [* transaction_output]
@@ -400,17 +406,14 @@ class Transaction
     struct Body
     {
         // Required
-        std::set<Transaction::Input> inputs_;
-        std::vector<Transaction::Output> outputs_;
-        coin fee_;
+        std::set<Transaction::Input> inputs{};
+        std::vector<Transaction::Output> outputs{};
+        coin fee;
 
         // Optional
-        coin ttl_;
-        std::vector<Certificate> certs_;
-        withdrawals withdrawals_{};
-
-        /// Serialize the structure to CBOR byte vector.
-        auto toCBOR() -> bytes;
+        coin ttl;
+        std::vector<Certificate> certs;
+        withdrawals withdrawals{};
     };
 
     // transaction_witness_set =
@@ -424,35 +427,22 @@ class Transaction
     //   }
     struct WitnessSet
     {
-        std::vector<vkeywitness> vkeywitness_vec_;
+        std::vector<vkeywitness> vkeywitness_vec;
         //
-        std::vector<bootstrap_witness> bootstrap_witness_vec_;
-        std::vector<plutus_v1_script> plutus_v1_script_vec_;
-        //std::vector<plutus_data> plutus_data_vec_;
-        //std::vector<redeemer> redeemer_vec_;
-        std::vector<plutus_v2_script> plutus_v2_script_vec_;
+        std::vector<bootstrap_witness> bootstrap_witness_vec;
+        std::vector<plutus_v1_script> plutus_v1_script_vec;
+        // std::vector<plutus_data> plutus_data_vec;
+        // std::vector<redeemer> redeemer_vec;
+        std::vector<plutus_v2_script> plutus_v2_script_vec;
     };
-    
+
     struct Metadata
     {
     };
 
-  private:
-    Transaction::Body body_;
-    Transaction::WitnessSet witness_set_;
-    std::unique_ptr<Transaction::Metadata> auxiliary_data_{nullptr};
-  
-  public:
-    /// Create a transaction object by parsing the CBOR representation.
-    static auto fromCBOR() -> Transaction;
-
-    /// Factory methods
-    static auto newPaymentTx(bytes to_addr, bytes from_addr, coin amt_love) -> Transaction;
-
-    /// Serialize a transaction to CBOR.
-    auto toCBOR() -> std::vector<uint8_t> const;
-
-    auto addWitness(std::array<uint8_t, 32> key_hash) -> void;
+    Transaction::Body body{};
+    Transaction::WitnessSet witness_set{};
+    std::shared_ptr<Transaction::Metadata> auxiliary_data{nullptr};
 };
 
 // block =
@@ -466,10 +456,8 @@ class Transaction
 //    ;    must be the same
 //    ; 2) every transaction_index must be strictly smaller than the
 //    ;    length of transaction_bodies
-class Block
+struct Block
 {
-  public:
-
     // header =
     //   [ header_body
     //   , body_signature : $kes_signature
@@ -482,11 +470,9 @@ class Block
         //   , prev_hash        : $hash32 / null
         //   , issuer_vkey      : $vkey
         //   , vrf_vkey         : $vrf_vkey
-        //   , vrf_result       : $vrf_cert ; New, replaces nonce_vrf and leader_vrf
-        //   , block_body_size  : uint
-        //   , block_body_hash  : $hash32 ; merkle triple root
-        //   , operational_cert
-        //   , protocol_version
+        //   , vrf_result       : $vrf_cert ; New, replaces nonce_vrf and
+        //   leader_vrf , block_body_size  : uint , block_body_hash  : $hash32 ;
+        //   merkle triple root , operational_cert , protocol_version
         //   ]
         struct Body
         {
@@ -501,16 +487,14 @@ class Block
             //
             //
         };
-
     };
-    
-    Block::Header header_;
-    std::vector<Transaction::Body> transaction_bodies_;
-    std::vector<Transaction::WitnessSet> transaction_witness_sets_;
 
-    auto is_valid() -> bool;
+    Block::Header header;
+    std::vector<Transaction::Body> transaction_bodies;
+    std::vector<Transaction::WitnessSet> transaction_witness_sets;
 };
 
+} // namespace babbage
 } // namespace cardano
 
-#endif // _CARDANO_LEDGER_HPP_
+#endif  // _CARDANO_LEDGER_HPP_

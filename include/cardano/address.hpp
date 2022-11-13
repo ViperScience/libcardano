@@ -31,7 +31,7 @@
 namespace cardano
 {
 
-constexpr size_t KEY_HASH_LENGTH = 28;
+static constexpr size_t KEY_HASH_LENGTH = 28;
 
 enum class NetworkID
 {
@@ -57,12 +57,14 @@ class BaseAddress
         std::array<uint8_t, KEY_HASH_LENGTH> stake_key_hash
     );
 
-    static BaseAddress fromKeys(
+    static auto fromKeys(
         NetworkID nid, BIP32PublicKey pmt_key, BIP32PublicKey stake_key
-    );
-    static BaseAddress fromBech32(std::string addr);
-    std::string toBech32(std::string hrp) const;
-    std::string toBase16(bool with_header = false) const;
+    ) -> BaseAddress;
+    static auto fromBech32(std::string addr) -> BaseAddress;
+    [[nodiscard]] auto toBytes(bool with_header = false) const
+        -> std::vector<uint8_t>;
+    [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
+    [[nodiscard]] auto toBech32(std::string hrp) const -> std::string;
 };  // BaseAddress
 
 class EnterpriseAddress
@@ -79,10 +81,13 @@ class EnterpriseAddress
     EnterpriseAddress(
         NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
     );
-    static EnterpriseAddress fromKey(NetworkID nid, BIP32PublicKey pub_key);
-    static EnterpriseAddress fromBech32(std::string addr);
-    std::string toBech32(std::string hrp) const;
-    std::string toBase16(bool with_header = false) const;
+    static auto fromKey(NetworkID nid, BIP32PublicKey pub_key)
+        -> EnterpriseAddress;
+    static auto fromBech32(std::string addr) -> EnterpriseAddress;
+    [[nodiscard]] auto toBytes(bool with_header = false) const
+        -> std::vector<uint8_t>;
+    [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
+    [[nodiscard]] auto toBech32(std::string hrp) const -> std::string;
 };  // EnterpriseAddress
 
 class PointerAddress
@@ -103,10 +108,13 @@ class RewardsAddress
     RewardsAddress(
         NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
     );
-    static RewardsAddress fromKey(NetworkID nid, BIP32PublicKey stake_key);
-    static RewardsAddress fromBech32(std::string addr);
-    std::string toBech32(std::string hrp) const;
-    std::string toBase16(bool with_header = false) const;
+    static auto fromKey(NetworkID nid, BIP32PublicKey stake_key)
+        -> RewardsAddress;
+    static auto fromBech32(std::string addr) -> RewardsAddress;
+    [[nodiscard]] auto toBytes(bool with_header = false) const
+        -> std::vector<uint8_t>;
+    [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
+    [[nodiscard]] auto toBech32(std::string hrp) const -> std::string;
 };
 
 class ByronAddress
@@ -142,7 +150,7 @@ class ByronAddress
         ) -> Attributes;
 
         /// Serialize the object to CBOR bytes.
-        auto toCBOR() const -> std::vector<uint8_t>;
+        [[nodiscard]] auto toCBOR() const -> std::vector<uint8_t>;
     };
 
     /// Address type enum contained within the ByronAddress class scope.
@@ -173,10 +181,10 @@ class ByronAddress
     static auto fromBase58(std::string addr) -> ByronAddress;
 
     /// Serialize to vector of CBOR bytes.
-    auto toCBOR() const -> std::vector<uint8_t>;
+    [[nodiscard]] auto toCBOR() const -> std::vector<uint8_t>;
 
     /// Serialize to Base58 encoded string.
-    auto toBase58() const -> std::string;
+    [[nodiscard]] auto toBase58() const -> std::string;
 
   private:
     std::array<uint8_t, KEY_HASH_LENGTH> root_;

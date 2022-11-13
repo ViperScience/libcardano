@@ -154,10 +154,34 @@ ADD_TEST(cardano_mnemonic_to_stake_address
 set(TEST_CARDANO_CBOR_ENCODINGS_SOURCES 
     test_cardano_cbor_encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_cbor_encodings
     ${TEST_CARDANO_CBOR_ENCODINGS_SOURCES}
 )
 ADD_TEST(cardano_cbor_encodings test_cardano_cbor_encodings)
+
+########################################################################
+# Test transaction building and serializing to CBOR
+########################################################################
+
+set(TEST_CARDANO_TRANSACTION_BUILD_SOURCES 
+    test_cardano_transaction_build.cpp
+    ${CMAKE_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
+    ${CMAKE_SOURCE_DIR}/src/transaction.cpp
+    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${CARDANO_CRYPTO_CBITS_SOURCES}
+    ${CRYPTONITE_CBITS_SOURCES}
+    ${QCBOR_SOURCES}
+)
+ADD_EXECUTABLE(test_cardano_transaction_build
+    ${TEST_CARDANO_TRANSACTION_BUILD_SOURCES}
+)
+target_link_libraries(test_cardano_transaction_build PRIVATE
+    botan::botan
+    Threads::Threads
+)
+ADD_TEST(cardano_transaction_build test_cardano_transaction_build)

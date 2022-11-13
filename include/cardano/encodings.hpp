@@ -125,6 +125,10 @@ class CBOR
         /// Start a finite array. Must be eventually followed by endArray.
         auto startArray() -> void;
 
+        /// Start a finite array as an element in a map object. Must be 
+        /// eventually followed by endArray.
+        auto startArrayInMap(int64_t k) -> void;
+
         /// Close an open array. Signals the end of adding data to the array.
         auto endArray() -> void;
 
@@ -138,6 +142,10 @@ class CBOR
 
         /// Start a finite map. Must be eventually followed by endMap.
         auto startMap() -> void;
+
+        /// Start a finite map as an element in a map object. Must be eventually
+        /// followed by endMap.
+        auto startMapInMap(int64_t k) -> void;
 
         /// Close an open map. Signals the end of adding data to the map.
         auto endMap() -> void;
@@ -159,6 +167,12 @@ class CBOR
 
         /// Add a byte string item to the CBOR data structure.
         auto add(std::span<const uint8_t> v) -> void;
+
+        /// Add boolean value to the CBOR data structure.
+        auto addBool(bool v) -> void;
+
+        /// Add a Null primitive to the CBOR data structure.
+        auto addNULL() -> void;
 
         /// Add previously encoded CBOR bytes to the structure.
         auto addEncoded(std::span<const uint8_t> v) -> void;
