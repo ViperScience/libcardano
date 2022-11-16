@@ -101,15 +101,12 @@ auto BIP32PublicKey::toBech32(std::string_view hrp) const -> std::string
 
 auto BIP32PublicKey::toBase16() const -> std::string
 {
-    const auto bytes = concat_bytes(this->pub_, this->cc_);
-    return BASE16::encode(bytes);
+    return BASE16::encode(this->toBytes(true));
 }  // ExtendedPublicKey::toBase16
 
 auto BIP32PublicKey::toCBOR(bool with_cc) const -> std::string
 {
-    if (!with_cc) return BASE16::encode(CBOR::encode(this->pub_));
-    const auto bytes = concat_bytes(this->pub_, this->cc_);
-    return BASE16::encode(CBOR::encode(bytes));
+    return BASE16::encode(CBOR::encode(this->toBytes(with_cc)));
 }  // BIP32PublicKey::toCBOR
 
 auto BIP32PublicKey::deriveChild(uint32_t index, uint32_t derivation_mode) const
@@ -289,28 +286,28 @@ auto BIP32PrivateKey::fromMnemonic(const cardano::Mnemonic& mn)
     return BIP32PrivateKey::fromMnemonic(mn, "");
 };  // BIP32PrivateKey::fromMnemonic
 
+auto BIP32PrivateKey::toBytes(bool with_cc) const -> std::vector<uint8_t>
+{
+    if (!with_cc)
+        return std::vector<uint8_t>(
+            this->prv_.data(), this->prv_.data() + this->prv_.size()
+        );
+    return concat_bytes(this->prv_, this->cc_);
+}  // BIP32PrivateKey::toBytes
+
 auto BIP32PrivateKey::toBech32(std::string_view hrp) const -> std::string
 {
-    auto data = std::vector<uint8_t>();
-    data.reserve(ENCRYPTED_KEY_SIZE + CHAIN_CODE_SIZE);
-    data.insert(data.begin(), this->prv_.begin(), this->prv_.end());
-    data.insert(
-        data.begin() + ENCRYPTED_KEY_SIZE, this->cc_.begin(), this->cc_.end()
-    );
-    return BECH32::encode(hrp, data);
+    return BECH32::encode(hrp, this->toBytes(true));
 }  // BIP32PrivateKey::toBech32
 
 auto BIP32PrivateKey::toBase16() const -> std::string
 {
-    const auto bytes = concat_bytes(this->prv_, this->cc_);
-    return BASE16::encode(bytes);
+    return BASE16::encode(this->toBytes(true));
 }  // ExtendedPublicKey::toBase16
 
 auto BIP32PrivateKey::toCBOR(bool with_cc) const -> std::string
 {
-    if (!with_cc) return BASE16::encode(CBOR::encode(this->prv_));
-    const auto bytes = concat_bytes(this->prv_, this->cc_);
-    return BASE16::encode(CBOR::encode(bytes));
+    return BASE16::encode(CBOR::encode(this->toBytes(with_cc)));
 }  // BIP32PrivateKey::toCBOR
 
 auto BIP32PrivateKey::toExtendedCBOR() const -> std::string

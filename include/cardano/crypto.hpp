@@ -150,6 +150,11 @@ class BIP32PrivateKey
     ) -> BIP32PrivateKey;
     // static BIP32PrivateKey fromCBOR(std::string bech32); // TODO
 
+    /// Return the private key as a byte vector.
+    /// @param with_cc Flag to include the chain code with the key.
+    [[nodiscard]] auto toBytes(bool with_cc = true) const
+        -> std::vector<uint8_t>;
+
     /// Encode the private key as a bech32 string.
     /// @param hrp The bech32 human readable header.
     [[nodiscard]] auto toBech32(std::string_view hrp) const -> std::string;
