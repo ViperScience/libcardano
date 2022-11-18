@@ -43,7 +43,7 @@ class UTxO
 
     auto getId() const -> std::array<uint8_t, 32> { return id_; }
     auto getIndex() const -> uint64_t { return index_; }
-    auto getValue() const -> uint64_t { return value_; }
+    constexpr auto getValue() const -> uint64_t { return value_; }
 
     // This is required for using within a std::set.
     constexpr bool operator<(const UTxO& rhs) const

@@ -292,7 +292,7 @@ struct bootstrap_witness
 };
 
 // withdrawals = { * reward_account => coin }
-using withdrawals = std::map<reward_account, coin>;
+using withdrawal = std::map<reward_account, coin>;
 
 // update = [ proposed_protocol_parameter_updates
 //          , epoch
@@ -413,7 +413,7 @@ struct Transaction
         // Optional
         coin ttl;
         std::vector<Certificate> certs;
-        withdrawals withdrawals{};
+        withdrawal withdrawals{};
     };
 
     // transaction_witness_set =
