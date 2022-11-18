@@ -37,7 +37,7 @@ class UTxO
 {
   public:
     UTxO(std::array<uint8_t, 32> id, uint64_t index, uint64_t value)
-        : id_ { id }, index_ {index}, value_ {value}
+        : id_{id}, index_{index}, value_{value}
     {
     }
 
@@ -47,7 +47,7 @@ class UTxO
 
     // This is required for using within a std::set.
     constexpr bool operator<(const UTxO& rhs) const
-    { 
+    {
         return this->value_ < rhs.getValue();
     }
 
@@ -60,8 +60,7 @@ class UTxO
 class TxBuilder
 {
   public:
-
-    /// Static method to create a simple payment transaction draft. The 
+    /// Static method to create a simple payment transaction draft. The
     /// transaction draft has no signatures and other parameters blank.
     static auto newPaymentDraft(
         const BaseAddress& to_addr,
@@ -90,12 +89,15 @@ class TxSerializer
 
     /// @brief Compute the transaction ID.
     // The transaction ID is the hash (Blake2b256) of the transaction body CBOR.
-    // This ID is what is signed by the signing keys to signify transaction 
+    // This ID is what is signed by the signing keys to signify transaction
     // validity.
-    [[nodiscard]] static auto getID(const babbage::Transaction& tx) -> std::vector<uint8_t>;
+    [[nodiscard]] static auto getID(const babbage::Transaction& tx)
+        -> std::vector<uint8_t>;
 
     /// Static method to create a transaction from CBOR data.
-    [[nodiscard]] static auto toCBOR(const babbage::Transaction& tx) -> std::vector<uint8_t>;
+    [[nodiscard]] static auto toCBOR(const babbage::Transaction& tx)
+        -> std::vector<uint8_t>;
+
   private:
 };
 
@@ -103,10 +105,16 @@ class TxSigner
 {
   public:
     ///
-    static auto sign(babbage::Transaction& tx, const BIP32PrivateKey& skey) -> void;
+    static auto makeWitness(
+        const babbage::Transaction& tx, const BIP32PrivateKey& skey
+    ) -> std::vector<uint8_t>;
+
+    ///
+    static auto sign(babbage::Transaction& tx, const BIP32PrivateKey& skey)
+        -> void;
 
   private:
-    /// 
+    ///
 };
 
 }  // namespace cardano

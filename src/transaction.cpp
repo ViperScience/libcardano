@@ -44,7 +44,7 @@ auto make_alonzo_output(std::vector<uint8_t> addr_key_hash, uint64_t value)
     return output;
 }
 
-//auto compute_fees <- TODO
+// auto compute_fees <- TODO
 
 auto TxBuilder::newPaymentDraft(
     const BaseAddress& to_addr,
@@ -82,7 +82,7 @@ auto TxBuilder::newPayment(
 
 auto TxSerializer::toCBOR(const Transaction& tx) -> std::vector<uint8_t>
 {
-    auto txcbor = CBOR::Encoder::newArray();
+    auto txcbor = CBOR::Encoder::newArray(512);
 
     // TX body
     txcbor.startMap();
@@ -123,6 +123,19 @@ auto TxSerializer::toCBOR(const Transaction& tx) -> std::vector<uint8_t>
 
     // Witnesses
     txcbor.startMap();
+    if (tx.witness_set.vkeywitness_vec.size() > 0)
+    {
+        txcbor.startArrayInMap(0); // ? 0: [* vkeywitness ]
+        for (auto vkeywit : tx.witness_set.vkeywitness_vec)
+        {
+            auto [ vk, sig ] = vkeywit;
+            txcbor.startArray();
+            txcbor.add(vk);
+            txcbor.add(sig);
+            txcbor.endArray();
+        }
+        txcbor.endArray();
+    }
     txcbor.endMap();
 
     // Bool
@@ -138,7 +151,7 @@ auto TxSerializer::toCBOR(const Transaction& tx) -> std::vector<uint8_t>
 auto TxSerializer::getID(const Transaction& tx) -> std::vector<uint8_t>
 {
     // Build the transaction body CBOR
-    auto txcbor = CBOR::Encoder::newMap();
+    auto txcbor = CBOR::Encoder::newMap(256);
     txcbor.startArrayInMap(0);  // Input Array (UTxOs to be consumed)
     for (auto input : tx.body.inputs)
     {
@@ -170,14 +183,42 @@ auto TxSerializer::getID(const Transaction& tx) -> std::vector<uint8_t>
     return std::vector<uint8_t>(hashed.begin(), hashed.end());
 }
 
+auto TxSigner::makeWitness(const Transaction& tx, const BIP32PrivateKey& skey)
+    -> std::vector<uint8_t>
+{
+    // Get the public key paired with the signing key.
+    const auto pkey_bytes = skey.toPublic().toBytes(false);
+    const auto pub_key = (const uint8_t*)pkey_bytes.data();
+
+    // Get access to the signing key byte array
+    const auto skey_bytes = skey.toBytes(false);
+    const auto prv_key = (const uint8_t*)skey_bytes.data();
+
+    // The transaction ID is the message to be signed.
+    const auto txid = TxSerializer::getID(tx);
+    const auto msg = (const uint8_t*)txid.data();
+
+    // Create the signature
+    auto signature = std::vector<uint8_t>(TX_SIGNATURE_SIZE);  // output
+    cardano_crypto_ed25519_sign(
+        msg, txid.size(), NULL, 0, prv_key, pub_key, (uint8_t*)signature.data()
+    );
+
+    return signature;
+}  // TxSigner::makeWitness
+
 auto TxSigner::sign(Transaction& tx, const BIP32PrivateKey& skey) -> void
 {
-    auto vkey = skey.toPublic();
-    auto txid = TxSerializer::getID(tx);
+    // Create the witness and put it in a constant size array.
+    const auto witness_bytes = TxSigner::makeWitness(tx, skey);
+    auto witness = std::array<uint8_t, TX_SIGNATURE_SIZE>();
+    std::copy_n(witness_bytes.begin(), TX_SIGNATURE_SIZE, witness.begin());
 
-    auto signature = std::array<uint8_t, TX_SIGNATURE_SIZE>(); // output
-    
-    //cardano_crypto_ed25519_sign((const uint8_t*)txid.data(), txid.size(), NULL, 0, priv_key, pub_key, signature.data());
+    // Put the key in a constant size array.
+    const auto pkey_bytes = skey.toPublic().toBytes(false);
+    auto key = std::array<uint8_t, 32>();
+    std::copy_n(pkey_bytes.begin(), 32, key.begin());
 
-    
-} // TxSigner::sign
+    // Add the witness to the transaction object.
+    tx.witness_set.vkeywitness_vec.push_back({key, witness});
+}  // TxSigner::sign

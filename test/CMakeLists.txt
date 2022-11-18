@@ -21,7 +21,6 @@ set(TEST_CARDANO_CRYPTO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
@@ -44,7 +43,6 @@ set(TEST_CARDANO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
@@ -67,7 +65,6 @@ set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
@@ -105,7 +102,6 @@ set(TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
@@ -130,7 +126,6 @@ set(TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
@@ -185,3 +180,28 @@ target_link_libraries(test_cardano_transaction_build PRIVATE
     Threads::Threads
 )
 ADD_TEST(cardano_transaction_build test_cardano_transaction_build)
+
+########################################################################
+# Test transaction building, signing, and serializing to CBOR
+########################################################################
+
+set(TEST_CARDANO_TRANSACTION_SIGN_SOURCES 
+    test_cardano_transaction_sign.cpp
+    ${CMAKE_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
+    ${CMAKE_SOURCE_DIR}/src/transaction.cpp
+    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${CARDANO_CRYPTO_CBITS_SOURCES}
+    ${CRYPTONITE_CBITS_SOURCES}
+    ${QCBOR_SOURCES}
+)
+ADD_EXECUTABLE(test_cardano_transaction_sign
+    ${TEST_CARDANO_TRANSACTION_SIGN_SOURCES}
+)
+target_link_libraries(test_cardano_transaction_sign PRIVATE
+    botan::botan
+    Threads::Threads
+)
+ADD_TEST(cardano_transaction_sign test_cardano_transaction_sign)
