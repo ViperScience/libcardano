@@ -12,10 +12,13 @@ find_library(Botan_LIBRARY
         /usr/lib64
         /usr/local/lib
         /usr/local/lib64
+        /usr/lib/x86_64-linux-gnu
 )
 find_path(Botan_INCLUDE_DIR 
     NAMES botan/botan.h
-    PATHS /usr/local/include/botan-2
+    PATHS 
+        /usr/local/include/botan-2
+        /usr/include/botan-2
 )
 
 find_package_handle_standard_args(Botan REQUIRED_VARS Botan_LIBRARY Botan_INCLUDE_DIR)

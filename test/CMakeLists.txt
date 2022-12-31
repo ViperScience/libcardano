@@ -30,6 +30,7 @@ ADD_EXECUTABLE(test_cardano_crypto ${TEST_CARDANO_CRYPTO_SOURCES})
 target_link_libraries(test_cardano_crypto PRIVATE
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
 ADD_TEST(cardano_crypto test_cardano_crypto)
 
@@ -52,6 +53,7 @@ ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_address PRIVATE
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
 ADD_TEST(cardano_address test_cardano_address)
 
@@ -74,6 +76,7 @@ ADD_EXECUTABLE(test_cardano_byron_address ${TEST_CARDANO_BYRON_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_byron_address PRIVATE
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
 ADD_TEST(cardano_byron_address test_cardano_byron_address)
 
@@ -89,6 +92,7 @@ ADD_EXECUTABLE(test_cardano_mnemonic ${TEST_CARDANO_MNEMONIC_SOURCES})
 target_link_libraries(test_cardano_mnemonic PRIVATE
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
 ADD_TEST(cardano_mnemonic test_cardano_mnemonic)
 
@@ -113,6 +117,7 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_address
 target_link_libraries(test_cardano_mnemonic_to_address PRIVATE
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
 ADD_TEST(cardano_mnemonic_to_address test_cardano_mnemonic_to_address)
 
@@ -137,6 +142,7 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
 target_link_libraries(test_cardano_mnemonic_to_stake_address PRIVATE
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
 ADD_TEST(cardano_mnemonic_to_stake_address 
     test_cardano_mnemonic_to_stake_address
@@ -178,6 +184,7 @@ ADD_EXECUTABLE(test_cardano_transaction_build
 target_link_libraries(test_cardano_transaction_build PRIVATE
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
 ADD_TEST(cardano_transaction_build test_cardano_transaction_build)
 
@@ -203,5 +210,6 @@ ADD_EXECUTABLE(test_cardano_transaction_sign
 target_link_libraries(test_cardano_transaction_sign PRIVATE
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
 ADD_TEST(cardano_transaction_sign test_cardano_transaction_sign)

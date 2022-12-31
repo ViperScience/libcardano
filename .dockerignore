@@ -1,0 +1,26 @@
+# ignore .git and .cache folders
+.git*
+.cache
+!.git
+# need for code coverage report
+
+# ignore build folders
+build/
+debug/
+release/
+cmake-build*
+
+# ignore all markdown files (md)
+*.md
+
+# ignore IDE files
+.vscode
+.idea
+
+# ignore other non-build files
+*.yml
+!codecov.yml
+LICENSE
+.clang-*
+*.sh
+.dockerignore

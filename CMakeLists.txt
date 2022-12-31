@@ -18,6 +18,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Include a thread library for linking that is specific to the platform.
 find_package(Threads REQUIRED)
 
+# Include OpenSSL for the Botan library
+find_package(OpenSSL REQUIRED)
+
 # Add the local cmake directory to the path for custom search files
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -90,6 +93,7 @@ add_library(${PROJECT_NAME} ${CARDANO_SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
 
 ################################################################################

@@ -18,6 +18,7 @@ endif()
 find_package(Cardano REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Botan REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 if (APPLE)
     include_directories("/usr/local/include")
@@ -29,4 +30,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Cardano::Cardano
     botan::botan
     Threads::Threads
+    OpenSSL::SSL
 )
