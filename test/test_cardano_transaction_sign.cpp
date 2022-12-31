@@ -1,10 +1,12 @@
+#include <algorithm>
+#include <string>
+
 #include <cardano/address.hpp>
 #include <cardano/crypto.hpp>
 #include <cardano/encodings.hpp>
 #include <cardano/ledger.hpp>
 #include <cardano/transaction.hpp>
-#include <src/debug_utils.hpp>
-#include <string>
+
 #include <test/tests.hpp>
 
 auto testBasic() -> void
@@ -41,10 +43,10 @@ auto testBasic() -> void
         "addr_"
         "test1qz7aejw84hukpcuqeywa3mmdgt95vtzv5mqp278g4zeua6hg0h2the7qucaar36nr"
         "fntslk57xd7p4ulkgy52ds7ysqqjecqjf";
-    constexpr auto tx_id_hex =
-        "72396b01b12fa78b726c8f5e504c6aaadc3e00397e20cb694d8727bcb8e75c0a";
-    constexpr auto tx_input_hex =
-        "38DC919EA976AC6E834BCBD46B27AECF5DA496C311A085776873A4B9C01F733F";
+
+    const auto tx_input_id = cardano::BASE16::decode(
+        "38DC919EA976AC6E834BCBD46B27AECF5DA496C311A085776873A4B9C01F733F"
+    );
     constexpr auto tx_input_index = 0UL;
     constexpr auto tx_input_value = 100000000UL;  // lovelaces
     constexpr auto tx_amount = 10000000UL;        // lovelaces
@@ -55,10 +57,10 @@ auto testBasic() -> void
     // Build the transaction input. The UTxO must exist in the wallet and will
     // be consumed by the transaction. The corresponding outputs will be
     // automatically created.
-    const auto tx_input_bytes = cardano::BASE16::decode(tx_input_hex);
+    
     auto tx_input_bytes_fixed = std::array<uint8_t, 32>{};
     std::copy_n(
-        std::make_move_iterator(tx_input_bytes.begin()), 32,
+        std::make_move_iterator(tx_input_id.begin()), 32,
         tx_input_bytes_fixed.begin()
     );
     tx.body.inputs.insert({tx_input_bytes_fixed, tx_input_index, tx_input_value}
