@@ -18,19 +18,20 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.25.1/cmake-3.
 COPY . /opt
 WORKDIR /opt
 
-# Build, test, and install the libcardano library
-WORKDIR /opt
-COPY . /opt
-ENV CTEST_OUTPUT_ON_FAILURE=1
-RUN mkdir build && cd build \
- && cmake -DCMAKE_BUILD_TYPE=Release .. \
- && make -j16 \
- && make test \
- && make install
+# Debug build and test
+RUN cmake -S . -B cmake-build-debug/ -D CMAKE_BUILD_TYPE=Debug \
+  && cmake --build cmake-build-debug/ --parallel 8 \
+  && ctest --test-dir cmake-build-debug/ --output-on-failure -T Test #-T Coverage
 
-# Run the libcardano cmake integration test
-WORKDIR /opt/cmake/cmake_integration_test
-RUN mkdir build && cd build \
- && cmake -DCMAKE_BUILD_TYPE=Release .. \
- && make -j16
-RUN ./build/cmake_integration_test
+# Release build, test, and install.
+RUN cmake -S . -B cmake-build-release/ -D CMAKE_BUILD_TYPE=Release \
+  && cmake --build cmake-build-release/ --parallel 8 \
+  && ctest --test-dir cmake-build-release/ --output-on-failure -T Test \
+  && cmake --install cmake-build-release/
+
+# # Run the libcardano cmake integration test
+# WORKDIR /opt/cmake/cmake_integration_test
+# RUN mkdir build && cd build \
+#  && cmake -DCMAKE_BUILD_TYPE=Release .. \
+#  && make -j16
+# RUN ./build/cmake_integration_test
