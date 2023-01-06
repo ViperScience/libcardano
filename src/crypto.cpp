@@ -42,6 +42,82 @@
 
 using namespace cardano;
 
+namespace
+{  // unnamed namespace
+
+// Return true if the index is hardened
+constexpr auto index_is_hardened(uint32_t index) -> bool
+{
+    return (index & (1 << 31)) == 1 ? true : false;
+}  // index_is_hardened
+
+// Serialize the 32 bit index into an array of four bytes.
+constexpr auto serialize_index32(uint32_t index, const DerivationMode mode)
+    -> std::array<uint8_t, 4>
+{
+    auto out = std::array<uint8_t, 4>{};
+    switch (mode)
+    {
+        case DerivationMode::V1:  // BIG ENDIAN
+        {
+            out[0] = static_cast<uint8_t>(index >> 24);
+            out[1] = static_cast<uint8_t>(index >> 16);
+            out[2] = static_cast<uint8_t>(index >> 8);
+            out[3] = static_cast<uint8_t>(index);
+            break;
+        }
+        case DerivationMode::V2:  // LITTLE ENDIAN
+        {
+            out[3] = static_cast<uint8_t>(index >> 24);
+            out[2] = static_cast<uint8_t>(index >> 16);
+            out[1] = static_cast<uint8_t>(index >> 8);
+            out[0] = static_cast<uint8_t>(index);
+            break;
+        }
+    }
+    return out;
+}  // serialize_index32
+
+auto add_left_public(
+    std::span<const uint8_t> z,
+    const ed25519::PublicKey& in,
+    const DerivationMode mode
+) -> ed25519::PublicKey
+{
+    // This effectively zero pads to 64 bytes as needed for the extended secret
+    // key constructor.
+    auto zl8 = std::array<uint8_t, ed25519::ED25519_EXTENDED_KEY_SIZE>{};
+    switch (mode)
+    {
+        case DerivationMode::V1:
+        {
+            auto prev_acc = uint8_t(0);
+            for (auto i = 0UL; i < 32; i++)
+            {
+                zl8[i] = (z[i] << 3) + (prev_acc & 0x8);
+                prev_acc = z[i] >> 5;
+            }
+            break;
+        }
+        case DerivationMode::V2:
+        {
+            uint8_t prev_acc = 0;
+            for (auto i = 0UL; i < 28; i++)
+            {
+                zl8[i] = (z[i] << 3) + (prev_acc & 0x7);
+                prev_acc = z[i] >> 5;
+            }
+            zl8[28] = z[27] >> 5;
+            break;
+        }
+    }
+
+    auto prv_zl8 = ed25519::ExtendedPrivateKey(zl8);
+    return prv_zl8.publicKey().pointAdd(in);
+}  // add_left_public
+
+}  // unnamed namespace
+
 static constexpr size_t NB_ITERATIONS = 15000;
 static constexpr size_t SYM_KEY_SIZE = 32;
 static constexpr size_t SYM_NONCE_SIZE = 8;
@@ -49,11 +125,12 @@ static constexpr size_t SYM_NONCE_SIZE = 8;
 
 auto BIP32PublicKey::fromBech32(std::string bech32_str) -> BIP32PublicKey
 {
-    BIP32PublicKey k;
     const auto [hrp1, data] = BECH32::decode(bech32_str);
-    std::copy_n(data.begin(), k.pub_.size(), k.pub_.begin());
-    std::copy_n(data.begin() + k.pub_.size(), k.cc_.size(), k.cc_.begin());
-    return k;
+    auto pub = std::array<uint8_t, PUBLIC_KEY_SIZE>();
+    auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>();
+    std::copy_n(data.begin(), pub.size(), pub.begin());
+    std::copy_n(data.begin() + pub.size(), cc.size(), cc.begin());
+    return BIP32PublicKey(pub, cc);
 }  // BIP32PublicKey::fromBech32
 
 auto BIP32PublicKey::fromBase16(std::string_view xpub) -> BIP32PublicKey
@@ -86,16 +163,20 @@ auto BIP32PublicKey::fromBase16(
 
 auto BIP32PublicKey::toBytes(bool with_cc) const -> std::vector<uint8_t>
 {
+    auto pub_bytes = this->pub_.bytes();
     if (!with_cc)
-        return std::vector<uint8_t>(
-            this->pub_.data(), this->pub_.data() + this->pub_.size()
-        );
-    return concat_bytes(this->pub_, this->cc_);
+    {
+        std::vector<uint8_t> ret;
+        ret.reserve(pub_bytes.size());
+        ret.insert(ret.end(), begin(pub_bytes), end(pub_bytes));
+        return ret;
+    }
+    return concat_bytes(pub_bytes, this->cc_);
 }  // BIP32PublicKey::toBytes
 
 auto BIP32PublicKey::toBech32(std::string_view hrp) const -> std::string
 {
-    const auto data = concat_bytes(this->pub_, this->cc_);
+    const auto data = concat_bytes(this->pub_.bytes(), this->cc_);
     return BECH32::encode(hrp, data);
 }  // BIP32PublicKey::toBech32
 
@@ -109,36 +190,41 @@ auto BIP32PublicKey::toCBOR(bool with_cc) const -> std::string
     return BASE16::encode(CBOR::encode(this->toBytes(with_cc)));
 }  // BIP32PublicKey::toCBOR
 
-auto BIP32PublicKey::deriveChild(uint32_t index, uint32_t derivation_mode) const
-    -> BIP32PublicKey
+auto BIP32PublicKey::deriveChild(
+    const uint32_t index, const DerivationMode mode
+) const -> BIP32PublicKey
 {
-    const uint8_t* pub_in = this->pub_.data();
-    const uint8_t* cc_in = this->cc_.data();
+    if (index_is_hardened(index)) throw std::exception();
 
-    BIP32PublicKey k;
-    uint8_t* pub_out = k.pub_.data();
-    uint8_t* cc_out = k.cc_.data();
+    auto idxBuf = serialize_index32(index, mode);
 
-    // Derive the child public key for the soft index.
-    derivation_scheme_mode mode;
-    switch (derivation_mode)
-    {
-        case 1:
-            mode = DERIVATION_V1;
-            break;
-        case 2:
-        default:
-            mode = DERIVATION_V2;
-            break;
-    }
-    int flag = wallet_encrypted_derive_public_v2(
-        pub_in, cc_in, index, pub_out, cc_out, mode
-    );
-    if (flag != 0)
-        throw std::runtime_error("Cannot derive hardened index from public key."
-        );
+    /* calculate Z */
+    const auto pub_bytes_in = this->pub_.bytes();
+    auto tag = std::array<uint8_t, 1>{0x02};
+    const auto mac = Botan::MessageAuthenticationCode::create("HMAC(SHA-512)");
+    if (!mac) throw std::runtime_error("Unable to create HMAC object.");
+    mac->set_key(this->cc_.data(), this->cc_.size());
+    mac->update(tag.data(), 1);
+    mac->update(pub_bytes_in.data(), pub_bytes_in.size());
+    mac->update(idxBuf.data(), idxBuf.size());
+    const auto z = mac->final();
 
-    return k;
+    // calculate 8 * Zl
+    auto pub_out = add_left_public(z, this->pub_, mode);
+
+    // calculate the new chain code
+    tag[0] = 0x03;
+    mac->set_key(this->cc_.data(), this->cc_.size());
+    mac->update(tag.data(), 1);
+    mac->update(pub_bytes_in.data(), pub_bytes_in.size());
+    mac->update(idxBuf.data(), idxBuf.size());
+    const auto hmac_out = mac->final();
+
+    // The upper half is the new Chain Code
+    auto cc = std::array<uint8_t, 32>();
+    std::copy_n(hmac_out.begin() + 32, 32, cc.begin());
+
+    return BIP32PublicKey(pub_out.bytes(), cc);
 }  // BIP32PublicKey::deriveChild
 
 auto BIP32PrivateKey::clear() -> bool
@@ -319,7 +405,7 @@ auto BIP32PrivateKey::toExtendedCBOR() const -> std::string
 
 auto BIP32PrivateKey::toPublic() const -> BIP32PublicKey
 {
-    auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>(this->cc_);
+    auto cc = this->cc_;
     auto pub_key = std::array<uint8_t, PUBLIC_KEY_SIZE>();
     cardano_crypto_ed25519_publickey(this->prv_.data(), pub_key.data());
     return {pub_key, cc};

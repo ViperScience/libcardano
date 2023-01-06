@@ -52,8 +52,10 @@ auto testAdvanced() -> void
     TEST_ASSERT_THROW( stake_xvk.toBase16() == stake_xvk_base16 )
     TEST_ASSERT_THROW( root_xsk_enc.decrypt(password).toBase16() == root_xsk_base16 )
 
+    TEST_ASSERT_THROW( addr_xvk.toCBOR() == "5840" + addr_xvk.toBase16() )
     TEST_ASSERT_THROW( addr_xvk.toCBOR(false) == "5820" + addr_xvk.toBase16().substr(0, 64) )
     TEST_ASSERT_THROW( stake_xvk.toCBOR() == "5840" + stake_xvk.toBase16() )
+    TEST_ASSERT_THROW( stake_xvk.toCBOR() == "5840" + stake_xvk_base16 )
     TEST_ASSERT_THROW( root_xsk_enc.decrypt(password).toCBOR() == "5860" + root_xsk_base16 )
 }
 

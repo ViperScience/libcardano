@@ -22,6 +22,7 @@ set(TEST_CARDANO_CRYPTO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${VIPER25519_SOURCES}
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
@@ -45,6 +46,7 @@ set(TEST_CARDANO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${VIPER25519_SOURCES}
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
@@ -68,6 +70,7 @@ set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${VIPER25519_SOURCES}
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
@@ -107,6 +110,7 @@ set(TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${VIPER25519_SOURCES}
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
@@ -132,6 +136,7 @@ set(TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${VIPER25519_SOURCES}
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
@@ -174,6 +179,7 @@ set(TEST_CARDANO_TRANSACTION_BUILD_SOURCES
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/transaction.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${VIPER25519_SOURCES}
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
@@ -200,6 +206,7 @@ set(TEST_CARDANO_TRANSACTION_SIGN_SOURCES
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/transaction.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${VIPER25519_SOURCES}
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 # set the project name, language,  and version
 project(Cardano 
-    DESCRIPTION "A blazingly fast library of Cardano blockchain tools written in modern C++."
+    DESCRIPTION "A modern C++ development kit for the Cardano blockchain."
     VERSION 1.0.0
     LANGUAGES C CXX
 )
@@ -48,6 +48,7 @@ include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${VIPER25519_INCLUDE}
         ${CARDANO_CRYPTO_CBITS_INCLUDE}
         ${CRYPTONITE_CBITS_INCLUDE}
         ${QCBOR_INCLUDE}
@@ -65,9 +66,9 @@ include_directories(${PROJECT_NAME}
 
 # Enable testing globally. Individual tests may be found in the `tests`
 # subdirectory of the repository.
-ENABLE_TESTING()
-
-ADD_SUBDIRECTORY(test build)
+include(CTest)
+enable_testing()
+add_subdirectory(test) 
 
 ################################################################################
 # Target Build and Link
@@ -80,6 +81,7 @@ set(CARDANO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
+    ${VIPER25519_SOURCES}
     ${CARDANO_CRYPTO_CBITS_SOURCES}
     ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}

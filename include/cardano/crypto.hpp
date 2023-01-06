@@ -26,6 +26,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <viper25519/ed25519.hpp>
 
 namespace cardano
 {
@@ -41,6 +42,13 @@ static constexpr uint32_t HardenIndex(uint32_t index)
     return index;
 }
 
+/// @brief  Key derivation mode.
+enum class DerivationMode
+{
+    V1,
+    V2
+};
+
 // Forward Declarations
 class BIP32PublicKey;
 class BIP32PrivateKey;
@@ -50,8 +58,8 @@ class BIP32PrivateKeyEncrypted;
 class BIP32PublicKey
 {
   private:
-    /// Public key byte array (unencrypted).
-    std::array<uint8_t, PUBLIC_KEY_SIZE> pub_{};
+    /// Public key (unencrypted).
+    ed25519::PublicKey pub_;
 
     /// Chain code byte array (unencrypted).
     std::array<uint8_t, CHAIN_CODE_SIZE> cc_{};
@@ -101,9 +109,11 @@ class BIP32PublicKey
 
     /// Derive a child (non-hardened) key from the public key.
     /// @param index Non-hardened BIP32 derivation index.
-    /// @param derivation_mode 1 - Byron, 2 - Shelley
-    [[nodiscard]] auto deriveChild(uint32_t index, uint32_t derivation_mode = 2)
-        const -> BIP32PublicKey;
+    /// @param derivation_mode V1 - Byron, V2 - Shelley
+    [[nodiscard]] auto deriveChild(
+        const uint32_t index,
+        const DerivationMode derivation_mode = DerivationMode::V2
+    ) const -> BIP32PublicKey;
 
 };  // BIP32PublicKey
 
