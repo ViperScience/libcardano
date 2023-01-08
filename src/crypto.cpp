@@ -484,6 +484,12 @@ auto BIP32PrivateKey::deriveChild(const uint32_t index, const DerivationMode mod
     return {res_key, cc};
 }  // BIP32PrivateKey::deriveChild
 
+auto BIP32PrivateKey::sign(std::span<const uint8_t> msg) const
+        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
+{
+    return this->prv_.sign(msg);
+} // BIP32PrivateKey::sign
+
 auto BIP32PrivateKey::encrypt(std::string_view password)
     -> BIP32PrivateKeyEncrypted
 {
@@ -580,3 +586,10 @@ auto BIP32PrivateKeyEncrypted::toExtendedCBOR(std::string_view password) const
     auto bytes = concat_bytes(this->xprv_, pubkey);
     return BASE16::encode(CBOR::encode(bytes));
 }  // BIP32PrivateKeyEncrypted::toExtendedCBOR
+
+auto BIP32PrivateKeyEncrypted::sign(std::string_view password, std::span<const uint8_t> msg) const
+        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
+{
+    auto unenc_key = this->decrypt(password);
+    return unenc_key.sign(msg);
+} // BIP32PrivateKeyEncrypted::sign

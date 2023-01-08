@@ -21,10 +21,7 @@ set(TEST_CARDANO_CRYPTO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${VIPER25519_SOURCES}
-    ${CARDANO_CRYPTO_CBITS_SOURCES}
-    ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_crypto ${TEST_CARDANO_CRYPTO_SOURCES})
@@ -35,9 +32,9 @@ target_link_libraries(test_cardano_crypto PRIVATE
 )
 ADD_TEST(cardano_crypto test_cardano_crypto)
 
-########################################################################
-# Test the address implementations
-########################################################################
+# ########################################################################
+# # Test the address implementations
+# ########################################################################
 
 set(TEST_CARDANO_ADDRESS_SOURCES 
     test_cardano_address.cpp
@@ -45,10 +42,7 @@ set(TEST_CARDANO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${VIPER25519_SOURCES}
-    ${CARDANO_CRYPTO_CBITS_SOURCES}
-    ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
@@ -69,10 +63,7 @@ set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${VIPER25519_SOURCES}
-    ${CARDANO_CRYPTO_CBITS_SOURCES}
-    ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_byron_address ${TEST_CARDANO_BYRON_ADDRESS_SOURCES})
@@ -109,10 +100,7 @@ set(TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${VIPER25519_SOURCES}
-    ${CARDANO_CRYPTO_CBITS_SOURCES}
-    ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_mnemonic_to_address
@@ -135,10 +123,7 @@ set(TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${VIPER25519_SOURCES}
-    ${CARDANO_CRYPTO_CBITS_SOURCES}
-    ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
@@ -178,10 +163,7 @@ set(TEST_CARDANO_TRANSACTION_BUILD_SOURCES
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/transaction.cpp
-    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${VIPER25519_SOURCES}
-    ${CARDANO_CRYPTO_CBITS_SOURCES}
-    ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_transaction_build
@@ -205,10 +187,7 @@ set(TEST_CARDANO_TRANSACTION_SIGN_SOURCES
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/transaction.cpp
-    ${CMAKE_SOURCE_DIR}/src/cardano_crypto_interface.c
     ${VIPER25519_SOURCES}
-    ${CARDANO_CRYPTO_CBITS_SOURCES}
-    ${CRYPTONITE_CBITS_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_transaction_sign

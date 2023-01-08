@@ -18,17 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Standard Library Headers
+// Standard library headers
 
-// Third Party Library Headers
+// Third-party library headers
 #include <botan/hash.h>
 
-// Public Cardano++ Headers
+// Public libcardano headers
 #include <cardano/encodings.hpp>
 #include <cardano/transaction.hpp>
 
-// Private Cardano++ Headers
-#include "cardano_crypto_interface.h"
+// Private libcardano code
 #include "utils.hpp"
 
 using namespace cardano;
@@ -186,25 +185,11 @@ auto TxSerializer::getID(const Transaction& tx) -> std::vector<uint8_t>
 auto TxSigner::makeWitness(const Transaction& tx, const BIP32PrivateKey& skey)
     -> std::vector<uint8_t>
 {
-    // Get the public key paired with the signing key.
-    const auto pkey_bytes = skey.toPublic().toBytes(false);
-    const auto pub_key = (const uint8_t*)pkey_bytes.data();
-
-    // Get access to the signing key byte array
-    const auto skey_bytes = skey.toBytes(false);
-    const auto prv_key = (const uint8_t*)skey_bytes.data();
-
     // The transaction ID is the message to be signed.
     const auto txid = TxSerializer::getID(tx);
-    const auto msg = (const uint8_t*)txid.data();
+    auto signature = skey.sign(txid);
 
-    // Create the signature
-    auto signature = std::vector<uint8_t>(TX_SIGNATURE_SIZE);  // output
-    cardano_crypto_ed25519_sign(
-        msg, txid.size(), NULL, 0, prv_key, pub_key, (uint8_t*)signature.data()
-    );
-
-    return signature;
+    return std::vector<uint8_t>(signature.begin(), signature.end());
 }  // TxSigner::makeWitness
 
 auto TxSigner::sign(Transaction& tx, const BIP32PrivateKey& skey) -> void

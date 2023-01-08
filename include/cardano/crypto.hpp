@@ -21,12 +21,17 @@
 #ifndef _CARDANO_CRYPTO_HPP_
 #define _CARDANO_CRYPTO_HPP_
 
+// Standard library headers
 #include <array>
-#include <cardano/mnemonic.hpp>
 #include <cstdint>
 #include <string>
 #include <vector>
+
+// Third-party library headers
 #include <viper25519/ed25519.hpp>
+
+// Public libcardano headers
+#include <cardano/mnemonic.hpp>
 
 namespace cardano
 {
@@ -184,6 +189,9 @@ class BIP32PrivateKey
         const uint32_t index,
         const DerivationMode derivation_mode = DerivationMode::V2)
         const -> BIP32PrivateKey;
+    
+    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
+        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>;
 
     /// Encrypt the private key bytes with a password using the same method as
     /// that used by the Daedalus wallet. This clears the unencrypted private
@@ -237,6 +245,10 @@ class BIP32PrivateKeyEncrypted
         -> BIP32PublicKey;
     [[nodiscard]] auto decrypt(std::string_view password) const
         -> BIP32PrivateKey;
+
+    [[nodiscard]] auto sign(std::string_view password, std::span<const uint8_t> msg) const
+        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>;
+    
 };  // BIP32PrivateKeyEncrypted
 
 }  // namespace cardano
