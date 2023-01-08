@@ -1,6 +1,7 @@
 #include <string>
 #include <test/tests.hpp>
 #include <cardano/crypto.hpp>
+#include <cardano/encodings.hpp>
 
 auto testBasic() -> void
 {
@@ -32,12 +33,10 @@ auto testAdvanced() -> void
     std::string password = "password";
 
     auto root_xsk = cardano::BIP32PrivateKey::fromBech32(root_xsk_bech32);
-    auto root_xsk_v2 = cardano::BIP32PrivateKey(root_xsk_base16.substr(0, 128), root_xsk_base16.substr(128, 64));
+    auto root_xsk_v2 = cardano::BIP32PrivateKey::fromBytes(cardano::BASE16::decode(root_xsk_base16));
     TEST_ASSERT_THROW( root_xsk.toBase16() == root_xsk_v2.toBase16() )
 
     auto root_xsk_enc = root_xsk.encrypt(password);
-    TEST_ASSERT_THROW( root_xsk.toCBOR(false) == "5840" + zeros_base16 ) // skey cleared
-
     auto acct_xsk_enc = root_xsk_enc.deriveChild(cardano::HardenIndex(1852), password)
                                     .deriveChild(cardano::HardenIndex(1815), password)
                                     .deriveChild(cardano::HardenIndex(0), password);

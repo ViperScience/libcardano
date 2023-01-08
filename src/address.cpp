@@ -566,7 +566,7 @@ auto ByronAddress::fromRootKey(
     if (dpath.size() != 2)
         throw std::invalid_argument("Invalid Byron address derivation path.");
     auto addr_xpub =
-        xprv.deriveChild(dpath[0], 1).deriveChild(dpath[1], 1).toPublic();
+        xprv.deriveChild(dpath[0], DerivationMode::V1).deriveChild(dpath[1], DerivationMode::V1).toPublic();
 
     // CBOR encode the address spending data
     auto spending_cbor = CBOR::Encoder::newArray();

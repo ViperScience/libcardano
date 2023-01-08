@@ -33,8 +33,8 @@ auto concat_bytes(SizedRange1 const &r1, SizedRange2 const &r2)
 {
     std::vector<typename SizedRange1::value_type> ret;
     ret.reserve(r1.size() + r2.size());
-    ret.insert(ret.end(), begin(r1), end(r1));
-    ret.insert(ret.end(), begin(r2), end(r2));
+    ret.insert(ret.end(), std::begin(r1), std::end(r1));
+    ret.insert(ret.end(), std::begin(r2), std::end(r2));
     return ret;
 }  // concat_bytes
 

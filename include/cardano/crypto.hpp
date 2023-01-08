@@ -121,8 +121,8 @@ class BIP32PublicKey
 class BIP32PrivateKey
 {
   private:
-    /// Private key byte array (unencrypted)
-    std::array<uint8_t, ENCRYPTED_KEY_SIZE> prv_{};
+    /// Private key (unencrypted).
+    ed25519::ExtendedPrivateKey prv_;
 
     /// Chain code byte array (unencrypted).
     std::array<uint8_t, CHAIN_CODE_SIZE> cc_{};
@@ -132,10 +132,10 @@ class BIP32PrivateKey
     BIP32PrivateKey() = default;
 
     /// Clear the contents of the private key array.
-    bool clear();
+    // bool clear();
 
   public:
-    constexpr BIP32PrivateKey(
+    BIP32PrivateKey(
         std::array<uint8_t, ENCRYPTED_KEY_SIZE> priv,
         std::array<uint8_t, CHAIN_CODE_SIZE> cc
     )
@@ -143,14 +143,8 @@ class BIP32PrivateKey
     {
     }
 
-    explicit BIP32PrivateKey(std::span<const uint8_t> xpriv);  // prv + cc
-    explicit BIP32PrivateKey(std::string_view xpriv);          // prv + cc
-    BIP32PrivateKey(const std::string& prv, const std::string& cc);
-
-    /// Destructor - clear the private key byte array.
-    ~BIP32PrivateKey() { this->clear(); }
-
     /// Factory methods
+    static auto fromBytes(std::span<const uint8_t> xpriv) -> BIP32PrivateKey; // prv + cc
     static auto fromBech32(std::string_view bech32_str) -> BIP32PrivateKey;
     static auto fromMnemonic(const cardano::Mnemonic& mn) -> BIP32PrivateKey;
     static auto fromMnemonicByron(const cardano::Mnemonic& mn)
@@ -185,8 +179,10 @@ class BIP32PrivateKey
 
     /// Derive a child key from the private key.
     /// @param index BIP32 derivation index.
-    /// @param derivation_mode 1 - Byron, 2 - Shelley
-    [[nodiscard]] auto deriveChild(uint32_t index, uint32_t derivation_mode = 2)
+    /// @param derivation_mode V1 - Byron, V2 - Shelley
+    [[nodiscard]] auto deriveChild(
+        const uint32_t index,
+        const DerivationMode derivation_mode = DerivationMode::V2)
         const -> BIP32PrivateKey;
 
     /// Encrypt the private key bytes with a password using the same method as
@@ -220,7 +216,6 @@ class BIP32PrivateKeyEncrypted
     }
 
     BIP32PrivateKeyEncrypted(const std::string& prv_enc, const std::string& cc);
-    explicit BIP32PrivateKeyEncrypted(std::string_view xprv_enc);
 
     /// Access methods
     [[nodiscard]] auto toBase16() const -> std::string;
@@ -234,7 +229,9 @@ class BIP32PrivateKeyEncrypted
 
     /// Conversion methods
     [[nodiscard]] auto deriveChild(
-        uint32_t index, std::string_view password, uint32_t derivation_mode = 2
+        const uint32_t index,
+        std::string_view password,
+        const DerivationMode derivation_mode = DerivationMode::V2
     ) const -> BIP32PrivateKeyEncrypted;
     [[nodiscard]] auto toPublic(std::string_view password) const
         -> BIP32PublicKey;
