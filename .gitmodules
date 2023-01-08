@@ -1,9 +1,3 @@
-[submodule "libs/cardano-crypto"]
-	path = libs/cardano-crypto
-	url = https://github.com/input-output-hk/cardano-crypto.git
-[submodule "libs/cryptonite"]
-	path = libs/cryptonite
-	url = https://github.com/haskell-crypto/cryptonite.git
 [submodule "libs/qcbor"]
 	path = libs/qcbor
 	url = https://github.com/laurencelundblade/QCBOR.git
