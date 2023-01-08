@@ -18,23 +18,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Standard Library Headers
+// Standard library headers
 #include <algorithm>
 #include <stdexcept>
 
-// Third Party Library Headers
+// Third-party library headers
 #include <botan/cipher_mode.h>
 #include <botan/hash.h>
 #include <botan/pbkdf2.h>
 #include <botan/pwdhash.h>
 
-// Public Cardano++ Headers
+// Public libcardano headers
 #include <cardano/address.hpp>
 #include <cardano/crypto.hpp>
 #include <cardano/encodings.hpp>
 
-// Private Cardano++ Headers
-#include "cardano_crypto_interface.h"
+// Private libcardano source
 #include "utils.hpp"
 
 using namespace cardano;
@@ -72,17 +71,29 @@ BaseAddress BaseAddress::fromKeys(
     NetworkID nid, BIP32PublicKey pmt_key, BIP32PublicKey stake_key
 )
 {
-    auto pmt_key_bytes = pmt_key.toBytes(false);
-    auto stake_key_bytes = stake_key.toBytes(false);
-    auto pmt_key_hash = std::array<uint8_t, KEY_HASH_LENGTH>();
-    auto stake_key_hash = std::array<uint8_t, KEY_HASH_LENGTH>();
-    blake2b_224_hash(
-        pmt_key_bytes.data(), pmt_key_bytes.size(), pmt_key_hash.data()
+    const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
+
+    const auto pmt_key_bytes = pmt_key.toBytes(false);
+    blake2b->update(pmt_key_bytes.data(), pmt_key_bytes.size());
+    const auto pmt_key_hash = blake2b->final();
+
+    // Put the hash in a std::array of bytes for the address constructor.
+    auto pmt_key_hash_array = std::array<uint8_t, KEY_HASH_LENGTH>();
+    std::copy_n(
+        pmt_key_hash.begin(), KEY_HASH_LENGTH, pmt_key_hash_array.begin()
     );
-    blake2b_224_hash(
-        stake_key_bytes.data(), stake_key_bytes.size(), stake_key_hash.data()
+
+    const auto stake_key_bytes = stake_key.toBytes(false);
+    blake2b->update(stake_key_bytes.data(), stake_key_bytes.size());
+    const auto stake_key_hash = blake2b->final();
+
+    // Put the hash in a std::array of bytes for the address constructor.
+    auto stake_key_hash_array = std::array<uint8_t, KEY_HASH_LENGTH>();
+    std::copy_n(
+        stake_key_hash.begin(), KEY_HASH_LENGTH, stake_key_hash_array.begin()
     );
-    return BaseAddress(nid, pmt_key_hash, stake_key_hash);
+
+    return BaseAddress(nid, pmt_key_hash_array, stake_key_hash_array);
 }  // BaseAddress::fromKeys
 
 auto BaseAddress::fromBech32(std::string addr_bech32) -> BaseAddress
@@ -137,10 +148,16 @@ EnterpriseAddress::EnterpriseAddress(
 auto EnterpriseAddress::fromKey(NetworkID nid, BIP32PublicKey key)
     -> EnterpriseAddress
 {
-    auto key_bytes = key.toBytes(false);
-    auto key_hash = std::array<uint8_t, KEY_HASH_LENGTH>();
-    blake2b_224_hash(key_bytes.data(), key_bytes.size(), key_hash.data());
-    return EnterpriseAddress(nid, key_hash);
+    const auto key_bytes = key.toBytes(false);
+    const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
+    blake2b->update(key_bytes.data(), key_bytes.size());
+    const auto key_hash = blake2b->final();
+
+    // Put the hash in a std::array of bytes for the address constructor.
+    auto key_hash_array = std::array<uint8_t, KEY_HASH_LENGTH>();
+    std::copy_n(key_hash.begin(), KEY_HASH_LENGTH, key_hash_array.begin());
+
+    return EnterpriseAddress(nid, key_hash_array);
 }  // EnterpriseAddress::fromKeys
 
 auto EnterpriseAddress::fromBech32(std::string addr_bech32) -> EnterpriseAddress
@@ -197,12 +214,16 @@ RewardsAddress::RewardsAddress(
 auto RewardsAddress::fromKey(NetworkID nid, BIP32PublicKey stake_key)
     -> RewardsAddress
 {
-    auto stake_key_bytes = stake_key.toBytes(false);
-    auto stake_key_hash = std::array<uint8_t, KEY_HASH_LENGTH>();
-    blake2b_224_hash(
-        stake_key_bytes.data(), stake_key_bytes.size(), stake_key_hash.data()
-    );
-    return RewardsAddress(nid, stake_key_hash);
+    const auto stake_key_bytes = stake_key.toBytes(false);
+    const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
+    blake2b->update(stake_key_bytes.data(), stake_key_bytes.size());
+    const auto key_hash = blake2b->final();
+
+    // Put the hash in a std::array of bytes for the address constructor.
+    auto key_hash_array = std::array<uint8_t, KEY_HASH_LENGTH>();
+    std::copy_n(key_hash.begin(), KEY_HASH_LENGTH, key_hash_array.begin());
+
+    return RewardsAddress(nid, key_hash_array);
 }  // RewardsAddress::fromKeys
 
 auto RewardsAddress::fromBech32(std::string addr_bech32) -> RewardsAddress
@@ -565,8 +586,9 @@ auto ByronAddress::fromRootKey(
     // Derive the address public key from the root private key.
     if (dpath.size() != 2)
         throw std::invalid_argument("Invalid Byron address derivation path.");
-    auto addr_xpub =
-        xprv.deriveChild(dpath[0], DerivationMode::V1).deriveChild(dpath[1], DerivationMode::V1).toPublic();
+    auto addr_xpub = xprv.deriveChild(dpath[0], DerivationMode::V1)
+                         .deriveChild(dpath[1], DerivationMode::V1)
+                         .toPublic();
 
     // CBOR encode the address spending data
     auto spending_cbor = CBOR::Encoder::newArray();
