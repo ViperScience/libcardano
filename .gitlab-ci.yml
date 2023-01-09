@@ -1,7 +1,7 @@
 stages:
 - build
-- test
-- deploy
+# - test
+# - deploy
 
 docker-build:
   image: docker:latest
@@ -32,22 +32,22 @@ docker-build:
       exists:
         - Dockerfile
 
-# Technically don't need to run this stage, since CTest tests are already run during the Docker build
-.ctest-template: &ctest-template
-  script:
-    - cd /opt/build
-    - make test
+# # Technically don't need to run this stage, since CTest tests are already run during the Docker build
+# .ctest-template: &ctest-template
+#   script:
+#     - cd /opt/build
+#     - make test
 
-ctest-tests-default:
-  image: "$CI_REGISTRY_IMAGE"
-  stage: test
-  <<: *ctest-template
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+# ctest-tests-default:
+#   image: "$CI_REGISTRY_IMAGE"
+#   stage: test
+#   <<: *ctest-template
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-ctest-tests-nondefault:
-  image: "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
-  stage: test
-  <<: *ctest-template
-  rules:
-    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+# ctest-tests-nondefault:
+#   image: "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
+#   stage: test
+#   <<: *ctest-template
+#   rules:
+#     - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
