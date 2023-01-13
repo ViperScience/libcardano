@@ -184,7 +184,7 @@ auto Mnemonic::generate(size_t mnemonic_size, BIP39Language lang) -> Mnemonic
     // |  256  |  8 |   264  |  24  |
     const size_t checksum_size_bits = mnemonic_size / 3;
     const size_t entropy_size_bits = checksum_size_bits * 32;
-    const size_t entropy_size_bytes = checksum_size_bits * 4;
+    const size_t entropy_size_bytes = entropy_size_bits / 8;
 
     // Use the Botan random number generator for generating the entropy.
     std::unique_ptr<Botan::RandomNumberGenerator> rng;
@@ -304,7 +304,6 @@ auto Mnemonic::verify_checksum() const -> bool
     if (!is_valid_mnemonic_size(mnemonic_size))
         throw std::invalid_argument("Not a valid mnemonic size");
     const auto checksum_size_bits = mnemonic_size / 3;
-    const auto entropy_size_bytes = checksum_size_bits * 4;
 
     // Convert the mnemonic word indexes back to the entropy.
     auto [entropy_byte_vector, old_checksum] = this->toEntropy();

@@ -3,7 +3,6 @@
 #include <cardano/address.hpp>
 #include <cardano/crypto.hpp>
 #include <cardano/encodings.hpp>
-#include <src/debug_utils.hpp>
 #include <test/tests.hpp>
 
 auto testBasic() -> void

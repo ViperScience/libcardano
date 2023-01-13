@@ -38,12 +38,6 @@ auto concat_bytes(SizedRange1 const &r1, SizedRange2 const &r2)
     return ret;
 }  // concat_bytes
 
-static auto lowercase(std::string &s) -> void
-{
-    auto make_lower = [](unsigned char c) { return std::tolower(c); };
-    std::transform(s.begin(), s.end(), s.begin(), make_lower);
-}  // lowercase
-
 static constexpr auto strcmpi(std::string_view h1, std::string_view h2) -> bool
 {
     if (h1.size() != h2.size()) return false;

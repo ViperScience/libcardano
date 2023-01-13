@@ -17,7 +17,6 @@ auto testStatic() -> void
 auto testEncode() -> void
 {
 }
-#include <iostream>
 
 auto testSimpleDecode() -> void
 {
@@ -28,8 +27,7 @@ auto testSimpleDecode() -> void
     TEST_ASSERT_THROW( decoder.getUint32() == 3 )
     TEST_ASSERT_THROW( decoder.getUint64() == 4 )
 }
-#include <src/debug_utils.hpp>
-using namespace cardano_debug;
+
 auto testDecode() -> void
 {
     // CBOR From an example Transaction

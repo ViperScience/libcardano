@@ -289,7 +289,10 @@ auto BECH32::decode(std::string_view str)
     auto bech32_str = std::string(str);
 
     // Ensure the string characters are all lower case.
-    lowercase(bech32_str);
+    auto make_lower = [](unsigned char c) { return std::tolower(c); };
+    std::transform(
+        bech32_str.begin(), bech32_str.end(), bech32_str.begin(), make_lower
+    );
 
     // Find the separator.
     size_t bech32_str_size = str.size();
@@ -392,7 +395,8 @@ auto BASE58::decode(std::string_view str) -> std::vector<uint8_t>
     int enc_len = str.length();
     for (int i = 0; i < enc_len; i++)
     {
-        unsigned int carry = (unsigned int)B58_CHARSET_REV[str[i]];
+        auto charset_index = static_cast<uint8_t>(str[i]);
+        unsigned int carry = (unsigned int)B58_CHARSET_REV[charset_index];
         for (int j = 0; j < res_len; j++)
         {
             carry += (unsigned int)(result[j]) * 58;
@@ -517,7 +521,7 @@ auto CBOR::Encoder::startArrayInMap(int64_t k) -> void
 {
     auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
     QCBOREncode_OpenArrayInMapN(ctx.get(), k);
-} // CBOR::Encoder::startArrayInMap
+}  // CBOR::Encoder::startArrayInMap
 
 auto CBOR::Encoder::endArray() -> void
 {
@@ -561,7 +565,7 @@ auto CBOR::Encoder::startMapInMap(int64_t k) -> void
 {
     auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
     QCBOREncode_OpenMapInMapN(ctx.get(), k);
-} // CBOR::Encoder::startMapInMap
+}  // CBOR::Encoder::startMapInMap
 
 auto CBOR::Encoder::endMap() -> void
 {
@@ -611,13 +615,13 @@ auto CBOR::Encoder::addBool(bool v) -> void
 {
     auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
     QCBOREncode_AddBool(ctx.get(), v);
-} // CBOR::Encoder::addBool
+}  // CBOR::Encoder::addBool
 
 auto CBOR::Encoder::addNULL() -> void
 {
     auto ctx = std::static_pointer_cast<QCBOREncodeContext>(this->_cbor_ctx);
     QCBOREncode_AddNULL(ctx.get());
-} // CBOR::Encoder::addNULL
+}  // CBOR::Encoder::addNULL
 
 auto CBOR::Encoder::addToMap(std::string_view k, int64_t v) -> void
 {

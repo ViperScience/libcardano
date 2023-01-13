@@ -5,7 +5,7 @@
 
 auto testBasic() -> void
 {
-    for (const auto sz : {9, 12, 15, 18, 21, 24})
+    for (const size_t sz : {9, 12, 15, 18, 21, 24})
     {
         for (size_t n = 0; n < 1000; ++n)
         {

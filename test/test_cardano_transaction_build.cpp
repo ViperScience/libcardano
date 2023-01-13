@@ -9,8 +9,8 @@
 
 auto testBasic() -> void
 {
-    auto from_skey_cbor =
-        "58201bd8bb327a5b3c105015ac70c055f6a7221e55c8b988c1b4117e78591ad1e5fe";
+    // auto from_skey_cbor =
+    //     "58201bd8bb327a5b3c105015ac70c055f6a7221e55c8b988c1b4117e78591ad1e5fe";
     auto from_addr_bech32 =
         "addr_"
         "test1qzqcspr8cx0djx9ds9wtn9nan6k2mpw8dxc0jf4ds666urdyc9pn6xptv3c5tcx7r"
