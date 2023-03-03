@@ -581,7 +581,7 @@ auto ByronAddress::fromRootKey(
     const auto xpub = xprv.toPublic();
 
     // Create the address attributes
-    auto attrs = ByronAddress::Attributes::fromKey(xpub, dpath);
+    auto attrs = ByronAddress::Attributes::fromKey(xpub, dpath, network_magic);
 
     // Derive the address public key from the root private key.
     if (dpath.size() != 2)

@@ -21,12 +21,17 @@
 #ifndef _CARDANO_ADDRESS_HPP_
 #define _CARDANO_ADDRESS_HPP_
 
+// Standard library headers
 #include <array>
-#include <cardano/crypto.hpp>
 #include <cstdint>
 #include <span>
 #include <string>
 #include <vector>
+
+// Third-party library headers
+
+// Public libcardano headers
+#include <cardano/crypto.hpp>
 
 namespace cardano
 {
@@ -42,11 +47,11 @@ enum class NetworkID
 class BaseAddress
 {
   private:
-    uint8_t header_byte_;
+    uint8_t header_byte_ = 0;
     std::array<uint8_t, KEY_HASH_LENGTH> pmt_key_hash_{};
     std::array<uint8_t, KEY_HASH_LENGTH> stk_key_hash_{};
 
-    // Make the default constructor private so it can only be used by the static
+    // Make the default constructor private to prevent use outside of static
     // factory methods.
     BaseAddress() = default;
 
@@ -71,9 +76,9 @@ class EnterpriseAddress
 {
   private:
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
-    uint8_t header_byte_;
+    uint8_t header_byte_ = 0;
 
-    // Make the default constructor private so it can only be used by the static
+    // Make the default constructor private to prevent use outside of static
     // factory methods.
     EnterpriseAddress() = default;
 
@@ -98,9 +103,9 @@ class RewardsAddress
 {
   private:
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
-    uint8_t header_byte_;
+    uint8_t header_byte_ = 0;
 
-    // Make the default constructor private so it can only be used by the static
+    // Make the default constructor private to prevent use outside of static
     // factory methods.
     RewardsAddress() = default;
 
@@ -167,7 +172,7 @@ class ByronAddress
         ByronAddress::Attributes attrs,
         ByronAddress::Type type
     )
-        : root_{std::move(root)}, attrs_{std::move(attrs)}, type_{type}
+        : root_{root}, attrs_{std::move(attrs)}, type_{type}
     {
     }
 
@@ -187,9 +192,9 @@ class ByronAddress
     [[nodiscard]] auto toBase58() const -> std::string;
 
   private:
-    std::array<uint8_t, KEY_HASH_LENGTH> root_;
-    ByronAddress::Attributes attrs_;
-    ByronAddress::Type type_;
+    std::array<uint8_t, KEY_HASH_LENGTH> root_{};
+    ByronAddress::Attributes attrs_{};
+    ByronAddress::Type type_ = ByronAddress::Type::pubkey;
 
     /// Convert an ByronAddress::Type enum to unsigned int for CBOR encoding.
     static constexpr auto typeToUint(ByronAddress::Type t) -> uint8_t;

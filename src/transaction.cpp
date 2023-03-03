@@ -56,7 +56,9 @@ auto TxBuilder::newPaymentDraft(
     for (auto utxo : inputs)
         tx.body.inputs.insert({utxo.getId(), utxo.getIndex(), utxo.getValue()});
     tx.body.outputs.push_back(make_alonzo_output(from_addr.toBytes(true), 0));
-    tx.body.outputs.push_back(make_alonzo_output(to_addr.toBytes(true), 0));
+    tx.body.outputs.push_back(
+        make_alonzo_output(to_addr.toBytes(true), lovelaces)
+    );
     return tx;
 }  // TxBuilder::newPaymentDraft
 
@@ -72,7 +74,9 @@ auto TxBuilder::newPayment(
     for (auto utxo : inputs)
         tx.body.inputs.insert({utxo.getId(), utxo.getIndex(), utxo.getValue()});
     tx.body.outputs.push_back(make_alonzo_output(from_addr.toBytes(true), 0));
-    tx.body.outputs.push_back(make_alonzo_output(to_addr.toBytes(true), 0));
+    tx.body.outputs.push_back(
+        make_alonzo_output(to_addr.toBytes(true), lovelaces)
+    );
     tx.body.ttl = ttl;
     // Calculate fees and set outputs (iterative process)
 
@@ -124,10 +128,10 @@ auto TxSerializer::toCBOR(const Transaction& tx) -> std::vector<uint8_t>
     txcbor.startMap();
     if (tx.witness_set.vkeywitness_vec.size() > 0)
     {
-        txcbor.startArrayInMap(0); // ? 0: [* vkeywitness ]
+        txcbor.startArrayInMap(0);  // ? 0: [* vkeywitness ]
         for (auto vkeywit : tx.witness_set.vkeywitness_vec)
         {
-            auto [ vk, sig ] = vkeywit;
+            auto [vk, sig] = vkeywit;
             txcbor.startArray();
             txcbor.add(vk);
             txcbor.add(sig);

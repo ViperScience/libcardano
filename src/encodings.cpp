@@ -240,8 +240,7 @@ auto convertbits(
     int max_acc = (1 << (frombits + tobits - 1)) - 1;
     for (const auto &value : data)
     {
-        if (value < 0 or (value >> frombits))
-            throw std::invalid_argument("Invalid bits.");
+        if (value >> frombits) throw std::invalid_argument("Invalid bits.");
         acc = ((acc << frombits) | value) & max_acc;
         bits += frombits;
         while (bits >= tobits)
@@ -476,8 +475,8 @@ auto CBOR::encode(uint64_t v) -> std::vector<uint8_t>
 
 auto CBOR::decodeUint32(std::span<const uint8_t> b) -> uint32_t
 {
-    int64_t temp;
-    uint32_t ret_val;
+    int64_t temp = 0;
+    uint32_t ret_val = 0;
     QCBORDecodeContext ctx;
     auto bytes = (UsefulBufC){b.data(), b.size()};
     QCBORDecode_Init(&ctx, bytes, QCBOR_DECODE_MODE_NORMAL);
@@ -788,7 +787,7 @@ auto CBOR::Decoder::getSkip() -> void
 
 auto CBOR::Decoder::getInt64() -> int64_t
 {
-    int64_t retVal;
+    int64_t retVal = 0;
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
     QCBORDecode_GetInt64(ctx.get(), &retVal);
     return retVal;
@@ -796,7 +795,7 @@ auto CBOR::Decoder::getInt64() -> int64_t
 
 auto CBOR::Decoder::getInt32() -> int32_t
 {
-    int32_t ret_val;
+    int32_t ret_val = 0;
     int64_t temp = this->getInt64();
     QCBOR_Int64ToInt32(temp, &ret_val);
     return ret_val;
@@ -804,7 +803,7 @@ auto CBOR::Decoder::getInt32() -> int32_t
 
 auto CBOR::Decoder::getInt16() -> int16_t
 {
-    int16_t ret_val;
+    int16_t ret_val = 0;
     int64_t temp = this->getInt64();
     QCBOR_Int64ToInt16(temp, &ret_val);
     return ret_val;
@@ -812,7 +811,7 @@ auto CBOR::Decoder::getInt16() -> int16_t
 
 auto CBOR::Decoder::getInt8() -> int8_t
 {
-    int8_t ret_val;
+    int8_t ret_val = 0;
     int64_t temp = this->getInt64();
     QCBOR_Int64ToInt8(temp, &ret_val);
     return ret_val;
@@ -820,7 +819,7 @@ auto CBOR::Decoder::getInt8() -> int8_t
 
 auto CBOR::Decoder::getUint64() -> uint64_t
 {
-    uint64_t ret_val;
+    uint64_t ret_val = 0;
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
     QCBORDecode_GetUInt64(ctx.get(), &ret_val);
     return ret_val;
@@ -828,7 +827,7 @@ auto CBOR::Decoder::getUint64() -> uint64_t
 
 auto CBOR::Decoder::getUint32() -> uint32_t
 {
-    uint32_t ret_val;
+    uint32_t ret_val = 0;
     int64_t temp = this->getInt64();
     QCBOR_Int64ToUInt32(temp, &ret_val);
     return ret_val;
@@ -836,7 +835,7 @@ auto CBOR::Decoder::getUint32() -> uint32_t
 
 auto CBOR::Decoder::getUint16() -> uint16_t
 {
-    uint16_t ret_val;
+    uint16_t ret_val = 0;
     int64_t temp = this->getInt64();
     QCBOR_Int64UToInt16(temp, &ret_val);
     return ret_val;
@@ -844,7 +843,7 @@ auto CBOR::Decoder::getUint16() -> uint16_t
 
 auto CBOR::Decoder::getUint8() -> uint8_t
 {
-    uint8_t ret_val;
+    uint8_t ret_val = 0;
     int64_t temp = this->getInt64();
     QCBOR_Int64ToUInt8(temp, &ret_val);
     return ret_val;
@@ -885,7 +884,7 @@ auto CBOR::Decoder::getNULL() -> bool
 
 auto CBOR::Decoder::getInt64FromMap(int64_t k) -> int64_t
 {
-    int64_t ret_val;
+    int64_t ret_val = 0;
     auto ctx = std::static_pointer_cast<QCBORDecodeContext>(this->_cbor_ctx);
     QCBORDecode_GetInt64InMapN(ctx.get(), k, &ret_val);
     if (ctx->uLastError != QCBOR_SUCCESS)
@@ -895,7 +894,7 @@ auto CBOR::Decoder::getInt64FromMap(int64_t k) -> int64_t
 
 auto CBOR::Decoder::getUint8FromMap(int64_t k) -> uint8_t
 {
-    uint8_t ret_val;
+    uint8_t ret_val = 0;
     int64_t temp = this->getInt64FromMap(k);
     QCBOR_Int64ToUInt8(temp, &ret_val);
     return ret_val;
@@ -903,7 +902,7 @@ auto CBOR::Decoder::getUint8FromMap(int64_t k) -> uint8_t
 
 auto CBOR::Decoder::getUint16FromMap(int64_t k) -> uint16_t
 {
-    uint16_t ret_val;
+    uint16_t ret_val = 0;
     int64_t temp = this->getInt64FromMap(k);
     QCBOR_Int64UToInt16(temp, &ret_val);
     return ret_val;
@@ -911,7 +910,7 @@ auto CBOR::Decoder::getUint16FromMap(int64_t k) -> uint16_t
 
 auto CBOR::Decoder::getUint32FromMap(int64_t k) -> uint32_t
 {
-    uint32_t ret_val;
+    uint32_t ret_val = 0;
     int64_t temp = this->getInt64FromMap(k);
     QCBOR_Int64ToUInt32(temp, &ret_val);
     return ret_val;
