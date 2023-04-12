@@ -6,9 +6,13 @@ set(TEST_CARDANO_ENCODINGS_SOURCES
     test_cardano_encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/utils.cpp
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_encodings ${TEST_CARDANO_ENCODINGS_SOURCES})
+target_link_libraries(test_cardano_encodings PRIVATE
+    OpenSSL::SSL
+)
 ADD_TEST(cardano_encodings test_cardano_encodings)
 
 ########################################################################
@@ -22,6 +26,7 @@ set(TEST_CARDANO_CRYPTO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_crypto ${TEST_CARDANO_CRYPTO_SOURCES})
@@ -43,6 +48,7 @@ set(TEST_CARDANO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
@@ -64,6 +70,7 @@ set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_byron_address ${TEST_CARDANO_BYRON_ADDRESS_SOURCES})
@@ -101,6 +108,7 @@ set(TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_mnemonic_to_address
@@ -124,6 +132,7 @@ set(TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/address.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
@@ -145,10 +154,14 @@ ADD_TEST(cardano_mnemonic_to_stake_address
 set(TEST_CARDANO_CBOR_ENCODINGS_SOURCES 
     test_cardano_cbor_encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_cbor_encodings
     ${TEST_CARDANO_CBOR_ENCODINGS_SOURCES}
+)
+target_link_libraries(test_cardano_cbor_encodings PRIVATE
+    OpenSSL::SSL
 )
 ADD_TEST(cardano_cbor_encodings test_cardano_cbor_encodings)
 
@@ -164,6 +177,7 @@ set(TEST_CARDANO_TRANSACTION_BUILD_SOURCES
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/transaction.cpp
     ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_transaction_build
@@ -188,6 +202,7 @@ set(TEST_CARDANO_TRANSACTION_SIGN_SOURCES
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_SOURCE_DIR}/src/transaction.cpp
     ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_transaction_sign

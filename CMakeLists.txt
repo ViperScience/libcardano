@@ -63,8 +63,7 @@ include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${VIPER25519_INCLUDE}
-        ${CARDANO_CRYPTO_CBITS_INCLUDE}
-        ${CRYPTONITE_CBITS_INCLUDE}
+        ${LIBCPPBOR_INCLUDE}
         ${QCBOR_INCLUDE}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -95,6 +94,7 @@ set(CARDANO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
     ${QCBOR_SOURCES}
 )
 
