@@ -17,16 +17,3 @@ set(LIBCPPBOR_INCLUDE
     ${CMAKE_CURRENT_LIST_DIR}/libcppbor/include
     PARENT_SCOPE
 )
-set(QCBOR_SOURCES
-    ${CMAKE_CURRENT_LIST_DIR}/qcbor/src/ieee754.c
-    ${CMAKE_CURRENT_LIST_DIR}/qcbor/src/qcbor_decode.c
-    ${CMAKE_CURRENT_LIST_DIR}/qcbor/src/qcbor_encode.c
-    ${CMAKE_CURRENT_LIST_DIR}/qcbor/src/qcbor_err_to_str.c
-    ${CMAKE_CURRENT_LIST_DIR}/qcbor/src/UsefulBuf.c
-    PARENT_SCOPE
-)
-set(QCBOR_INCLUDE
-    ${CMAKE_CURRENT_LIST_DIR}/qcbor/inc
-    ${CMAKE_CURRENT_LIST_DIR}/qcbor/src
-    PARENT_SCOPE
-)

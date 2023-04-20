@@ -64,7 +64,6 @@ include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${VIPER25519_INCLUDE}
         ${LIBCPPBOR_INCLUDE}
-        ${QCBOR_INCLUDE}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -95,7 +94,6 @@ set(CARDANO_SOURCES
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
     ${VIPER25519_SOURCES}
     ${LIBCPPBOR_SOURCES}
-    ${QCBOR_SOURCES}
 )
 
 # Add the library to build but do not specify STATIC vs. SHARED. A shared 
