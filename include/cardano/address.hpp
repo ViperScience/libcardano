@@ -154,8 +154,6 @@ class ByronAddress
             uint32_t magic = 0
         ) -> Attributes;
 
-        /// Serialize the object to CBOR bytes.
-        [[nodiscard]] auto toCBOR() const -> std::vector<uint8_t>;
     };
 
     /// Address type enum contained within the ByronAddress class scope.
