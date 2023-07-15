@@ -1,6 +1,6 @@
-[submodule "libs/qcbor"]
-	path = libs/qcbor
-	url = https://github.com/laurencelundblade/QCBOR.git
 [submodule "libs/viper25519"]
 	path = libs/viper25519
 	url = https://gitlab.com/viper-staking/viper25519
+[submodule "libs/libcppbor"]
+	path = libs/libcppbor
+	url = https://gitlab.com/viperscience/libcppbor.git

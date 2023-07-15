@@ -22,9 +22,10 @@
 
 // Third-party library headers
 #include <botan/hash.h>
+#include <cppbor/cppbor.h>
+#include <cppbor/cppbor_parse.h>
 
 // Public libcardano headers
-#include <cardano/encodings.hpp>
 #include <cardano/transaction.hpp>
 
 // Private libcardano code
@@ -85,98 +86,68 @@ auto TxBuilder::newPayment(
 
 auto TxSerializer::toCBOR(const Transaction& tx) -> std::vector<uint8_t>
 {
-    auto txcbor = CBOR::Encoder::newArray(512);
+    auto input_array = cppbor::Array();
+    for (auto input : tx.body.inputs){
+        auto id = input.transaction_id;
+        input_array.add(
+            cppbor::Array(cppbor::Bstr({id.data(), id.size()}), input.index)
+        );
+    }
 
-    // TX body
-    txcbor.startMap();
-    txcbor.startArrayInMap(0);  // Input Array (UTxOs to be consumed)
-    for (auto input : tx.body.inputs)
-    {
-        txcbor.startArray();
-        txcbor.add(input.transaction_id);
-        txcbor.add(input.index);
-        txcbor.endArray();
-    }
-    txcbor.endArray();
-    txcbor.startArrayInMap(1);  // Output Array
+    auto output_array = cppbor::Array();  // Output Array
     for (auto output : tx.body.outputs)
-    {
-        txcbor.startMap();
-        txcbor.addToMap(0, output.address);
-        txcbor.addToMap(1, output.value);
-        txcbor.endMap();
-    }
-    txcbor.endArray();
-    txcbor.addToMap(2, tx.body.fee);  // Tx fees
-    txcbor.addToMap(3, tx.body.ttl);  // TTL
-    //   , ? 4 : [* certificate]
-    //   , ? 5 : withdrawals
-    //   , ? 6 : update
-    //   , ? 7 : auxiliary_data_hash
-    //   , ? 8 : uint                    ; validity interval start
-    //   , ? 9 : mint
-    //   , ? 11 : script_data_hash
-    //   , ? 13 : set<transaction_input> ; collateral inputs
-    //   , ? 14 : required_signers
-    //   , ? 15 : network_id
-    //   , ? 16 : transaction_output     ; collateral return; New
-    //   , ? 17 : coin                   ; total collateral; New
-    //   , ? 18 : set<transaction_input> ; reference inputs; New
-    txcbor.endMap();
+        output_array.add(cppbor::Map(0, output.address, 1, output.value));
+    
+    auto body_map = cppbor::Map();
+    body_map.add(0, std::move(input_array));
+    body_map.add(1, std::move(output_array));
+    body_map.add(2, tx.body.fee);  // Tx fees
+    body_map.add(3, tx.body.ttl);  // TTL
 
     // Witnesses
-    txcbor.startMap();
+    auto wit_map = cppbor::Map();
     if (tx.witness_set.vkeywitness_vec.size() > 0)
     {
-        txcbor.startArrayInMap(0);  // ? 0: [* vkeywitness ]
+        auto wit_array = cppbor::Array();  // ? 0: [* vkeywitness ]
         for (auto vkeywit : tx.witness_set.vkeywitness_vec)
         {
             auto [vk, sig] = vkeywit;
-            txcbor.startArray();
-            txcbor.add(vk);
-            txcbor.add(sig);
-            txcbor.endArray();
+            wit_array.add(cppbor::Array(
+                cppbor::Bstr({vk.data(), vk.size()}),
+                cppbor::Bstr({sig.data(), sig.size()})
+            ));
         }
-        txcbor.endArray();
+        wit_map.add(0, std::move(wit_array));
     }
-    txcbor.endMap();
 
-    // Bool
-    txcbor.addBool(true);
+    auto txcbor = cppbor::Array(
+        std::move(body_map), std::move(wit_map), true, nullptr
+    );
 
-    // Null
-    txcbor.addNULL();
-
-    txcbor.endArray();
-    return txcbor.serialize();
+    return txcbor.encode(); // txcbor.serialize();
 }
 
 auto TxSerializer::getID(const Transaction& tx) -> std::vector<uint8_t>
 {
-    // Build the transaction body CBOR
-    auto txcbor = CBOR::Encoder::newMap(256);
-    txcbor.startArrayInMap(0);  // Input Array (UTxOs to be consumed)
-    for (auto input : tx.body.inputs)
-    {
-        txcbor.startArray();
-        txcbor.add(input.transaction_id);
-        txcbor.add(input.index);
-        txcbor.endArray();
+    auto input_array = cppbor::Array();
+    for (auto input : tx.body.inputs){
+        auto id = input.transaction_id;
+        input_array.add(
+            cppbor::Array(cppbor::Bstr({id.data(), id.size()}), input.index)
+        );
     }
-    txcbor.endArray();
-    txcbor.startArrayInMap(1);  // Output Array
+
+    auto output_array = cppbor::Array();  // Output Array
     for (auto output : tx.body.outputs)
-    {
-        txcbor.startMap();
-        txcbor.addToMap(0, output.address);
-        txcbor.addToMap(1, output.value);
-        txcbor.endMap();
-    }
-    txcbor.endArray();
-    txcbor.addToMap(2, tx.body.fee);  // Tx fees
-    txcbor.addToMap(3, tx.body.ttl);  // TTL
-    txcbor.endMap();
-    auto txbytes = txcbor.serialize();
+        output_array.add(cppbor::Map(0, output.address, 1, output.value));
+    
+    auto body_map = cppbor::Map();
+    body_map.add(0, std::move(input_array));
+    body_map.add(1, std::move(output_array));
+    body_map.add(2, tx.body.fee);  // Tx fees
+    body_map.add(3, tx.body.ttl);  // TTL
+    
+    auto txbytes = body_map.encode();
 
     // Blake2b-SHA256 hash the CBOR encoded transaction body.
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");

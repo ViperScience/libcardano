@@ -28,9 +28,8 @@
 #include <botan/mac.h>
 #include <botan/pbkdf2.h>
 #include <botan/pwdhash.h>
-
-#include "botan/secmem.h"
-#include "botan/stream_cipher.h"
+#include <botan/stream_cipher.h>
+#include <cppbor/cppbor.h>
 
 // Public libcardano headers
 #include <cardano/crypto.hpp>
@@ -135,7 +134,7 @@ auto hash_repeatedly(const std::vector<uint8_t>& key, size_t count)
 auto hash_seed(std::span<const uint8_t> seed) -> std::vector<uint8_t>
 {
     // CBOR encode the seed.
-    auto buffer = CBOR::encode(seed);
+    auto buffer = cppbor::Bstr({seed.data(), seed.size()}).encode();
 
     // Blake2b-SHA256 encode the CBOR encoded seed (32 byte result).
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
@@ -143,7 +142,7 @@ auto hash_seed(std::span<const uint8_t> seed) -> std::vector<uint8_t>
     const auto hashed = blake2b->final();
 
     // CBOR encode the hashed seed (34 bytes after CBOR encoding).
-    auto hashed_seed = CBOR::encode(hashed);
+    auto hashed_seed = cppbor::Bstr({hashed.data(), hashed.size()}).encode();
 
     return hashed_seed;
 }  // hash_seed
@@ -219,7 +218,8 @@ auto BIP32PublicKey::toBase16() const -> std::string
 
 auto BIP32PublicKey::toCBOR(bool with_cc) const -> std::string
 {
-    return BASE16::encode(CBOR::encode(this->toBytes(with_cc)));
+    auto cbor_bytes = cppbor::Bstr(this->toBytes(with_cc)).encode();
+    return BASE16::encode(cbor_bytes); // return the bytes as a hex string
 }  // BIP32PublicKey::toCBOR
 
 auto BIP32PublicKey::deriveChild(
@@ -358,14 +358,14 @@ auto BIP32PrivateKey::toBase16() const -> std::string
 
 auto BIP32PrivateKey::toCBOR(bool with_cc) const -> std::string
 {
-    return BASE16::encode(CBOR::encode(this->toBytes(with_cc)));
+    return BASE16::encode(cppbor::Bstr(this->toBytes(with_cc)).encode());
 }  // BIP32PrivateKey::toCBOR
 
 auto BIP32PrivateKey::toExtendedCBOR() const -> std::string
 {
     auto pubkey = this->toPublic().toBytes();  // <- includes the chain code
     auto bytes = concat_bytes(this->prv_.bytes(), pubkey);
-    return BASE16::encode(CBOR::encode(bytes));
+    return BASE16::encode(cppbor::Bstr(bytes).encode());
 }  // BIP32PrivateKey::toExtendedCBOR
 
 auto BIP32PrivateKey::toPublic() const -> BIP32PublicKey
@@ -584,7 +584,7 @@ auto BIP32PrivateKeyEncrypted::toExtendedCBOR(std::string_view password) const
     auto pubkey =
         this->toPublic(password).toBytes();  // <- includes the chain code
     auto bytes = concat_bytes(this->xprv_, pubkey);
-    return BASE16::encode(CBOR::encode(bytes));
+    return BASE16::encode(cppbor::Bstr(bytes).encode());
 }  // BIP32PrivateKeyEncrypted::toExtendedCBOR
 
 auto BIP32PrivateKeyEncrypted::sign(std::string_view password, std::span<const uint8_t> msg) const
