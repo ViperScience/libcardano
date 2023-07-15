@@ -37,7 +37,6 @@
 
 // Private libcardano source
 #include "utils.hpp"
-#include "debug_utils.hpp"
 
 using namespace cardano;
 
