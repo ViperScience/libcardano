@@ -5,8 +5,8 @@ include(FindPackageHandleStandardArgs)
 
 find_library(Botan_LIBRARY 
     NAMES
-        botan-2
-        libbotan-2
+        botan-3
+        libbotan-3
     PATHS
         /usr/lib
         /usr/lib64
@@ -15,10 +15,10 @@ find_library(Botan_LIBRARY
         /usr/lib/x86_64-linux-gnu
 )
 find_path(Botan_INCLUDE_DIR 
-    NAMES botan/botan.h
-    PATHS 
-        /usr/local/include/botan-2
-        /usr/include/botan-2
+    NAMES botan/hash.h
+    PATHS
+        /usr/local/include/botan-3
+        /usr/include/botan-3
 )
 
 find_package_handle_standard_args(Botan REQUIRED_VARS Botan_LIBRARY Botan_INCLUDE_DIR)
