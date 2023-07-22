@@ -40,7 +40,7 @@
 
 using namespace cardano;
 
-namespace // unnamed namespace
+namespace  // unnamed namespace
 {
 
 constexpr auto TAG_DERIVE_Z_HARDENED = static_cast<uint8_t>(0x00);
@@ -219,7 +219,7 @@ auto BIP32PublicKey::toBase16() const -> std::string
 auto BIP32PublicKey::toCBOR(bool with_cc) const -> std::string
 {
     auto cbor_bytes = cppbor::Bstr(this->toBytes(with_cc)).encode();
-    return BASE16::encode(cbor_bytes); // return the bytes as a hex string
+    return BASE16::encode(cbor_bytes);  // return the bytes as a hex string
 }  // BIP32PublicKey::toCBOR
 
 auto BIP32PublicKey::deriveChild(
@@ -240,7 +240,7 @@ auto BIP32PublicKey::deriveChild(
     mac->update(idxBuf.data(), idxBuf.size());
     const auto z = mac->final();
 
-    // calculate 8 * Zl    
+    // calculate 8 * Zl
     auto zl8 = std::array<uint8_t, ed25519::ED25519_EXTENDED_KEY_SIZE>{};
     // This effectively zero pads to 64 bytes as needed for the extended secret
     // key constructor.
@@ -287,15 +287,16 @@ auto BIP32PublicKey::deriveChild(
     return BIP32PublicKey(pub_new.bytes(), cc_new);
 }  // BIP32PublicKey::deriveChild
 
-auto BIP32PrivateKey::fromBytes(std::span<const uint8_t> xpriv) -> BIP32PrivateKey
+auto BIP32PrivateKey::fromBytes(std::span<const uint8_t> xpriv)
+    -> BIP32PrivateKey
 {
     if (xpriv.size() != ENCRYPTED_KEY_SIZE + CHAIN_CODE_SIZE)
-        throw std::invalid_argument("Invalid extended private key size.");    
+        throw std::invalid_argument("Invalid extended private key size.");
     auto skey = ed25519::ExtendedPrivateKey({xpriv.data(), ENCRYPTED_KEY_SIZE});
     auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>();
     std::copy(xpriv.begin() + ENCRYPTED_KEY_SIZE, xpriv.end(), cc.begin());
     return BIP32PrivateKey(skey.bytes(), cc);
-} // BIP32PrivateKey::fromBytes
+}  // BIP32PrivateKey::fromBytes
 
 auto BIP32PrivateKey::fromBech32(std::string_view bech32_str) -> BIP32PrivateKey
 {
@@ -373,8 +374,9 @@ auto BIP32PrivateKey::toPublic() const -> BIP32PublicKey
     return {this->prv_.publicKey().bytes(), this->cc_};
 }  // BIP32PrivateKey::toPublic
 
-auto BIP32PrivateKey::deriveChild(const uint32_t index, const DerivationMode mode)
-    const -> BIP32PrivateKey
+auto BIP32PrivateKey::deriveChild(
+    const uint32_t index, const DerivationMode mode
+) const -> BIP32PrivateKey
 {
     const auto pkey_bytes = this->prv_.publicKey().bytes();
     const auto skey_bytes = this->prv_.bytes();
@@ -420,7 +422,8 @@ auto BIP32PrivateKey::deriveChild(const uint32_t index, const DerivationMode mod
             std::copy_n(lbytes.begin(), 32, res_key.begin());
 
             // Fill in the right-most bytes
-            for (auto i = 0UL; i < 32; i++) {
+            for (auto i = 0UL; i < 32; i++)
+            {
                 auto a = z[i + 32];
                 auto b = skey_bytes[i + 32];
                 auto r = static_cast<uint16_t>(a) + static_cast<uint16_t>(b);
@@ -443,18 +446,20 @@ auto BIP32PrivateKey::deriveChild(const uint32_t index, const DerivationMode mod
             auto r = static_cast<uint16_t>(0);
             for (auto i = 0UL; i < 32; i++)
             {
-                r = static_cast<uint16_t>(zl8[i]) + static_cast<uint16_t>(skey_bytes[i]) + r;
+                r = static_cast<uint16_t>(zl8[i]) +
+                    static_cast<uint16_t>(skey_bytes[i]) + r;
                 res_key[i] = static_cast<uint8_t>(r);
                 r >>= 8;
             }
-            
+
             // Fill in the right-most bytes
             auto carry = static_cast<uint8_t>(0);
             for (auto i = 0UL; i < 32; i++)
             {
                 auto a = z[i + 32];
                 auto b = skey_bytes[i + 32];
-                auto r = static_cast<uint16_t>(a) + static_cast<uint16_t>(b) + static_cast<uint16_t>(carry);
+                auto r = static_cast<uint16_t>(a) + static_cast<uint16_t>(b) +
+                         static_cast<uint16_t>(carry);
                 res_key[i + 32] = static_cast<uint8_t>(r & 0xff);
                 carry = (r >= 0x100) ? 1 : 0;
             }
@@ -485,10 +490,10 @@ auto BIP32PrivateKey::deriveChild(const uint32_t index, const DerivationMode mod
 }  // BIP32PrivateKey::deriveChild
 
 auto BIP32PrivateKey::sign(std::span<const uint8_t> msg) const
-        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
+    -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
 {
     return this->prv_.sign(msg);
-} // BIP32PrivateKey::sign
+}  // BIP32PrivateKey::sign
 
 auto BIP32PrivateKey::encrypt(std::string_view password)
     -> BIP32PrivateKeyEncrypted
@@ -510,7 +515,9 @@ auto BIP32PrivateKey::encrypt(std::string_view password)
     const auto prv_bytes = this->prv_.bytes();
     auto enc_prv_bytes = std::array<uint8_t, ENCRYPTED_KEY_SIZE>{};
     auto cipher = Botan::StreamCipher::create("ChaCha(20)");
-    cipher->set_key({stretched_password.data(), SYM_KEY_SIZE});
+    cipher->set_key(
+        {stretched_password.begin(), stretched_password.begin() + SYM_KEY_SIZE}
+    );
     cipher->set_iv(stretched_password.data() + SYM_KEY_SIZE, SYM_NONCE_SIZE);
     cipher->cipher(prv_bytes.data(), enc_prv_bytes.data(), ENCRYPTED_KEY_SIZE);
 
@@ -533,7 +540,9 @@ BIP32PrivateKeyEncrypted::BIP32PrivateKeyEncrypted(
 }  // BIP32PrivateKeyEncrypted::ExtendedPublicKey
 
 auto BIP32PrivateKeyEncrypted::deriveChild(
-    const uint32_t index, std::string_view password, const DerivationMode derivation_mode
+    const uint32_t index,
+    std::string_view password,
+    const DerivationMode derivation_mode
 ) const -> BIP32PrivateKeyEncrypted
 {
     const auto decrypted = this->decrypt(password);
@@ -565,7 +574,7 @@ auto BIP32PrivateKeyEncrypted::decrypt(std::string_view password) const
             sizeof(salt)
         );
         auto cipher = Botan::StreamCipher::create("ChaCha(20)");
-        cipher->set_key({buf.data(), SYM_KEY_SIZE});
+        cipher->set_key({buf.begin(), buf.begin() + SYM_KEY_SIZE});
         cipher->set_iv(buf.data() + SYM_KEY_SIZE, SYM_NONCE_SIZE);
         cipher->cipher(prv.data(), prv.data(), prv.size());
     }
@@ -587,9 +596,10 @@ auto BIP32PrivateKeyEncrypted::toExtendedCBOR(std::string_view password) const
     return BASE16::encode(cppbor::Bstr(bytes).encode());
 }  // BIP32PrivateKeyEncrypted::toExtendedCBOR
 
-auto BIP32PrivateKeyEncrypted::sign(std::string_view password, std::span<const uint8_t> msg) const
-        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
+auto BIP32PrivateKeyEncrypted::sign(
+    std::string_view password, std::span<const uint8_t> msg
+) const -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
 {
     auto unenc_key = this->decrypt(password);
     return unenc_key.sign(msg);
-} // BIP32PrivateKeyEncrypted::sign
+}  // BIP32PrivateKeyEncrypted::sign

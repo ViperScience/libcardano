@@ -415,8 +415,7 @@ auto ByronAddress::Attributes::fromKey(
 {
     // Create the passphrase for encrypting the derivation path.
     auto key = Botan::SecureVector<uint8_t>(DP_KEY_SIZE);
-    auto xpub_bytes =
-        xpub.toBytes();  // <- get vector of pub key and chain code
+    auto xpub_bytes = xpub.toBytes();  // <- get vector of pubkey and chain code
     auto fam = Botan::PasswordHashFamily::create("PBKDF2(SHA-512)");
     const auto pbkdf2 = fam->from_params(DP_KEY_ITERATIONS);
     pbkdf2->derive_key(
@@ -428,7 +427,7 @@ auto ByronAddress::Attributes::fromKey(
     auto cbor = cppbor::Array();
     for (auto idx : path) cbor.add((uint64_t)idx);
     auto bytes = cbor.encode();
-    
+
     // Adjust the CBOR to be encoded as an indefinite array.
     bytes[0] = 0x9F;
     bytes.push_back(0xFF);
@@ -438,14 +437,15 @@ auto ByronAddress::Attributes::fromKey(
 
     // Encrypt the derivation path (CBOR encoded) using a ChaCha20Poly1305
     // cipher.
-    auto cm = Botan::Cipher_Mode::create("ChaCha20Poly1305", Botan::ENCRYPTION);
+    auto cm = Botan::Cipher_Mode::create(
+        "ChaCha20Poly1305", Botan::Cipher_Dir::Encryption
+    );
     cm->set_key(key);
     cm->start(DP_NONCE.data(), DP_NONCE.size());
     cm->finish(pt);
 
     // Set the object members
-    auto attrs =
-        ByronAddress::Attributes(std::vector(pt.begin(), pt.end()), magic);
+    auto attrs = ByronAddress::Attributes({pt.begin(), pt.end()}, magic);
     return attrs;
 }  // ByronAddress::Attributes::fromKey
 
