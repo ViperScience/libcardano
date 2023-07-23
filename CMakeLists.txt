@@ -134,6 +134,17 @@ install(FILES ${CARDANO_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cardano
 )
 
+# We also need to install the Viper25519 headers since they are used in the 
+# cardano/crypto.hpp header.
+set(VIPER25519_HEADERS
+    ${CMAKE_SOURCE_DIR}/libs/viper25519/include/viper25519/ed25519.hpp
+    ${CMAKE_SOURCE_DIR}/libs/viper25519/include/viper25519/curve25519.hpp
+    ${CMAKE_SOURCE_DIR}/libs/viper25519/include/viper25519/secmem.hpp
+)
+install(FILES ${VIPER25519_HEADERS} 
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/viper25519
+)
+
 ################################################################################
 # Install the CMake Target files
 ################################################################################
