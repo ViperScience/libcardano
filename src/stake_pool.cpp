@@ -81,7 +81,7 @@ auto ColdSigningKey::poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>
 
 auto ColdSigningKey::extend() const -> ExtendedColdSigningKey
 {
-    return ExtendedColdSigningKey{ed25519::PrivateKey::extend()};
+    return ExtendedColdSigningKey{ed25519::PrivateKey::extend().bytes()};
 }  // ColdSigningKey::extend
 
 auto ExtendedColdSigningKey::fromRootKey(const BIP32PrivateKey& root)
@@ -91,8 +91,7 @@ auto ExtendedColdSigningKey::fromRootKey(const BIP32PrivateKey& root)
                         .deriveChild(HardenIndex(1815))
                         .deriveChild(HardenIndex(0))
                         .deriveChild(HardenIndex(0));
-    auto xsk = ed25519::ExtendedPrivateKey(pool_key.toBytes());
-    return ExtendedColdSigningKey{xsk};
+    return ExtendedColdSigningKey{pool_key.toBytes()};
 }  // ExtendedColdSigningKey::fromRootKey
 
 auto ExtendedColdSigningKey::fromMnemonic(const cardano::Mnemonic& mn)
@@ -103,8 +102,7 @@ auto ExtendedColdSigningKey::fromMnemonic(const cardano::Mnemonic& mn)
                         .deriveChild(HardenIndex(1815))
                         .deriveChild(HardenIndex(0))
                         .deriveChild(HardenIndex(0));
-    auto xsk = ed25519::ExtendedPrivateKey(pool_key.toBytes());
-    return ExtendedColdSigningKey{xsk};
+    return ExtendedColdSigningKey{pool_key.toBytes()};
 }  // ExtendedColdSigningKey::fromMnemonic
 
 auto ExtendedColdSigningKey::saveToFile(std::string_view fpath) const -> void

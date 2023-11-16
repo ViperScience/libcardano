@@ -188,3 +188,27 @@ target_link_libraries(test_cardano_transaction_sign PRIVATE
     OpenSSL::SSL
 )
 ADD_TEST(cardano_transaction_sign test_cardano_transaction_sign)
+
+########################################################################
+# Test stake pool code
+########################################################################
+
+set(TEST_CARDANO_STAKE_POOL_SOURCES
+    test_cardano_stake_pool.cpp
+    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
+    ${CMAKE_SOURCE_DIR}/src/stake_pool.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils.cpp
+    ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
+)
+ADD_EXECUTABLE(test_cardano_stake_pool
+    ${TEST_CARDANO_STAKE_POOL_SOURCES}
+)
+target_link_libraries(test_cardano_stake_pool PRIVATE
+    botan::botan
+    Threads::Threads
+    OpenSSL::SSL
+)
+ADD_TEST(cardano_stake_pool test_cardano_stake_pool)

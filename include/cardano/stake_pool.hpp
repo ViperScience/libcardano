@@ -52,6 +52,11 @@ class ColdVerificationKey : public ed25519::PublicKey
     using ed25519::PublicKey::pointAdd;
 
   public:
+    ColdVerificationKey(std::span<const uint8_t> key_bytes)
+        : ed25519::PublicKey(key_bytes)
+    {
+    }
+
     static constexpr auto kTypeStr = "StakePoolVerificationKey_ed25519";
     static constexpr auto kDescStr = "Stake Pool Operator Verification Key";
 
@@ -81,6 +86,11 @@ class ColdSigningKey : public ed25519::PrivateKey
     using ed25519::PrivateKey::publicKey;  // Rename to verificationKey.
 
   public:
+    ColdSigningKey(std::span<const uint8_t> key_bytes)
+        : ed25519::PrivateKey(key_bytes)
+    {
+    }
+
     static constexpr auto kTypeStr = "StakePoolSigningKey_ed25519";
     static constexpr auto kDescStr = "Stake Pool Operator Signing Key";
 
@@ -96,7 +106,7 @@ class ColdSigningKey : public ed25519::PrivateKey
     /// @return The verification key object.
     [[nodiscard]] auto verificationKey() const -> ColdVerificationKey
     {
-        return ColdVerificationKey{ed25519::PrivateKey::publicKey()};
+        return ColdVerificationKey(this->publicKey().bytes());
     }
 
     /// @brief Generate the pool ID as an array of bytes.
@@ -115,6 +125,11 @@ class ExtendedColdSigningKey : public ed25519::ExtendedPrivateKey
     using ed25519::ExtendedPrivateKey::scalerAddLowerBytes;
 
   public:
+    ExtendedColdSigningKey(std::span<const uint8_t> key_bytes)
+        : ed25519::ExtendedPrivateKey(key_bytes)
+    {
+    }
+
     static constexpr auto kTypeStr =
         "StakePoolExtendedSigningKey_ed25519_bip32";
     static constexpr auto kDescStr = "Stake Pool Operator Signing Key";
@@ -147,7 +162,7 @@ class ExtendedColdSigningKey : public ed25519::ExtendedPrivateKey
     /// @return The verification key object.
     [[nodiscard]] auto verificationKey() const -> ColdVerificationKey
     {
-        return ColdVerificationKey{ed25519::ExtendedPrivateKey::publicKey()};
+        return ColdVerificationKey(this->publicKey().bytes());
     }
 
     /// @brief Generate the pool ID as an array of bytes.
