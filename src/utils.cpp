@@ -19,3 +19,21 @@
 // THE SOFTWARE.
 
 #include "utils.hpp"
+
+#include <fstream>
+
+auto cardano::writeEnvelopeTextFile(
+    const std::string_view file_path,
+    const std::string_view type,
+    const std::string_view description,
+    const std::string_view cbor_hex
+) -> void
+{
+    std::ofstream out(std::string(file_path).c_str());
+    out << "{\n";
+    out << "    \"type\": \"" << type << "\",";
+    out << "    \"description\": \"" << description << "\",";
+    out << "    \"cborHex\": \"" << cbor_hex << "\",";
+    out << "}";
+    out.close();
+}  // write_key_file

@@ -47,6 +47,18 @@ static constexpr auto strcmpi(std::string_view h1, std::string_view h2) -> bool
     return true;
 }  // strcmpi
 
+/// @brief Write CBOR date to file in the envelope format used by cardano node.
+/// @param file_path Path to the generated key file.
+/// @param type A string key type specifier.
+/// @param description Description of the key (maybe empty).
+/// @param cbor_hex The CBOR key data in hex string format.
+auto writeEnvelopeTextFile(
+    const std::string_view file_path,
+    const std::string_view type,
+    const std::string_view description,
+    const std::string_view cbor_hex
+) -> void;
+
 }  // namespace cardano
 
 #endif  // _CARDANO_UTILS_HPP_
