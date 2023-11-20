@@ -81,7 +81,7 @@ auto ColdSigningKey::poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>
 
 auto ColdSigningKey::extend() const -> ExtendedColdSigningKey
 {
-    return ExtendedColdSigningKey{ed25519::PrivateKey::extend().bytes()};
+    return {this->skey_.extend().bytes()};
 }  // ColdSigningKey::extend
 
 auto ExtendedColdSigningKey::fromRootKey(const BIP32PrivateKey& root)

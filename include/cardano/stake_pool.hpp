@@ -46,14 +46,13 @@ class KesVerificationKey;
 class KesSigningKey;
 class OperationalCertificate;
 
-class ColdVerificationKey : public ed25519::PublicKey
+class ColdVerificationKey
 {
   private:
-    using ed25519::PublicKey::pointAdd;
+    ed25519::PublicKey vkey_;
 
   public:
-    ColdVerificationKey(std::span<const uint8_t> key_bytes)
-        : ed25519::PublicKey(key_bytes)
+    ColdVerificationKey(std::span<const uint8_t> key_bytes) : vkey_{key_bytes}
     {
     }
 
@@ -63,6 +62,13 @@ class ColdVerificationKey : public ed25519::PublicKey
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
+
+    /// @brief Return the key as a byte vector.
+    [[nodiscard]] constexpr auto bytes() const
+        -> const std::array<uint8_t, ed25519::ED25519_KEY_SIZE>&
+    {
+        return this->vkey_.bytes();
+    }
 
     /// @brief Serialize the key bytes as a Bech32 string.
     /// @param hrp The human readable part of the string.
@@ -79,24 +85,33 @@ class ColdVerificationKey : public ed25519::PublicKey
 /// compatibility with legacy keys and is completely valid for use as a stake
 /// pool key. However, users are encouraged to use the extended key version for
 /// new keys, which implements CIP-1853 for pool key derivation.
-class ColdSigningKey : public ed25519::PrivateKey
+class ColdSigningKey
 {
   private:
-    using ed25519::PrivateKey::extend;     // Wrap to return an extended skey.
-    using ed25519::PrivateKey::publicKey;  // Rename to verificationKey.
+    ed25519::PrivateKey skey_;
 
   public:
-    ColdSigningKey(std::span<const uint8_t> key_bytes)
-        : ed25519::PrivateKey(key_bytes)
-    {
-    }
+    ColdSigningKey(std::span<const uint8_t> key_bytes) : skey_{key_bytes} {}
 
     static constexpr auto kTypeStr = "StakePoolSigningKey_ed25519";
     static constexpr auto kDescStr = "Stake Pool Operator Signing Key";
 
+    /// Factory method to create a new Ed25519 private key from a
+    /// cryptographically secure random number generator.
+    [[nodiscard]] static auto generate() -> ColdSigningKey
+    {
+        return {ed25519::PrivateKey::generate().bytes()};
+    }
+
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
+
+    /// @brief Return the key as a byte vector.
+    [[nodiscard]] constexpr auto bytes() const -> const ed25519::KeyByteArray&
+    {
+        return this->skey_.bytes();
+    }
 
     /// @brief Serialize the key bytes as a Bech32 string.
     /// @return String representing the formatted key.
@@ -106,7 +121,7 @@ class ColdSigningKey : public ed25519::PrivateKey
     /// @return The verification key object.
     [[nodiscard]] auto verificationKey() const -> ColdVerificationKey
     {
-        return ColdVerificationKey(this->publicKey().bytes());
+        return {this->skey_.publicKey().bytes()};
     }
 
     /// @brief Generate the pool ID as an array of bytes.
@@ -118,21 +133,23 @@ class ColdSigningKey : public ed25519::PrivateKey
     [[nodiscard]] auto extend() const -> ExtendedColdSigningKey;
 };
 
-class ExtendedColdSigningKey : public ed25519::ExtendedPrivateKey
+class ExtendedColdSigningKey
 {
   private:
-    using ed25519::ExtendedPrivateKey::publicKey;  // Rename to verificationKey.
-    using ed25519::ExtendedPrivateKey::scalerAddLowerBytes;
+    ed25519::ExtendedPrivateKey skey_;
 
   public:
     ExtendedColdSigningKey(std::span<const uint8_t> key_bytes)
-        : ed25519::ExtendedPrivateKey(key_bytes)
+        : skey_{key_bytes}
     {
     }
 
-    static constexpr auto kTypeStr =
-        "StakePoolExtendedSigningKey_ed25519_bip32";
-    static constexpr auto kDescStr = "Stake Pool Operator Signing Key";
+    /// Factory method to create a new Ed25519 private key from a
+    /// cryptographically secure random number generator.
+    [[nodiscard]] static auto generate() -> ExtendedColdSigningKey
+    {
+        return {ed25519::ExtendedPrivateKey::generate().bytes()};
+    }
 
     /// @brief Derive the stake pool key from a root key.
     /// Derive the stake pool signing key from a root HD wallet key
@@ -154,6 +171,13 @@ class ExtendedColdSigningKey : public ed25519::ExtendedPrivateKey
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
 
+    /// @brief Return the key as a byte vector.
+    [[nodiscard]] constexpr auto bytes() const
+        -> const ed25519::ExtKeyByteArray&
+    {
+        return this->skey_.bytes();
+    }
+
     /// @brief Serialize the key bytes as a Bech32 string.
     /// @return String representing the formatted key.
     [[nodiscard]] auto asBech32() const -> std::string;
@@ -162,12 +186,16 @@ class ExtendedColdSigningKey : public ed25519::ExtendedPrivateKey
     /// @return The verification key object.
     [[nodiscard]] auto verificationKey() const -> ColdVerificationKey
     {
-        return ColdVerificationKey(this->publicKey().bytes());
+        return ColdVerificationKey(this->skey_.publicKey().bytes());
     }
 
     /// @brief Generate the pool ID as an array of bytes.
     /// @return Pool ID as an array of bytes.
     [[nodiscard]] auto poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>;
+
+    static constexpr auto kTypeStr =
+        "StakePoolExtendedSigningKey_ed25519_bip32";
+    static constexpr auto kDescStr = "Stake Pool Operator Signing Key";
 
 };  // StakePoolExtendedSigningKey
 
