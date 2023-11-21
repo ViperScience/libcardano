@@ -23,7 +23,11 @@ auto testBasic() -> void
     TEST_ASSERT_THROW(BECH32::encode("pool", vkey.poolId()) == pool_bech32)
 }
 
-void testAdvanced() {}
+auto testAdvanced() -> void
+{
+    const auto skey1 = stake_pool::ExtendedColdSigningKey::generate();
+    skey1.saveToFile("test.skey");
+}
 
 auto main() -> int
 {

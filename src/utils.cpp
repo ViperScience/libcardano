@@ -31,9 +31,9 @@ auto cardano::writeEnvelopeTextFile(
 {
     std::ofstream out(std::string(file_path).c_str());
     out << "{\n";
-    out << "    \"type\": \"" << type << "\",";
-    out << "    \"description\": \"" << description << "\",";
-    out << "    \"cborHex\": \"" << cbor_hex << "\",";
+    out << "    \"type\": \"" << type << "\",\n";
+    out << "    \"description\": \"" << description << "\",\n";
+    out << "    \"cborHex\": \"" << cbor_hex << "\"\n";
     out << "}";
     out.close();
 }  // write_key_file
