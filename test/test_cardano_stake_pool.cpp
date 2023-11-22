@@ -1,9 +1,9 @@
 #include <cardano/encodings.hpp>
 #include <cardano/stake_pool.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <fstream>
 #include <streambuf>
 #include <string>
-#include <test/tests.hpp>
 
 using namespace cardano;
 
@@ -17,35 +17,37 @@ constexpr auto KEY_FILE_CONTENTS = R"({
     "cborHex": "5820a80e525d28622de31138c561dc72699296b39fb101e2e5fa217ff61512389cb5"
 })";
 
-auto testBasic() -> void
+TEST_CASE( "Verify stake pool functionality.", "[stake_pool]" )
 {
     auto [vhrp, vkey_bytes] = BECH32::decode(VKEY_BECH32);
     auto [shrp, skey_bytes] = BECH32::decode(SKEY_BECH32);
 
     auto vkey = stake_pool::ColdVerificationKey(vkey_bytes);
     auto skey = stake_pool::ColdSigningKey(skey_bytes);
+    auto ext_skey = skey.extend();
 
-    TEST_ASSERT_THROW(vkey.asBech32() == VKEY_BECH32)
-    TEST_ASSERT_THROW(skey.asBech32() == SKEY_BECH32)
-    TEST_ASSERT_THROW(skey.verificationKey().bytes() == vkey.bytes())
-    TEST_ASSERT_THROW(BECH32::encode("pool", vkey.poolId()) == POOL_BECH32)
+    REQUIRE( vkey.asBech32() == VKEY_BECH32 );
+    REQUIRE( skey.asBech32() == SKEY_BECH32 );
+    REQUIRE( skey.verificationKey().asBech32() == VKEY_BECH32 );
+    REQUIRE( vkey.asBech32() == ext_skey.verificationKey().asBech32() );
 
-    skey.saveToFile(KEY_FILE_PATH);
-    std::ifstream key_file(KEY_FILE_PATH);
-    std::string key_file_str(
-        (std::istreambuf_iterator<char>(key_file)),
-        std::istreambuf_iterator<char>()
-    );
-    TEST_ASSERT_THROW(key_file_str == KEY_FILE_CONTENTS)
-}
+    SECTION( "test exporting keys to file" ) 
+    {
+        skey.saveToFile(KEY_FILE_PATH);
+        std::ifstream key_file(KEY_FILE_PATH);
+        std::string key_file_str(
+            (std::istreambuf_iterator<char>(key_file)),
+            std::istreambuf_iterator<char>()
+        );
 
-auto testAdvanced() -> void
-{
-}
+        REQUIRE( key_file_str == KEY_FILE_CONTENTS );
+    }   
 
-auto main() -> int
-{
-    testBasic();
-    testAdvanced();
-    return 0;
+    SECTION( "pool id verification ")
+    {
+        const auto pool_id_bytes = vkey.poolId();
+        REQUIRE( BECH32::encode("pool", pool_id_bytes) == POOL_BECH32 );
+        REQUIRE( skey.poolId() == pool_id_bytes );
+        REQUIRE( ext_skey.poolId() == pool_id_bytes );
+    }
 }

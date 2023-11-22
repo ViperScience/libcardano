@@ -210,5 +210,6 @@ target_link_libraries(test_cardano_stake_pool PRIVATE
     botan::botan
     Threads::Threads
     OpenSSL::SSL
+    Catch2::Catch2WithMain
 )
 ADD_TEST(cardano_stake_pool test_cardano_stake_pool)

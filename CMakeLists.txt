@@ -76,11 +76,22 @@ include_directories(${PROJECT_NAME}
 # Tests
 ################################################################################
 
-# Enable testing globally. Individual tests may be found in the `tests`
-# subdirectory of the repository.
-include(CTest)
-enable_testing()
-add_subdirectory(test) 
+# Enable testing only if this is the top level project.
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(CTest)
+endif()
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    add_subdirectory(libs/Catch2)
+    
+    # Individual tests may be found in the `tests`subdirectory of the
+    # repository.
+    add_subdirectory(test)
+endif()
+
+# include(CTest)
+# add_subdirectory(lib/Catch2)
+# enable_testing()
+# add_subdirectory(test)
 
 ################################################################################
 # Target Build and Link
