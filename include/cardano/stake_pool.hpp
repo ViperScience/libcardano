@@ -22,7 +22,7 @@
 #define _CARDANO_STAKE_POOL_HPP_
 
 // Standard library headers
-#include <memory>
+#include <functional>
 
 // Third-party library headers
 #include <viper25519/ed25519.hpp>
@@ -211,15 +211,52 @@ class ExtendedColdSigningKey
 class OperationalCertificateIssueCounter
 {
   private:
-    std::shared_ptr<ColdVerificationKey> vkey_;
+    std::reference_wrapper<const ColdVerificationKey> vkey_;
     size_t count_;
 
   public:
-    // auto toCBOR();
+    OperationalCertificateIssueCounter(
+        const ColdVerificationKey& vkey, size_t count = 0
+    )
+        : vkey_{vkey}, count_{count}
+    {
+    }
 
-    // saveToFile () < use text envelope
+    /// @brief Generate a CBOR byte string of the counter.
+    /// @return The CBOR byte string as a byte vector.
+    [[nodiscard]] auto toCBOR() const -> std::vector<uint8_t>;
 
-    // get/set count and key
+    /// @brief Export the counter to a file in the text envelope format.
+    /// @param fpath Path to the file to be (over)written.
+    auto saveToFile(std::string_view fpath) const -> void;
+
+    /// @brief Increment the counter.
+    /// @return The count post operation.
+    auto increment() -> size_t
+    {
+        this->count_++;
+        return this->count_;
+    }
+
+    /// @brief Decrement the counter.
+    /// @return The count post operation.
+    auto decrement() -> size_t
+    {
+        this->count_--;
+        return this->count_;
+    }
+
+    /// @brief Set the counter.
+    /// @return The count post operation.
+    auto setCount(size_t count) -> size_t
+    {
+        this->count_ = count;
+        return this->count_;
+    }
+
+    /// @brief Accessor for the counter.
+    /// @return The current counter value.
+    [[nodiscard]] auto count() const -> size_t { return this->count_; }
 };
 
 class OperationalCertificate

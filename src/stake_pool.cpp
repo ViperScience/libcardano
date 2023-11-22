@@ -21,6 +21,7 @@
 #include <cardano/stake_pool.hpp>
 
 // Standard library headers
+#include <string>
 
 // Third-Party headers
 #include <botan/hash.h>
@@ -101,9 +102,9 @@ auto ExtendedColdSigningKey::fromMnemonic(const cardano::Mnemonic& mn)
 {
     const auto root_key = BIP32PrivateKey::fromMnemonic(mn);
     const auto pool_key = root_key.deriveChild(HardenIndex(1853))
-                                  .deriveChild(HardenIndex(1815))
-                                  .deriveChild(HardenIndex(0))
-                                  .deriveChild(HardenIndex(0));
+                              .deriveChild(HardenIndex(1815))
+                              .deriveChild(HardenIndex(0))
+                              .deriveChild(HardenIndex(0));
     const auto pool_key_bytes = pool_key.toBytes(false);
     return ExtendedColdSigningKey(pool_key_bytes);
 }  // ExtendedColdSigningKey::fromMnemonic
@@ -127,3 +128,22 @@ auto ExtendedColdSigningKey::poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>
 {
     return this->verificationKey().poolId();
 }  // ExtendedColdSigningKey::poolId
+
+auto OperationalCertificateIssueCounter::toCBOR() const -> std::vector<uint8_t>
+{
+    const auto key_bytes = this->vkey_.get().bytes();
+    const auto counter_cbor = cppbor::Array(
+        this->count_, cppbor::Bstr({key_bytes.data(), key_bytes.size()})
+    );
+    return counter_cbor.encode();
+}  // OperationalCertificateIssueCounter::toCBOR
+
+auto OperationalCertificateIssueCounter::saveToFile(std::string_view fpath
+) const -> void
+{
+    static constexpr auto type_str = "NodeOperationalCertificateIssueCounter";
+    const auto desc_str =
+        "Next certificate issue number: " + std::to_string(this->count_);
+    const auto counter_cbor_hex = BASE16::encode(this->toCBOR());
+    cardano::writeEnvelopeTextFile(fpath, type_str, desc_str, counter_cbor_hex);
+}  // OperationalCertificateIssueCounter::saveToFile
