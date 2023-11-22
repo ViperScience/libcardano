@@ -81,28 +81,31 @@ auto ColdSigningKey::poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>
 
 auto ColdSigningKey::extend() const -> ExtendedColdSigningKey
 {
-    return {this->skey_.extend().bytes()};
+    const auto key_bytes = this->skey_.extend().bytes();
+    return ExtendedColdSigningKey(key_bytes);
 }  // ColdSigningKey::extend
 
 auto ExtendedColdSigningKey::fromRootKey(const BIP32PrivateKey& root)
     -> ExtendedColdSigningKey
 {
-    auto pool_key = root.deriveChild(HardenIndex(1853))
-                        .deriveChild(HardenIndex(1815))
-                        .deriveChild(HardenIndex(0))
-                        .deriveChild(HardenIndex(0));
-    return {pool_key.toBytes(false)};
+    const auto pool_key = root.deriveChild(HardenIndex(1853))
+                              .deriveChild(HardenIndex(1815))
+                              .deriveChild(HardenIndex(0))
+                              .deriveChild(HardenIndex(0));
+    const auto pool_key_bytes = pool_key.toBytes(false);
+    return ExtendedColdSigningKey(pool_key_bytes);
 }  // ExtendedColdSigningKey::fromRootKey
 
 auto ExtendedColdSigningKey::fromMnemonic(const cardano::Mnemonic& mn)
     -> ExtendedColdSigningKey
 {
-    auto root_key = BIP32PrivateKey::fromMnemonic(mn);
-    auto pool_key = root_key.deriveChild(HardenIndex(1853))
-                        .deriveChild(HardenIndex(1815))
-                        .deriveChild(HardenIndex(0))
-                        .deriveChild(HardenIndex(0));
-    return {pool_key.toBytes(false)};
+    const auto root_key = BIP32PrivateKey::fromMnemonic(mn);
+    const auto pool_key = root_key.deriveChild(HardenIndex(1853))
+                                  .deriveChild(HardenIndex(1815))
+                                  .deriveChild(HardenIndex(0))
+                                  .deriveChild(HardenIndex(0));
+    const auto pool_key_bytes = pool_key.toBytes(false);
+    return ExtendedColdSigningKey(pool_key_bytes);
 }  // ExtendedColdSigningKey::fromMnemonic
 
 auto ExtendedColdSigningKey::saveToFile(std::string_view fpath) const -> void

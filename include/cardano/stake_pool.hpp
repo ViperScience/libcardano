@@ -21,6 +21,9 @@
 #ifndef _CARDANO_STAKE_POOL_HPP_
 #define _CARDANO_STAKE_POOL_HPP_
 
+// Standard library headers
+#include <memory>
+
 // Third-party library headers
 #include <viper25519/ed25519.hpp>
 
@@ -52,7 +55,8 @@ class ColdVerificationKey
     ed25519::PublicKey vkey_;
 
   public:
-    ColdVerificationKey(std::span<const uint8_t> key_bytes) : vkey_{key_bytes}
+    explicit ColdVerificationKey(std::span<const uint8_t> key_bytes)
+        : vkey_{key_bytes}
     {
     }
 
@@ -91,7 +95,10 @@ class ColdSigningKey
     ed25519::PrivateKey skey_;
 
   public:
-    ColdSigningKey(std::span<const uint8_t> key_bytes) : skey_{key_bytes} {}
+    explicit ColdSigningKey(std::span<const uint8_t> key_bytes)
+        : skey_{key_bytes}
+    {
+    }
 
     static constexpr auto kTypeStr = "StakePoolSigningKey_ed25519";
     static constexpr auto kDescStr = "Stake Pool Operator Signing Key";
@@ -100,7 +107,7 @@ class ColdSigningKey
     /// cryptographically secure random number generator.
     [[nodiscard]] static auto generate() -> ColdSigningKey
     {
-        return {ed25519::PrivateKey::generate().bytes()};
+        return ColdSigningKey(ed25519::PrivateKey::generate().bytes());
     }
 
     /// @brief Export the key to a file in the cardano node JSON format.
@@ -121,7 +128,7 @@ class ColdSigningKey
     /// @return The verification key object.
     [[nodiscard]] auto verificationKey() const -> ColdVerificationKey
     {
-        return {this->skey_.publicKey().bytes()};
+        return ColdVerificationKey(this->skey_.publicKey().bytes());
     }
 
     /// @brief Generate the pool ID as an array of bytes.
@@ -139,7 +146,7 @@ class ExtendedColdSigningKey
     ed25519::ExtendedPrivateKey skey_;
 
   public:
-    ExtendedColdSigningKey(std::span<const uint8_t> key_bytes)
+    explicit ExtendedColdSigningKey(std::span<const uint8_t> key_bytes)
         : skey_{key_bytes}
     {
     }
@@ -148,7 +155,9 @@ class ExtendedColdSigningKey
     /// cryptographically secure random number generator.
     [[nodiscard]] static auto generate() -> ExtendedColdSigningKey
     {
-        return {ed25519::ExtendedPrivateKey::generate().bytes()};
+        return ExtendedColdSigningKey(
+            ed25519::ExtendedPrivateKey::generate().bytes()
+        );
     }
 
     /// @brief Derive the stake pool key from a root key.
@@ -199,17 +208,21 @@ class ExtendedColdSigningKey
 
 };  // StakePoolExtendedSigningKey
 
-class OpCert
+class OperationalCertificateIssueCounter
 {
   private:
-    // std::shared_ptr<ColdVerificationKey> vkey_;
+    std::shared_ptr<ColdVerificationKey> vkey_;
     size_t count_;
 
   public:
     // auto toCBOR();
+
+    // saveToFile () < use text envelope
+
+    // get/set count and key
 };
 
-class OpCertCounter
+class OperationalCertificate
 {
 };
 
