@@ -91,7 +91,7 @@ auto ExtendedColdSigningKey::fromRootKey(const BIP32PrivateKey& root)
                         .deriveChild(HardenIndex(1815))
                         .deriveChild(HardenIndex(0))
                         .deriveChild(HardenIndex(0));
-    return ExtendedColdSigningKey{pool_key.toBytes()};
+    return {pool_key.toBytes(false)};
 }  // ExtendedColdSigningKey::fromRootKey
 
 auto ExtendedColdSigningKey::fromMnemonic(const cardano::Mnemonic& mn)
@@ -102,7 +102,7 @@ auto ExtendedColdSigningKey::fromMnemonic(const cardano::Mnemonic& mn)
                         .deriveChild(HardenIndex(1815))
                         .deriveChild(HardenIndex(0))
                         .deriveChild(HardenIndex(0));
-    return ExtendedColdSigningKey{pool_key.toBytes()};
+    return {pool_key.toBytes(false)};
 }  // ExtendedColdSigningKey::fromMnemonic
 
 auto ExtendedColdSigningKey::saveToFile(std::string_view fpath) const -> void
