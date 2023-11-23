@@ -27,8 +27,9 @@ constexpr auto OP_CERT_COUNTER_FILE_CONTENTS = R"({
     "cborHex": "820058207d299589bac9f27adc38533eee15fe68303fa2bb032d2c0a07cbf90d8568d9d6"
 })";
 
-// 7d299589bac9f27adc38533eee15fe68303fa2bb032d2c0a07cbf90d8568d9d6
 constexpr auto POOL_KEY_MNEMONIC = "man tattoo narrow exhaust twist quiz sand horse easily rack theory animal rack lens final priority horror step metal song humor small setup curious";
+constexpr auto POOL_SKEY_HEX = "68904c099d72edda5f4aaf3df7b91bb297010a5b92f90ea6f2d0dbfe4c37f25473dba74c0e94c3eed3b7af55735cdd3b374985b7f570f744e59024a9d77b6ed8";
+constexpr auto POOL_VKEY_HEX = "3d7021b446ebfaa688f62e176793afc2690eec74a4d68fecf2141b558213d27a";
 
 TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_key]" )
 {
@@ -99,6 +100,14 @@ TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_
 TEST_CASE( "Verify stake pool CIP-1853 functionality.", "[stake_pool_cold_key]" )
 {
     auto mn = Mnemonic(POOL_KEY_MNEMONIC, BIP39Language::English);
+
+    SECTION( "Verify CIP-1853 vs. test vectors" )
+    {
+        auto cold_skey = stake_pool::ExtendedColdSigningKey::fromMnemonic(mn);
+
+        REQUIRE( BASE16::encode(cold_skey.verificationKey().bytes()) == POOL_VKEY_HEX );
+        REQUIRE( BASE16::encode(cold_skey.bytes()) == POOL_SKEY_HEX );
+    }
 
     SECTION( "Key derivation (CIP-1853)" )
     {
