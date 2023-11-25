@@ -41,29 +41,32 @@ Libcardano relies on functionality from the following dependencies, which are in
 * [Viper25519](https://gitlab.com/viperscience/viper25519): A modern C++ toolkit for ECDSA signatures and secret/public key operations on elliptic curve 25519.
 
 ### External Dependencies
-
 Libcardano links with the following external dependencies. 
 
 * [Botan-3](https://botan.randombit.net/)
 
 The provided Docker file demonstrates how to build and install the required dependencies and Cmake find scripts are also provided.
 
+### Testing Dependencies
+Libcardano uses Catch2 for structuring unit tests.
+
+* [Catch2](https://github.com/catchorg/Catch2): A unit testing framework for C++.
+
 ## Features
 
-
-### Addresses
+#### Addresses
 
 Supports encoding and decoding [Bech32](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) (Shelley-era) and [Base58](https://tools.ietf.org/id/draft-msporny-base58-01.html) (Byron-era) Cardano addresses to and from raw Base16 (hex) format. [CIP19](https://cips.cardano.org/cips/cip19/) provides a detailed explanation of Cardano encodings.
 
-### Keys
-
-- [ ] Stake pool keys
-
-### Wallets
-
+#### Wallets
 - [x] BIP-39 Mnemonic Seed Phases
 - [x] BIP-32 HD Wallets
 
-### Transactions
-
+#### Transactions
 - [x] Basic ADA only transactions
+
+#### Stake Pools
+- [x] Cold keys
+- [ ] VRF keys
+- [ ] KES keys
+- [ ] Operational Certificates
