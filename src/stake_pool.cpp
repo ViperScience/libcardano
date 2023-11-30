@@ -129,21 +129,166 @@ auto ExtendedColdSigningKey::poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>
     return this->verificationKey().poolId();
 }  // ExtendedColdSigningKey::poolId
 
-auto OperationalCertificateIssueCounter::toCBOR() const -> std::vector<uint8_t>
+auto OperationalCertificateIssueCounter::serialize(
+    const ColdVerificationKey& vkey
+) const -> std::vector<uint8_t>
 {
-    const auto key_bytes = this->vkey_.get().bytes();
+    const auto key_bytes = vkey.bytes();
     const auto counter_cbor = cppbor::Array(
         this->count_, cppbor::Bstr({key_bytes.data(), key_bytes.size()})
     );
     return counter_cbor.encode();
 }  // OperationalCertificateIssueCounter::toCBOR
 
-auto OperationalCertificateIssueCounter::saveToFile(std::string_view fpath
+auto OperationalCertificateIssueCounter::saveToFile(
+    std::string_view fpath, const ColdVerificationKey& vkey
 ) const -> void
 {
     static constexpr auto type_str = "NodeOperationalCertificateIssueCounter";
-    const auto desc_str =
-        "Next certificate issue number: " + std::to_string(this->count_);
-    const auto counter_cbor_hex = BASE16::encode(this->toCBOR());
+    static constexpr auto desc_str_head = "Next certificate issue number: ";
+    const auto desc_str = desc_str_head + std::to_string(this->count_);
+    const auto counter_cbor_hex = BASE16::encode(this->serialize(vkey));
     cardano::writeEnvelopeTextFile(fpath, type_str, desc_str, counter_cbor_hex);
 }  // OperationalCertificateIssueCounter::saveToFile
+
+////////////////////////////////////////////////////////////////////////////////
+
+#include <debug_utils.hpp>
+
+constexpr auto U64TO8_BE(const uint64_t v) -> std::array<uint8_t, 8>
+{
+    auto out = std::array<uint8_t, 8>{};
+    out[7] = (uint8_t)v;
+    out[6] = (uint8_t)(v >> 8);
+    out[5] = (uint8_t)(v >> 16);
+    out[4] = (uint8_t)(v >> 24);
+    out[3] = (uint8_t)(v >> 32);
+    out[2] = (uint8_t)(v >> 40);
+    out[1] = (uint8_t)(v >> 48);
+    out[0] = (uint8_t)(v >> 56);
+    return out;
+}  // U64TO8_BE
+
+constexpr auto U64TO8_LE(const uint64_t v) -> std::array<uint8_t, 8>
+{
+    auto out = std::array<uint8_t, 8>{};
+    out[0] = (uint8_t)v;
+    out[1] = (uint8_t)(v >> 8);
+    out[2] = (uint8_t)(v >> 16);
+    out[3] = (uint8_t)(v >> 24);
+    out[4] = (uint8_t)(v >> 32);
+    out[5] = (uint8_t)(v >> 40);
+    out[6] = (uint8_t)(v >> 48);
+    out[7] = (uint8_t)(v >> 56);
+    return out;
+}  // U64TO8_LE
+
+auto opCertMessageToSign(cardano::babbage::OperationalCert cert)
+    -> std::vector<uint8_t>
+{
+    auto be = cardano::concat_bytes(
+        cardano::concat_bytes(cert.hot_vkey, U64TO8_BE(cert.sequence_number)),
+        U64TO8_BE(cert.kes_period)
+    );
+    cardano_debug::print_bytes(be);
+    return be;
+}
+
+auto OperationalCertificateManager::generateUnsigned(
+    const KesVerificationKey& hot_key,
+    const OperationalCertificateIssueCounter& counter,
+    size_t kes_period
+) -> OperationalCertificateManager
+{
+    auto cert = cardano::babbage::OperationalCert();
+    cert.hot_vkey = hot_key.bytes();
+    cert.kes_period = kes_period;
+    cert.sequence_number = counter.count();
+    return OperationalCertificateManager(cert);
+}  // OperationalCertificateManager::generateUnsigned
+
+auto OperationalCertificateManager::generate(
+    const KesVerificationKey& hot_key,
+    const OperationalCertificateIssueCounter& counter,
+    size_t kes_period,
+    const ColdSigningKey& skey
+) -> OperationalCertificateManager
+{
+    auto mgr = OperationalCertificateManager::generateUnsigned(
+        hot_key, counter, kes_period
+    );
+    mgr.sign(skey);
+    return mgr;
+}  // OperationalCertificateManager::generateUnsigned
+
+auto OperationalCertificateManager::generate(
+    const KesVerificationKey& hot_key,
+    const OperationalCertificateIssueCounter& counter,
+    size_t kes_period,
+    const ExtendedColdSigningKey& skey
+) -> OperationalCertificateManager
+{
+    auto mgr = OperationalCertificateManager::generateUnsigned(
+        hot_key, counter, kes_period
+    );
+    mgr.sign(skey);
+    return mgr;
+}  // OperationalCertificateManager::generate
+
+auto OperationalCertificateManager::sign(const ColdSigningKey& skey) -> void
+{
+    this->cert_.sigma = skey.sign(opCertMessageToSign(this->cert_));
+}  // OperationalCertificateManager::sign
+
+auto OperationalCertificateManager::sign(const ExtendedColdSigningKey& skey)
+    -> void
+{
+    this->cert_.sigma = skey.sign(opCertMessageToSign(this->cert_));
+}  // OperationalCertificateManager::sign
+
+auto OperationalCertificateManager::verify(const ColdVerificationKey& vkey
+) const -> bool
+{
+    auto msg = opCertMessageToSign(this->cert_);
+    return vkey.verifySignature(msg, this->cert_.sigma);
+}  // OperationalCertificateManager::verify
+
+auto OperationalCertificateManager::serialize() const -> std::vector<uint8_t>
+{
+    const auto sigm_bytes = this->cert_.sigma;
+    const auto hkey_bytes = this->cert_.hot_vkey;
+    const auto cbor_bytes = cppbor::Array(
+        cppbor::Bstr({hkey_bytes.data(), hkey_bytes.size()}),
+        cppbor::Uint(this->cert_.sequence_number),
+        cppbor::Uint(this->cert_.kes_period),
+        cppbor::Bstr({sigm_bytes.data(), sigm_bytes.size()})
+    );
+    return cbor_bytes.encode();
+}  // OperationalCertificateManager::serialize
+
+auto OperationalCertificateManager::serialize(const ColdVerificationKey& vkey
+) const -> std::vector<uint8_t>
+{
+    const auto sigm_bytes = this->cert_.sigma;
+    const auto hkey_bytes = this->cert_.hot_vkey;
+    const auto vkey_bytes = vkey.bytes();
+    const auto cbor_bytes = cppbor::Array(
+        cppbor::Array(
+            cppbor::Bstr({hkey_bytes.data(), hkey_bytes.size()}),
+            cppbor::Uint(this->cert_.sequence_number),
+            cppbor::Uint(this->cert_.kes_period),
+            cppbor::Bstr({sigm_bytes.data(), sigm_bytes.size()})
+        ),
+        cppbor::Bstr({vkey_bytes.data(), vkey_bytes.size()})
+    );
+    return cbor_bytes.encode();
+}  // OperationalCertificateManager::serialize
+
+auto OperationalCertificateManager::saveToFile(
+    std::string_view fpath, const ColdVerificationKey& vkey
+) const -> void
+{
+    static constexpr auto type_str = "NodeOperationalCertificate";
+    const auto counter_cbor_hex = BASE16::encode(this->serialize(vkey));
+    cardano::writeEnvelopeTextFile(fpath, type_str, "", counter_cbor_hex);
+}  // OperationalCertificateManager::saveToFile

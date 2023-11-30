@@ -263,12 +263,12 @@ using protocol_version = std::tuple<uint, uint>;
 //       , kes_period      : uint
 //       , sigma           : $signature
 //       )
-struct operational_cert
+struct OperationalCert
 {
-    kes_vkey hot_vkey_;
-    uint sequence_number_;
-    uint kes_period_;
-    signature sigma_;
+    kes_vkey hot_vkey;
+    uint sequence_number;
+    uint kes_period;
+    signature sigma;
 };
 
 // transaction_index = uint .size 2
@@ -334,7 +334,6 @@ using withdrawal = std::map<reward_account, coin>;
 //   ]
 struct Transaction
 {
-
     // // datum_option = [ 0, $hash32 // 1, data ]
     // // script_ref = #6.24(bytes .cbor script)
 
@@ -494,7 +493,7 @@ struct Block
     std::vector<Transaction::WitnessSet> transaction_witness_sets;
 };
 
-} // namespace babbage
-} // namespace cardano
+}  // namespace babbage
+}  // namespace cardano
 
 #endif  // _CARDANO_LEDGER_HPP_

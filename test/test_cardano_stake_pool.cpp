@@ -26,6 +26,7 @@ constexpr auto OP_CERT_COUNTER_FILE_CONTENTS = R"({
     "description": "Next certificate issue number: 0",
     "cborHex": "820058207d299589bac9f27adc38533eee15fe68303fa2bb032d2c0a07cbf90d8568d9d6"
 })";
+constexpr auto OP_CERT_CBOR_STR = "82845820b4f7f2d8506deebd885e41e9d510a5eb7cd4101275d1860fc243c869470b26e501190349584032bf071f313c14c8d5c0ef50e24078479d4805d98a1457e97ab9f31c57e9afac4404e6f4ab4f78a736e3c9eea428b473ab96b934107cd1437e22e55fa709dd0d58207d299589bac9f27adc38533eee15fe68303fa2bb032d2c0a07cbf90d8568d9d6";
 
 constexpr auto POOL_KEY_MNEMONIC = "man tattoo narrow exhaust twist quiz sand horse easily rack theory animal rack lens final priority horror step metal song humor small setup curious";
 constexpr auto POOL_SKEY_HEX = "68904c099d72edda5f4aaf3df7b91bb297010a5b92f90ea6f2d0dbfe4c37f25473dba74c0e94c3eed3b7af55735cdd3b374985b7f570f744e59024a9d77b6ed8";
@@ -78,14 +79,14 @@ TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_
 
     SECTION ( "node issue counter" )
     {
-        auto ocic = stake_pool::OperationalCertificateIssueCounter(vkey);
+        auto ocic = stake_pool::OperationalCertificateIssueCounter();
         REQUIRE( ocic.count() == 0 );
         REQUIRE( ocic.increment() == 1 );
         REQUIRE( ocic.decrement() == 0 );
         REQUIRE( ocic.setCount(2) == 2 );
         REQUIRE( ocic.setCount(0) == 0 );
 
-        ocic.saveToFile(KEY_FILE_PATH);
+        ocic.saveToFile(KEY_FILE_PATH, vkey);
         auto cert_file = std::ifstream(KEY_FILE_PATH);
         auto cert_file_str = std::string(
             (std::istreambuf_iterator<char>(cert_file)),
@@ -94,6 +95,21 @@ TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_
         cert_file.close();
 
         REQUIRE( cert_file_str == OP_CERT_COUNTER_FILE_CONTENTS );
+    }
+
+    SECTION ( "op cert" )
+    {
+        auto ocic = stake_pool::OperationalCertificateIssueCounter();
+        ocic.increment();
+
+        auto kes_key = stake_pool::KesVerificationKey();
+        auto op_cert_mgr = stake_pool::OperationalCertificateManager::generateUnsigned(
+            kes_key, ocic, 841
+        );
+
+        op_cert_mgr.sign(skey);
+
+        REQUIRE( op_cert_mgr.serialize(vkey) == BASE16::decode(OP_CERT_CBOR_STR) );
     }
 }
 
