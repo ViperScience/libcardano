@@ -31,59 +31,88 @@
 namespace cardano
 {
 
+/// @brief A static class to encode and decode bytes to and from hex strings.
 class BASE16
 {
   private:
-    /// The constructor should remain private since this is a static class.
+    // The constructor should remain private since this is a static class.
     BASE16() = default;
 
   public:
-    // what endianess?
+    // What endianess? Should this be configurable?
+
+    /// @brief Encode a byte array to a hex string.
+    /// @param bytes The byte array to encode.
+    /// @return The encoded hex string.
     static auto encode(std::span<const uint8_t> bytes) -> std::string;
+
+    /// @brief Decode a hex string to a byte array.
+    /// @param str The hex string to decode.
+    /// @return The decoded byte array.
     static auto decode(std::string_view str) -> std::vector<uint8_t>;
 };  // BASE16
 
+/// @brief A static class to encode and decode bytes to and from Bech32 format.
 class BECH32
 {
   private:
-    /// The constructor should remain private since this is a static class.
+    // The constructor should remain private since this is a static class.
     BECH32() = default;
 
   public:
-    /// Bech32 encode raw bytes and hrp to a string.
+    /// @brief Bech32 encode raw bytes and hrp to a string.
+    /// @param hrp The human readable part of the bech32 string.
+    /// @param values The raw bytes to encode.
+    /// @return The encoded bech32 string.
     static auto encode(std::string_view hrp, std::span<const uint8_t> values)
         -> std::string;
 
-    /// Bech32 encode raw bytes (as hex string) and hrp to a string.
+    /// @brief Bech32 encode raw bytes (as hex string) and hrp to a string.
+    /// @param hrp The human readable part of the bech32 string.
+    /// @param hex_values The raw bytes to encode (as hex string).
+    /// @return The encoded bech32 string.
     static auto encode_hex(std::string_view hrp, std::string_view hex_values)
         -> std::string;
 
-    /// Decode a bech32 encoded string to its raw bytes and hrp.
+    /// @brief Decode a bech32 encoded string to its raw bytes and hrp.
+    /// @param str The bech32 encoded string to decode.
+    /// @return The decoded raw bytes and hrp.
     static auto decode(std::string_view str)
         -> std::pair<std::string, std::vector<uint8_t>>;
 
-    /// Decode a bech32 encoded string to its raw bytes (as hex string) and hrp.
+    /// @brief Decode a bech32 encoded string to its raw bytes (as hex string) and hrp.
+    /// @param str The bech32 encoded string to decode.
+    /// @return The decoded raw bytes (as hex string) and hrp.
     static auto decode_hex(std::string_view str)
         -> std::pair<std::string, std::string>;
 };  // BECH32
 
+/// @brief A static class to encode and decode bytes to and from base58.
 class BASE58
 {
   private:
-    /// The constructor should remain private since this is a static class.
+    // The constructor should remain private since this is a static class.
     BASE58() = default;
 
   public:
-    /// Static method to encode a raw byte string into a base58 hex string.
+    /// @brief Static method to encode a raw byte string into a base58 hex string.
+    /// @param values The raw byte string to encode.
+    /// @return The encoded base58 hex string.
     static auto encode(std::span<const uint8_t> values) -> std::string;
 
-    /// Static method to encode a raw hex string into a base58 hex string.
+    /// @brief Static method to encode a raw hex string into a base58 hex string.
+    /// @param hex_values The raw hex string to encode.
+    /// @return The encoded base58 hex string.
     static auto encode_hex(std::string_view hex_values) -> std::string;
 
-    /// Static method to decode a base58 hex string to a raw byte string.
+    /// @brief Static method to decode a base58 hex string to a raw byte string.
+    /// @param str The base58 hex string to decode.
+    /// @return The decoded raw byte string.
     static auto decode(std::string_view str) -> std::vector<uint8_t>;
 
-    /// Static method to decode a base58 hex string to a raw hex string.
+    /// @brief Static method to decode a base58 hex string to a raw hex string.
+    /// @param str The base58 hex string to decode.
+    /// @return The decoded raw hex string.
     static auto decode_hex(std::string_view str) -> std::string;
 };  // BASE58
 

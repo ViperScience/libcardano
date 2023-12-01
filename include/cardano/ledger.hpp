@@ -89,6 +89,7 @@ using plutus_v2_script = bytes;
 
 using url = std::string;
 
+/// @brief Namespace for all Babbage Era ledger objects.
 namespace babbage
 {
 

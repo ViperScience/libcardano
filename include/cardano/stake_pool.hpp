@@ -245,6 +245,34 @@ class ExtendedColdSigningKey
 
 };  // ExtendedColdSigningKey
 
+class VrfVerificationKey
+{
+};
+
+class VrfSigningKey
+{
+};
+
+// Placeholder class for Op Cert dev
+class KesVerificationKey
+{
+  private:
+    ed25519::PublicKey vkey_{BASE16::decode(
+        "b4f7f2d8506deebd885e41e9d510a5eb7cd4101275d1860fc243c869470b26e5"
+    )};
+
+  public:
+    [[nodiscard]] auto bytes() const
+        -> const std::array<uint8_t, ed25519::ED25519_KEY_SIZE>&
+    {
+        return this->vkey_.bytes();
+    }
+};
+
+class KesSigningKey
+{
+};
+
 /// @brief A node operational certificate issue counter.
 class OperationalCertificateIssueCounter
 {
@@ -365,17 +393,14 @@ class [[nodiscard]] OperationalCertificateManager
     ) -> OperationalCertificateManager;
 
     /// @brief Add a signature to the certificate.
-    /// @param cert The certificate to sign (signature will be added).
     /// @param skey Stake pool cold signing key.
     auto sign(const ColdSigningKey& skey) -> void;
 
     /// @brief Add a signature to the certificate.
-    /// @param cert The certificate to sign (signature will be added).
     /// @param skey Stake pool cold signing key (extended key).
     auto sign(const ExtendedColdSigningKey& skey) -> void;
 
     /// @brief Verify the certificate signature.
-    /// @param cert The operational certificate stuct.
     /// @param vkey Stake pool verification key.
     /// @return True if the cert contains a valid cold key signature.
     [[nodiscard]] auto verify(const ColdVerificationKey& vkey) const -> bool;
@@ -392,26 +417,9 @@ class [[nodiscard]] OperationalCertificateManager
 
     /// @brief Export the certifiate to a file in the text envelope format.
     /// @param fpath Path to the file to be (over)written.
-    /// @param cert The operational certificate.
     /// @param vkey The public key corresponding to the cert signing key.
     auto saveToFile(std::string_view fpath, const ColdVerificationKey& vkey)
         const -> void;
-};
-
-// Placeholder class for Op Cert dev
-class KesVerificationKey
-{
-  private:
-    ed25519::PublicKey vkey_{BASE16::decode(
-        "b4f7f2d8506deebd885e41e9d510a5eb7cd4101275d1860fc243c869470b26e5"
-    )};
-
-  public:
-    [[nodiscard]] auto bytes() const
-        -> const std::array<uint8_t, ed25519::ED25519_KEY_SIZE>&
-    {
-        return this->vkey_.bytes();
-    }
 };
 
 class RegistrationCertificateManager

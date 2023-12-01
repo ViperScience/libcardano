@@ -1,0 +1,28 @@
+# this is a config file for Poxy - a Doxygen + m.css front-end written in Python.
+# https://github.com/marzer/poxy
+#
+# config reference: https://github.com/marzer/poxy/wiki/Configuration-options
+
+name            = 'libcardano'
+author          = 'ViperScience LLC'
+description     = 'C++ Cardano SDK'
+cpp             = 20
+gitlab          = 'viperscience/libcardano'
+license         = [ 'MIT', 'https://gitlab.com/viperscience/libcardano/-/blob/main/LICENSE' ]
+twitter         = 'viperscience'
+show_includes   = false
+changelog       = false
+logo            = 'img/icon_small.png'
+favicon         = 'img/favicon.ico'
+navbar          = [ 'pages', 'namespaces', 'classes' ]
+theme           = 'dark'
+extra_files     = []
+
+[sources]
+paths           = [ 'pages' ]
+recursive_paths = [ '../include' ]
+patterns        = [ '*.h', '*.hpp', '*.dox', '*.md' ]
+strip_paths     = [ '../include', 'pages' ]
+
+[images]
+paths           = [ 'img' ]

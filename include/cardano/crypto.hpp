@@ -149,7 +149,8 @@ class BIP32PrivateKey
     }
 
     /// Factory methods
-    static auto fromBytes(std::span<const uint8_t> xpriv) -> BIP32PrivateKey; // prv + cc
+    static auto fromBytes(std::span<const uint8_t> xpriv)
+        -> BIP32PrivateKey;  // prv + cc
     static auto fromBech32(std::string_view bech32_str) -> BIP32PrivateKey;
     static auto fromMnemonic(const cardano::Mnemonic& mn) -> BIP32PrivateKey;
     static auto fromMnemonicByron(const cardano::Mnemonic& mn)
@@ -187,9 +188,12 @@ class BIP32PrivateKey
     /// @param derivation_mode V1 - Byron, V2 - Shelley
     [[nodiscard]] auto deriveChild(
         const uint32_t index,
-        const DerivationMode derivation_mode = DerivationMode::V2)
-        const -> BIP32PrivateKey;
-    
+        const DerivationMode derivation_mode = DerivationMode::V2
+    ) const -> BIP32PrivateKey;
+
+    /// @brief Sign a message using the private key.
+    /// @param msg The message to sign.
+    /// @return The signature bytes.
     [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
         -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>;
 
@@ -201,6 +205,7 @@ class BIP32PrivateKey
 
 };  // BIP32PrivateKey
 
+/// Represent a BIP32 private key encrypted with a password.
 class BIP32PrivateKeyEncrypted
 {
   private:
@@ -215,6 +220,9 @@ class BIP32PrivateKeyEncrypted
     BIP32PrivateKeyEncrypted() = default;
 
   public:
+    /// @brief Construct a new BIP32PrivateKeyEncrypted object.
+    /// @param prv The encrypted private key bytes.
+    /// @param cc The chain code bytes.
     constexpr BIP32PrivateKeyEncrypted(
         std::array<uint8_t, ENCRYPTED_KEY_SIZE> prv,
         std::array<uint8_t, CHAIN_CODE_SIZE> cc
@@ -223,9 +231,13 @@ class BIP32PrivateKeyEncrypted
     {
     }
 
+    /// @brief Construct a new BIP32PrivateKeyEncrypted object.
+    /// @param prv_enc The encrypted private key hex string.
+    /// @param cc The chain code hex string.
     BIP32PrivateKeyEncrypted(const std::string& prv_enc, const std::string& cc);
 
-    /// Access methods
+    /// @brief Encode the encrypted private key as a hex string.
+    /// @return The bech32 encoded private key.
     [[nodiscard]] auto toBase16() const -> std::string;
 
     /// Encode the private key (encrypted), public key (unencrypted), and chain
@@ -235,20 +247,38 @@ class BIP32PrivateKeyEncrypted
     [[nodiscard]] auto toExtendedCBOR(std::string_view password) const
         -> std::string;
 
-    /// Conversion methods
+    /// @brief Derive a child key from the private key.
+    /// @param index Derivation index.
+    /// @param password Password to decrypt the private key.
+    /// @param derivation_mode The key derivation mode. (V1 - Byron, V2 -
+    /// Shelley).
+    /// @return An encrypted BIP32 private key.
     [[nodiscard]] auto deriveChild(
         const uint32_t index,
         std::string_view password,
         const DerivationMode derivation_mode = DerivationMode::V2
     ) const -> BIP32PrivateKeyEncrypted;
+
+    /// @brief Derive the Ed25519 public key from the private key.
+    /// @param password The password to decrypt the private key.
+    /// @return A BIP32 public key.
     [[nodiscard]] auto toPublic(std::string_view password) const
         -> BIP32PublicKey;
+
+    /// @brief Decrypt the private key bytes with a password.
+    /// @param password The password to use for the decryption.
+    /// @return An unencrypted BIP32 private key.
     [[nodiscard]] auto decrypt(std::string_view password) const
         -> BIP32PrivateKey;
 
-    [[nodiscard]] auto sign(std::string_view password, std::span<const uint8_t> msg) const
-        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>;
-    
+    /// @brief Sign a message using the private key.
+    /// @param password Password to decrypt the private key for signature.
+    /// @param msg The message to sign.
+    /// @return The signature bytes.
+    [[nodiscard]] auto sign(
+        std::string_view password, std::span<const uint8_t> msg
+    ) const -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>;
+
 };  // BIP32PrivateKeyEncrypted
 
 }  // namespace cardano

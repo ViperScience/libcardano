@@ -1,5 +1,6 @@
 stages:
-- build
+  - build
+  - build-documentation
 # - test
 # - deploy
 
@@ -51,3 +52,15 @@ docker-build:
 #   <<: *ctest-template
 #   rules:
 #     - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+
+pages:
+  image: python:3.11-bookworm
+  stage: build-documentation
+  script:
+  - pip install poxy
+  - apt-get update && apt-get install doxygen -y
+  - poxy docs/poxy.toml
+  - mv html/ public/
+  artifacts:
+    paths:
+    - public
