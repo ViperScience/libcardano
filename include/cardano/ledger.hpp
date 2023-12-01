@@ -41,7 +41,7 @@ namespace cardano
 
 using uint = uint64_t;
 using coin = uint;
-using epoch = uint;
+using Epoch = uint;
 
 using byte = uint8_t;
 using bytes = std::vector<byte>;
@@ -64,9 +64,9 @@ using signature = bytes64;
 using hash28 = bytes28;
 using hash32 = bytes32;
 using addr_keyhash = hash28;
-using genesis_delegate_hash = hash28;
-using pool_keyhash = hash28;
-using genesis_hash = hash28;
+using GenesisDelegateHash = hash28;
+using PoolKeyHash = hash28;
+using GenesisHash = hash28;
 
 // To compute a script hash, note that you must prepend
 // a tag to the bytes of the script before hashing.
@@ -77,7 +77,7 @@ using genesis_hash = hash28;
 //   "\x02" for Plutus V2 scripts
 using scripthash = hash28;
 
-using vrf_keyhash = hash32;
+using VrfKeyHash = hash32;
 using auxiliary_data_hash = hash32;
 using pool_metadata_hash = hash32;
 
@@ -141,8 +141,8 @@ struct Relay
 //                 )
 struct PoolParams
 {
-    pool_keyhash operator_{};
-    vrf_keyhash vrf_keyhash_{};
+    PoolKeyHash operator_{};
+    VrfKeyHash vrf_keyhash_{};
     coin pledge_;
     coin cost_;
     reward_account reward_account_{};
@@ -202,9 +202,8 @@ class MoveInstantaneousReward
 // genesis_key_delegation = (5, genesishash, genesis_delegate_hash, vrf_keyhash)
 // move_instantaneous_rewards_cert = (6, move_instantaneous_reward)
 //
-class Certificate
+struct Certificate
 {
-  public:
     enum Type
     {
         stake_registration = 0,
@@ -216,34 +215,64 @@ class Certificate
         move_instantaneous_rewards_cert = 6
     };
 
-  protected:
-    Certificate::Type type_;
+    const Certificate::Type type;
 };
 
 // CDDL: stake_registration = (0, stake_credential)
-class StakeRegistration : Certificate
+struct StakeRegistration : public Certificate
 {
-  public:
-    StakeRegistration(StakeCredential cred) : stake_credential_{cred}
-    {
-        type_ = Certificate::stake_registration;
-    }
-
-  private:
-    StakeCredential stake_credential_;
+    StakeRegistration() : Certificate{Certificate::stake_registration} {}
+    StakeCredential stake_credential;
 };
 
-// CDDL: stake_registration = (0, stake_credential)
-class StakeDeregistration : Certificate
+// CDDL: stake_deregistration = (1, stake_credential)
+struct StakeDeregistration : public Certificate
 {
-  public:
-    StakeDeregistration(StakeCredential cred) : stake_credential_{cred}
-    {
-        type_ = Certificate::stake_deregistration;
-    }
+    StakeDeregistration() : Certificate{Certificate::stake_deregistration} {}
+    StakeCredential stake_credential;
+};
 
-  private:
-    StakeCredential stake_credential_;
+// CDDL: stake_delegation = (2, stake_credential, pool_keyhash)
+struct StakeDelegation : public Certificate
+{
+    StakeDelegation() : Certificate{Certificate::stake_delegation} {}
+    StakeCredential stake_credential;
+    PoolKeyHash pool_keyhash;
+};
+
+// CDDL: pool_registration = (3, pool_params)
+struct PoolRegistration : public Certificate
+{
+    PoolRegistration() : Certificate{Certificate::pool_registration} {}
+    PoolParams pool_params;
+};
+
+// CDDL: pool_retirement = (4, pool_keyhash, epoch)
+struct PoolRetirement : public Certificate
+{
+    PoolRetirement() : Certificate{Certificate::pool_retirement} {}
+    PoolKeyHash pool_keyhash;
+    Epoch epoch;
+};
+
+// CDDL: genesis_key_delegation = (5, genesishash, genesis_delegate_hash,
+// vrf_keyhash)
+struct GenesisKeyDelegation : public Certificate
+{
+    GenesisKeyDelegation() : Certificate{Certificate::genesis_key_delegation} {}
+    GenesisHash genesishash;
+    GenesisDelegateHash genesis_delegate_hash;
+    VrfKeyHash vrf_keyhash;
+};
+
+// CDDL: move_instantaneous_rewards_cert = (6, move_instantaneous_reward)
+struct MoveInstantaneousRewardsCert : public Certificate
+{
+    MoveInstantaneousRewardsCert()
+        : Certificate{Certificate::move_instantaneous_rewards_cert}
+    {
+    }
+    MoveInstantaneousReward move_instantaneous_reward;
 };
 
 // This is a hash of data which may affect evaluation of a script.
