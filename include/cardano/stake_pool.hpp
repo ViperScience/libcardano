@@ -331,7 +331,7 @@ class OperationalCertificateIssueCounter
 class [[nodiscard]] OperationalCertificateManager
 {
   private:
-    cardano::babbage::OperationalCert cert_;
+    cardano::shelley::OperationalCert cert_;
 
   public:
     OperationalCertificateManager() = delete;
@@ -339,7 +339,7 @@ class [[nodiscard]] OperationalCertificateManager
     /// @brief Construct a manager object from an operational certificate.
     /// @param cert An operational certificate struct.
     explicit OperationalCertificateManager(
-        cardano::babbage::OperationalCert cert
+        cardano::shelley::OperationalCert cert
     )
         : cert_(std::move(cert))
     {
@@ -348,7 +348,7 @@ class [[nodiscard]] OperationalCertificateManager
     /// @brief Provide a constant reference to the certificate struct.
     /// @return A constant reference to the wrapped certificate struct.
     [[nodiscard]] auto certificate() const
-        -> const cardano::babbage::OperationalCert&
+        -> const cardano::shelley::OperationalCert&
     {
         return cert_;
     }

@@ -71,7 +71,7 @@ class BIP32PublicKey
 
     /// Make the default constructor private so that it can only be used
     /// internally.
-    BIP32PublicKey() = default;
+    // BIP32PublicKey() = default;
 
   public:
     constexpr BIP32PublicKey(
@@ -134,7 +134,7 @@ class BIP32PrivateKey
 
     /// Make the default constructor private so that it can only be used
     /// internally.
-    BIP32PrivateKey() = default;
+    // BIP32PrivateKey() = default;
 
     /// Clear the contents of the private key array.
     // bool clear();

@@ -151,46 +151,15 @@ auto OperationalCertificateIssueCounter::saveToFile(
     cardano::writeEnvelopeTextFile(fpath, type_str, desc_str, counter_cbor_hex);
 }  // OperationalCertificateIssueCounter::saveToFile
 
-////////////////////////////////////////////////////////////////////////////////
-
-#include <debug_utils.hpp>
-
-constexpr auto U64TO8_BE(const uint64_t v) -> std::array<uint8_t, 8>
-{
-    auto out = std::array<uint8_t, 8>{};
-    out[7] = (uint8_t)v;
-    out[6] = (uint8_t)(v >> 8);
-    out[5] = (uint8_t)(v >> 16);
-    out[4] = (uint8_t)(v >> 24);
-    out[3] = (uint8_t)(v >> 32);
-    out[2] = (uint8_t)(v >> 40);
-    out[1] = (uint8_t)(v >> 48);
-    out[0] = (uint8_t)(v >> 56);
-    return out;
-}  // U64TO8_BE
-
-constexpr auto U64TO8_LE(const uint64_t v) -> std::array<uint8_t, 8>
-{
-    auto out = std::array<uint8_t, 8>{};
-    out[0] = (uint8_t)v;
-    out[1] = (uint8_t)(v >> 8);
-    out[2] = (uint8_t)(v >> 16);
-    out[3] = (uint8_t)(v >> 24);
-    out[4] = (uint8_t)(v >> 32);
-    out[5] = (uint8_t)(v >> 40);
-    out[6] = (uint8_t)(v >> 48);
-    out[7] = (uint8_t)(v >> 56);
-    return out;
-}  // U64TO8_LE
-
-auto opCertMessageToSign(cardano::babbage::OperationalCert cert)
+auto opCertMessageToSign(cardano::shelley::OperationalCert cert)
     -> std::vector<uint8_t>
 {
     auto be = cardano::concat_bytes(
-        cardano::concat_bytes(cert.hot_vkey, U64TO8_BE(cert.sequence_number)),
-        U64TO8_BE(cert.kes_period)
+        cardano::concat_bytes(
+            cert.hot_vkey, cardano::U64TO8_BE(cert.sequence_number)
+        ),
+        cardano::U64TO8_BE(cert.kes_period)
     );
-    cardano_debug::print_bytes(be);
     return be;
 }
 
@@ -200,7 +169,7 @@ auto OperationalCertificateManager::generateUnsigned(
     size_t kes_period
 ) -> OperationalCertificateManager
 {
-    auto cert = cardano::babbage::OperationalCert();
+    auto cert = cardano::shelley::OperationalCert();
     cert.hot_vkey = hot_key.bytes();
     cert.kes_period = kes_period;
     cert.sequence_number = counter.count();
