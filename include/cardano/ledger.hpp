@@ -109,35 +109,50 @@ using Url = std::string;
 /// transaction_index = uint .size 2
 using TransactionIndex = uint16_t;
 
+/// @brief Virtual struct defining CBOR array serializability.
 struct ArraySerializable
 {
+    /// @brief Virtual method to define a serializing object.
+    /// @return CBOR array object.
     [[nodiscard]] virtual auto serializer() const -> cppbor::Array = 0;
 
+    /// @brief Serialize the object as a CBOR byte vector.
+    /// @return CBOR byte vector.
     [[nodiscard]] auto serialize() const -> Bytes
     {
         return serializer().encode();
     }
-};
+};  // ArraySerializable
 
+/// @brief Virtual struct defining CBOR map serializability.
 struct MapSerializable
 {
+    /// @brief Virtual method to define a serializing object.
+    /// @return CBOR map object.
     [[nodiscard]] virtual auto serializer() const -> cppbor::Map = 0;
 
+    /// @brief Serialize the object as a CBOR byte vector.
+    /// @return CBOR byte vector.
     [[nodiscard]] auto serialize() const -> Bytes
     {
         return serializer().encode();
     }
-};
+};  // MapSerializable
 
+/// @brief Virtual struct defining CBOR tagged item serializability.
 struct TagSerializable
 {
+    /// @brief Virtual method to define a serializing object.
+    /// @return CBOR tagged item object.
     [[nodiscard]] virtual auto serializer() const -> cppbor::SemanticTag = 0;
 
+    /// @brief Serialize the object as a CBOR byte vector.
+    /// @return CBOR byte vector.
     [[nodiscard]] auto serialize() const -> Bytes
     {
         return serializer().encode();
     }
-};
+};  // TagSerializable
 
 struct Rational : public TagSerializable
 {
@@ -808,28 +823,31 @@ struct MoveInstantaneousReward
 };
 
 /// @brief A transaction certificate (base type).
-/// @code
-/// certificate =
-///   [ stake_registration
-///   // stake_deregistration
-///   // stake_delegation
-///   // pool_registration
-///   // pool_retirement
-///   // genesis_key_delegation
-///   // move_instantaneous_rewards_cert
-///   ]
 ///
-/// stake_registration = (0, stake_credential)
-/// stake_deregistration = (1, stake_credential)
-/// stake_delegation = (2, stake_credential, pool_keyhash)
-/// pool_registration = (3, pool_params)
-/// pool_retirement = (4, pool_keyhash, epoch)
-/// genesis_key_delegation = (5, genesishash, genesis_delegate_hash,
-/// vrf_keyhash) move_instantaneous_rewards_cert = (6,
-/// move_instantaneous_reward)
-/// @endcode
+/// CDDL description:
+///
+///     certificate =
+///       [ stake_registration
+///       // stake_deregistration
+///       // stake_delegation
+///       // pool_registration
+///       // pool_retirement
+///       // genesis_key_delegation
+///       // move_instantaneous_rewards_cert
+///       ]
+///
+///     stake_registration = (0, stake_credential)
+///     stake_deregistration = (1, stake_credential)
+///     stake_delegation = (2, stake_credential, pool_keyhash)
+///     pool_registration = (3, pool_params)
+///     pool_retirement = (4, pool_keyhash, epoch)
+///     genesis_key_delegation = (5, genesishash, genesis_delegate_hash,
+///     vrf_keyhash) move_instantaneous_rewards_cert = (6,
+///     move_instantaneous_reward)
+///
 struct Certificate : public ArraySerializable
 {
+    /// @brief The certificate type.
     enum Type
     {
         stake_registration = 0,
@@ -841,175 +859,179 @@ struct Certificate : public ArraySerializable
         move_instantaneous_rewards_cert = 6
     };
 
+    /// @brief Constant certificate type (must be set on construction).
     const Certificate::Type type;
 
+    /// @brief Construct a new Certificate object with a type.
+    /// @param t Type enum for the certificate (cannot be changed).
     [[nodiscard]] Certificate(Certificate::Type t) : type(t) {}
-};
+};  // Certificate
 
 /// @brief A stake registration certificate.
-/// CDDL: stake_registration = (0, stake_credential)
+///
+/// CDDL:
+///
+///     stake_registration = (0, stake_credential)
+///
 struct StakeRegistration : public Certificate
 {
-    StakeRegistration() : Certificate{Certificate::stake_registration} {}
+    /// @brief The certificate stake credential.
     StakeCredential stake_credential;
 
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        return cppbor::Array{cppbor::Uint(0), stake_credential.serializer()};
-    }
-};
+    /// @brief Construct a new StakeRegistration certificate object.
+    StakeRegistration() : Certificate{Certificate::stake_registration} {}
+
+    /// @brief Create a pool registration CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] cppbor::Array serializer() const final;
+};  // StakeRegistration
 
 /// @brief A stake deregistration certificate.
-/// CDDL: stake_deregistration = (1, stake_credential)
+///
+/// CDDL:
+///
+///     stake_deregistration = (1, stake_credential)
+///
 struct StakeDeregistration : public Certificate
 {
-    StakeDeregistration() : Certificate{Certificate::stake_deregistration} {}
+    /// @brief The certificate stake credential.
     StakeCredential stake_credential;
 
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        return cppbor::Array{cppbor::Uint(1), stake_credential.serializer()};
-    }
-};
+    /// @brief Construct a new StakeDeregistration certificate object.
+    StakeDeregistration() : Certificate{Certificate::stake_deregistration} {}
+
+    /// @brief Create a pool registration CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] cppbor::Array serializer() const final;
+};  // StakeDeregistration
 
 /// @brief A stake delegation certificate.
-/// CDDL: stake_delegation = (2, stake_credential, pool_keyhash)
+///
+/// CDDL:
+///
+///     stake_delegation = (2, stake_credential, pool_keyhash)
+///
 struct StakeDelegation : public Certificate
 {
-    StakeDelegation() : Certificate{Certificate::stake_delegation} {}
+    /// @brief The certificate stake credential.
     StakeCredential stake_credential;
+
+    /// @brief The identity of the stake pool intended for delegation.
     PoolKeyHash pool_keyhash;
 
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        return cppbor::Array{
-            cppbor::Uint(0),
-            stake_credential.serializer(),
-            cppbor::Bstr{{pool_keyhash.data(), pool_keyhash.size()}}
-        };
-    }
-};
+    /// @brief Construct a new StakeDelegation certificate object.
+    StakeDelegation() : Certificate{Certificate::stake_delegation} {}
+
+    /// @brief Create a pool registration CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] cppbor::Array serializer() const final;
+};  // StakeDelegation
 
 /// @brief A pool registration certificate.
-/// CDDL: pool_registration = (3, pool_params)
+///
+/// CDDL:
+///
+///     pool_registration = (3, pool_params)
+///
 struct PoolRegistration : public Certificate
 {
-    PoolRegistration() : Certificate{Certificate::pool_registration} {}
+    /// @brief The parameters of a stake pool.
     PoolParams pool_params;
 
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        auto cbor_serializer = cppbor::Array{
-            cppbor::Uint(3),
-            cppbor::Bstr{
-                {pool_params.pool_operator.data(),
-                 pool_params.pool_operator.size()}
-            },
-            cppbor::Bstr{
-                {pool_params.vrf_keyhash.data(), pool_params.vrf_keyhash.size()}
-            },
-            cppbor::Uint(pool_params.pledge),
-            cppbor::Uint(pool_params.cost),
-            pool_params.margin.serializer(),
-            cppbor::Bstr{
-                {pool_params.reward_account.data(),
-                 pool_params.reward_account.size()}
-            },
-        };
+    /// @brief Construct a new PoolRegistration object.
+    PoolRegistration() : Certificate{Certificate::pool_registration} {}
 
-        if (!pool_params.pool_owners.empty())
-        {
-            auto pool_owners = cppbor::Array{};
-            for (auto& owner : pool_params.pool_owners)
-            {
-                pool_owners.add(cppbor::Bstr{{owner.data(), owner.size()}});
-            }
-            cbor_serializer.add(std::move(pool_owners));
-        }
-
-        if (!pool_params.relays.empty())
-        {
-            auto relays = cppbor::Array{};
-            for (auto& relay : pool_params.relays)
-            {
-                relays.add(relay->serializer());
-            }
-            cbor_serializer.add(std::move(relays));
-        }
-
-        if (pool_params.pool_metadata.has_value())
-        {
-            cbor_serializer.add(pool_params.pool_metadata.value().serializer());
-        }
-
-        return cbor_serializer;
-    }
-};
+    /// @brief Create a pool registration CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] cppbor::Array serializer() const final;
+};  // PoolRegistration
 
 /// @brief A pool retirement certificate.
-/// CDDL: pool_retirement = (4, pool_keyhash, epoch)
+///
+/// CDDL:
+///
+///     pool_retirement = (4, pool_keyhash, epoch)
+///
 struct PoolRetirement : public Certificate
 {
-    PoolRetirement() : Certificate{Certificate::pool_retirement} {}
+    /// @brief Blake2b_224 hash of the stake pool verification key.
     PoolKeyHash pool_keyhash;
+
+    /// @brief The epoch when the pool will be retired.
     Epoch epoch;
 
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        return cppbor::Array{
-            cppbor::Uint(4),
-            cppbor::Bstr{{pool_keyhash.data(), pool_keyhash.size()}},
-            cppbor::Uint(epoch)
-        };
-    }
-};
+    /// @brief Construct a new PoolRetirement object.
+    PoolRetirement() : Certificate{Certificate::pool_retirement} {}
+
+    /// @brief Create a pool deregistration CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] cppbor::Array serializer() const final;
+};  // PoolRetirement
 
 /// @brief A genesis key delegation certificate.
+///
 /// CDDL:
-/// genesis_key_delegation = (5, genesishash, genesis_delegate_hash,
-/// vrf_keyhash)
+///
+///     genesis_key_delegation = (5,
+///         genesishash, genesis_delegate_hash, vrf_keyhash)
+///
 struct GenesisKeyDelegation : public Certificate
 {
-    GenesisKeyDelegation() : Certificate{Certificate::genesis_key_delegation} {}
     GenesisHash genesishash;
     GenesisDelegateHash genesis_delegate_hash;
     VrfKeyHash vrf_keyhash;
 
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        return cppbor::Array{cppbor::Uint(5)};
-    }
-};
+    GenesisKeyDelegation() : Certificate{Certificate::genesis_key_delegation} {}
+
+    /// @brief Create a pool deregistration CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] cppbor::Array serializer() const final;
+};  // GenesisKeyDelegation
 
 /// @brief A move instantaneous rewards certificate.
-/// CDDL: move_instantaneous_rewards_cert = (6, move_instantaneous_reward)
+///
+/// CDDL:
+///
+///     move_instantaneous_rewards_cert = (6, move_instantaneous_reward)
+///
 struct MoveInstantaneousRewardsCert : public Certificate
 {
+    MoveInstantaneousReward move_instantaneous_reward;
+
     MoveInstantaneousRewardsCert(MoveInstantaneousReward m)
         : Certificate{Certificate::move_instantaneous_rewards_cert},
           move_instantaneous_reward{m}
     {
     }
-    MoveInstantaneousReward move_instantaneous_reward;
 
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        return cppbor::Array{cppbor::Uint(6)};
-    }
-};
+    /// @brief Create a pool deregistration CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] cppbor::Array serializer() const final;
+};  // MoveInstantaneousRewardsCert
 
 /// @brief A transaction output
-/// transaction_output = [address, amount : coin]
+///
+/// CDDL description:
+///
+///     transaction_output = [address, amount : coin]
+///
 struct TransactionOutput
 {
+    /// @brief The address of the recipient.
     Address address;
+
+    /// @brief The amount of the output (lovelace).
     Coin amount;
-};
+};  // TransactionOutput
 
 /// @brief A transaction input
-/// transaction_input = [ transaction_id : $hash32
-///                     , index : uint
-///                     ]
+///
+/// CDDL description:
+///
+///     transaction_input = [ transaction_id : $hash32
+///                         , index : uint
+///                         ]
+///
 struct TransactionInput
 {
     Hash32 transaction_id;
@@ -1017,19 +1039,23 @@ struct TransactionInput
 
     // This is required for using with a std::set.
     // bool operator<(const Input& rhs) const { return value < rhs.value; }
-};
+};  // TransactionInput
 
 /// @brief The body of a transaction
-/// transaction_body =
-///   { 0 : set<transaction_input>
-///   , 1 : [* transaction_output]
-///   , 2 : coin ; fee
-///   , 3 : uint ; ttl
-///   , ? 4 : [* certificate]
-///   , ? 5 : withdrawals
-///   , ? 6 : update
-///   , ? 7 : metadata_hash
-///   }
+///
+/// CDDL description:
+///
+///     transaction_body =
+///       { 0 : set<transaction_input>
+///       , 1 : [* transaction_output]
+///       , 2 : coin ; fee
+///       , 3 : uint ; ttl
+///       , ? 4 : [* certificate]
+///       , ? 5 : withdrawals
+///       , ? 6 : update
+///       , ? 7 : metadata_hash
+///       }
+///
 struct TransactionBody
 {
     std::unordered_set<TransactionInput> transaction_inputs;
@@ -1040,35 +1066,43 @@ struct TransactionBody
     std::optional<Withdrawals> withdrawals;
     std::optional<Update> update;
     std::optional<MetadataHash> metadata_hash;
-};
+};  // TransactionBody
 
 /// @brief A transaction
-/// transaction =
-///   [ transaction_body
-///   , transaction_witness_set
-///   , transaction_metadata / null
-///   ]
+///
+/// CDDL description:
+///
+///     transaction =
+///       [ transaction_body
+///       , transaction_witness_set
+///       , transaction_metadata / null
+///       ]
+////
 struct Transaction
 {
     TransactionBody transaction_body;
     TransactionWitnessSet transaction_witness_set;
     std::optional<TransactionMetadata> transaction_metadata;
-};
+};  // Transaction
 
 /// @brief Stake pool operational certificate.
-/// operational_cert =
-///   ( hot_vkey        : $kes_vkey
-///   , sequence_number : uint
-///   , kes_period      : uint
-///   , sigma           : $signature
-///   )
+///
+/// CDDL description:
+///
+///     operational_cert =
+///       ( hot_vkey        : $kes_vkey
+///       , sequence_number : uint
+///       , kes_period      : uint
+///       , sigma           : $signature
+///       )
+///
 struct OperationalCert
 {
     KesVkey hot_vkey;
     Uint sequence_number;
     Uint kes_period;
     Signature sigma;
-};
+};  // OperationalCert
 
 /// @brief A block header body
 /// header_body =

@@ -100,7 +100,6 @@ class ColdVerificationKey
         -> std::array<uint8_t, STAKE_POOL_ID_SIZE>;
 
     /// @brief Serialize the key bytes as a Bech32 string.
-    /// @param hrp The human readable part of the string.
     /// @return String representing the formatted key.
     [[nodiscard]] auto asBech32() const -> std::string;
 
