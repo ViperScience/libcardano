@@ -39,6 +39,7 @@ constexpr auto POOL_OWNER1_ADDR_BECH32 = "stake1u9nk44a63wtg22c7jva5lfawmd27nemy
 constexpr auto POOL_OWNER2_ADDR_BECH32 = "stake1u88wruysv4n6sw0mkaqf666rrzmk042yc903jsy85zr2k4glsguml";
 constexpr auto POOL_REGISTRATION_CERT_CBOR_STR = "8a03581cd0ce9bb3f5214859a8192c0207dd24932abbc70342acff2b2b26e2f258203cd279fd07554b84b1681abe29c180d8dc65849a6849c25389478d105c9e83b31b000000174876e8001a0a21fe80d81e82011832581de1676ad7ba8b96852b1e933b4fa7aedb55e9e7640f47f3d0a150abd27f82581c676ad7ba8b96852b1e933b4fa7aedb55e9e7640f47f3d0a150abd27f581ccee1f0906567a839fbb7409d6b4318b767d544c15f194087a086ab55818301190bb97472656c61792e6d7974657374706f6f6c2e636f6d82782168747470733a2f2f6578616d706c652e636f6d2f6d657461646174612e6a736f6e5820c74715ac7b726d24da9d2a847d3428638cd7b4ba3652e92128e5fe6c3e3b496c";
 constexpr auto POOL_REWARD_ACCOUNT_KEY_HEX = "558b4b7c3a388e708146db5496977e74583de0f26d07d147448e75ec83ceea57";
+constexpr auto POOL_DEREGISTRATION_CERT_CBOR_STR = "8304581cd0ce9bb3f5214859a8192c0207dd24932abbc70342acff2b2b26e2f21901cc";
 
 TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_key]" )
 {
@@ -141,6 +142,17 @@ TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_
         );
 
         REQUIRE( BASE16::encode(reg.serialize()) == POOL_REGISTRATION_CERT_CBOR_STR );
+    }
+
+    SECTION( "deregistration certificate" )
+    {
+        auto epoch = 460;
+
+        auto cert = stake_pool::DeregistrationCertificateManager(
+            vkey, epoch
+        );
+
+        REQUIRE( BASE16::encode(cert.serialize()) == POOL_DEREGISTRATION_CERT_CBOR_STR );
     }
 
 }
