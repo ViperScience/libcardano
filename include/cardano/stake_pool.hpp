@@ -25,12 +25,16 @@
 #include <functional>
 
 // Third-party library headers
+#include <botan/hash.h>
+
 #include <viper25519/ed25519.hpp>
 
 // Public libcardano headers
+#include <cardano/address.hpp>
 #include <cardano/crypto.hpp>
 #include <cardano/encodings.hpp>
 #include <cardano/ledger.hpp>
+#include <ranges>
 
 /// @brief The root namespace for all Cardano functions and types.
 namespace cardano
@@ -91,7 +95,8 @@ class ColdVerificationKey
 
     /// @brief Generate the pool ID as an array of bytes.
     /// @return Pool ID as an array of bytes.
-    [[nodiscard]] auto poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>;
+    [[nodiscard]] auto poolId() const
+        -> std::array<uint8_t, STAKE_POOL_ID_SIZE>;
 
     /// @brief Serialize the key bytes as a Bech32 string.
     /// @param hrp The human readable part of the string.
@@ -105,10 +110,12 @@ class ColdVerificationKey
 };  // ColdVerificationKey
 
 /// @brief A stake pool signing key (Ed25519 signing key).
+///
 /// This class wraps a standard Ed25519 signing key. It is included for
 /// compatibility with legacy keys and is completely valid for use as a stake
 /// pool key. However, users are encouraged to use the extended key version for
 /// new keys, which implements CIP-1853 for pool key derivation.
+///
 class ColdSigningKey
 {
   private:
@@ -245,8 +252,31 @@ class ExtendedColdSigningKey
 
 };  // ExtendedColdSigningKey
 
+// Placeholder class for Cert dev
 class VrfVerificationKey
 {
+  private:
+    ed25519::PublicKey vkey_{BASE16::decode(
+        "9f52b990a53f091cc43712728ebd9d69b277bf5bc673024736961376ce3f7053"
+    )};
+
+  public:
+    [[nodiscard]] auto bytes() const
+        -> const std::array<uint8_t, ed25519::ED25519_KEY_SIZE>&
+    {
+        return this->vkey_.bytes();
+    }
+
+    [[nodiscard]] auto hash() const -> std::array<uint8_t, 32>
+    {
+        // Blake2b-SHA256 encode the CBOR encoded seed (32 byte result).
+        const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
+        blake2b->update(vkey_.bytes().data(), vkey_.bytes().size());
+        const auto hashed = blake2b->final();
+        auto ret = std::array<uint8_t, 32>{};
+        std::copy(hashed.begin(), hashed.end(), ret.begin());
+        return ret;
+    }
 };
 
 class VrfSigningKey
@@ -379,7 +409,6 @@ class [[nodiscard]] OperationalCertificateManager
         size_t kes_period,
         const ExtendedColdSigningKey& skey
     ) -> OperationalCertificateManager;
-    // verify vkey matches the skey
 
     /// @brief Generate a new cert without a signature.
     /// @param hot_key The stake pool hot public key (KES key).
@@ -422,8 +451,180 @@ class [[nodiscard]] OperationalCertificateManager
         const -> void;
 };
 
+/// @brief Manage creation and serialization of node registration certificates.
 class RegistrationCertificateManager
 {
+  private:
+    cardano::shelley::PoolRegistration cert_;
+
+  public:
+    RegistrationCertificateManager() = delete;
+
+    /// @brief Construct a manager object from a registration certificate.
+    /// @param cert The retirement certificate struct.
+    explicit RegistrationCertificateManager(
+        cardano::shelley::PoolRegistration cert
+    )
+        : cert_(std::move(cert))
+    {
+    }
+
+    /// @brief Construct a new registration certificate.
+    /// @param vkey The verification key of the pool.
+    /// @param vrf_vkey The VRF verification key of the pool.
+    /// @param pledge_lovelace The pledge amount in Lovelace.
+    /// @param cost_lovelace The cost (fixed fee) per epoch in Lovelace.
+    /// @param margin The margin (decimal unit interval) cost per epoch.
+    /// @param reward_account The pool reward account address.
+    RegistrationCertificateManager(
+        const ColdVerificationKey& vkey,
+        const VrfVerificationKey& vrf_vkey,
+        uint64_t pledge_lovelace,
+        uint64_t cost_lovelace,
+        double margin,
+        const RewardsAddress& reward_account
+    );
+
+    /// @brief Set the stake pool operator ID.
+    /// @param vkey The verification key of the pool.
+    auto setOperator(const ColdVerificationKey& vkey) -> void
+    {
+        this->cert_.pool_params.pool_operator = vkey.poolId();
+    }
+
+    /// @brief Set the stake pool operator ID.
+    /// @param poolId The stake pool ID calculated from the Vkey hash.
+    auto setOperator(const std::array<uint8_t, STAKE_POOL_ID_SIZE>& poolId)
+        -> void
+    {
+        this->cert_.pool_params.pool_operator = poolId;
+    }
+
+    /// @brief Set the pool VRF key.
+    /// @param vrf_vkey The stake pool VRF verification key.
+    auto setVrfKey(const VrfVerificationKey& vrf_vkey) -> void
+    {
+        this->cert_.pool_params.vrf_keyhash = vrf_vkey.hash();
+    }
+
+    /// @brief Set the stake pool pledge.
+    /// @param pledge_lovelace The pledge amount in Lovelace.
+    auto setPledge(uint64_t pledge_lovelace) -> void
+    {
+        this->cert_.pool_params.pledge = pledge_lovelace;
+    }
+
+    /// @brief Set the stake pool cost.
+    /// @param cost_lovelace The cost (fixed fee) per epoch in Lovelace.
+    auto setCost(uint64_t cost_lovelace) -> void
+    {
+        this->cert_.pool_params.cost = cost_lovelace;
+    }
+
+    /// @brief Set the stake pool margin.
+    /// @param margin The margin (decimal unit interval) cost per epoch.
+    auto setMargin(double margin) -> void;
+
+    /// @brief Set the stake pool reward account.
+    /// @param reward_account The pool reward account address.
+    auto setRewardAccount(const RewardsAddress& reward_account) -> void
+    {
+        this->cert_.pool_params.reward_account = reward_account.toBytes(true);
+    }
+
+    /// @brief Add a stake pool owner to the certificate.
+    /// @param stake_addr The stake pool owner stake address.
+    auto addOwner(const RewardsAddress& stake_addr) -> void;
+
+    /// @brief Add a multi-host-name relay to the certificate.
+    /// @param dns_name The DNS name of the relay.
+    auto addRelay(std::string_view dns_name) -> void;
+
+    /// @brief Add a single-host-name relay to the certificate.
+    /// @param dns_name The DNS name of the relay.
+    /// @param port The port of the relay.
+    auto addRelay(std::string_view dns_name, uint16_t port) -> void;
+
+    /// @brief Add a single-host-address relay to the certificate.
+    /// @param ip The IPV4 address of the relay.
+    /// @param port The relay port.
+    auto addRelay(std::array<uint8_t, 4> ip, uint16_t port) -> void;
+
+    /// @brief Add a single-host-address relay to the certificate.
+    /// @param ip The IPV6 address of the relay.
+    /// @param port The relay port.
+    auto addRelay(std::array<uint8_t, 16> ip, uint16_t port) -> void;
+
+    /// @brief Add a metadata URL to the certificate.
+    /// @param metadata_url The metadata file URL.
+    /// @param hash The metadata file hash.
+    auto setMetadata(
+        std::string_view metadata_url, std::span<const uint8_t> hash
+    ) -> void;
+
+    /// @brief Provide a constant reference to the certificate struct.
+    /// @return A constant reference to the internal certificate struct.
+    [[nodiscard]] auto certificate() const
+        -> const cardano::shelley::PoolRegistration&
+    {
+        return cert_;
+    }
+
+    /// @brief Serialize the certificate to CBOR.
+    /// @return The CBOR byte string as a byte vector.
+    [[nodiscard]] auto serialize() const -> std::vector<uint8_t>
+    {
+        return cert_.serialize();
+    }
+};
+
+/// @brief An interface for managing stake pool retirement certificates.
+class DeregistrationCertificateManager
+{
+  private:
+    cardano::shelley::PoolRetirement cert_;
+
+  public:
+    DeregistrationCertificateManager() = delete;
+
+    /// @brief Construct a manager object from a retirement certificate.
+    /// @param cert The retirement certificate struct.
+    explicit DeregistrationCertificateManager(
+        cardano::shelley::PoolRetirement cert
+    )
+        : cert_(std::move(cert))
+    {
+    }
+
+    /// @brief Construst a retirement certificate.
+    /// @param vkey The verification key of the retiring pool.
+    /// @param epoch The epoch in which the pool will retire.
+    DeregistrationCertificateManager(
+        const ColdVerificationKey& vkey, uint64_t epoch
+    )
+    {
+        this->cert_.pool_keyhash = vkey.poolId();
+        this->cert_.epoch = epoch;
+    }
+
+    /// @brief Set the epoch in which the pool will retire.
+    /// @param epoch The epoch in which the pool will retire.
+    auto setEpoch(uint64_t epoch) -> void { this->cert_.epoch = epoch; }
+
+    /// @brief Provide a constant reference to the certificate struct.
+    /// @return A constant reference to the internal certificate struct.
+    [[nodiscard]] auto certificate() const
+        -> const cardano::shelley::PoolRetirement&
+    {
+        return cert_;
+    }
+
+    /// @brief Serialize the certificate to CBOR.
+    /// @return The CBOR byte string as a byte vector.
+    [[nodiscard]] auto serialize() const -> std::vector<uint8_t>
+    {
+        return cert_.serialize();
+    }
 };
 
 }  // namespace stake_pool

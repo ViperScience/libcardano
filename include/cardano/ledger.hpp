@@ -21,6 +21,7 @@
 #ifndef _CARDANO_LEDGER_HPP_
 #define _CARDANO_LEDGER_HPP_
 
+// Standard Library Headers
 #include <any>
 #include <array>
 #include <cstdint>
@@ -32,7 +33,12 @@
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
+
+// Third-Party Headers
+#include <cppbor/cppbor.h>
+#include <cppbor/cppbor_parse.h>
 
 // Official Spec (Babbage Era):
 // https://github.com/input-output-hk/cardano-ledger/blob/master/eras/babbage/test-suite/cddl-files/babbage.cddl#L13
@@ -103,18 +109,54 @@ using Url = std::string;
 /// transaction_index = uint .size 2
 using TransactionIndex = uint16_t;
 
-struct Rational
+struct ArraySerializable
 {
+    [[nodiscard]] virtual auto serializer() const -> cppbor::Array = 0;
+
+    [[nodiscard]] auto serialize() const -> Bytes
+    {
+        return serializer().encode();
+    }
+};
+
+struct MapSerializable
+{
+    [[nodiscard]] virtual auto serializer() const -> cppbor::Map = 0;
+
+    [[nodiscard]] auto serialize() const -> Bytes
+    {
+        return serializer().encode();
+    }
+};
+
+struct TagSerializable
+{
+    [[nodiscard]] virtual auto serializer() const -> cppbor::SemanticTag = 0;
+
+    [[nodiscard]] auto serialize() const -> Bytes
+    {
+        return serializer().encode();
+    }
+};
+
+struct Rational : public TagSerializable
+{
+    Rational() : num{0}, den{1} {}
     Rational(Uint n, Uint d) : num{n}, den{d} {}
-    const Uint num;
-    const Uint den;
+    Uint num;
+    Uint den;
+
     // Serialize as 2-elem array with tag 6.30
+    [[nodiscard]] auto serializer() const -> cppbor::SemanticTag
+    {
+        return cppbor::SemanticTag{30, cppbor::Array{num, den}};
+    }  // serializer
 };
 
 // Unit interval is a rational between 0 and 1.
 using UnitInterval = Rational;
 
-/// @brief Cardano Byron blockchain CBOR schema
+// /// @brief Cardano Byron blockchain CBOR schema
 namespace byron
 {
 // u8 = uint .lt 256
@@ -192,21 +234,21 @@ struct address
 };
 
 // ; Transactions
-// 
+//
 // txin = [0, #6.24(bytes .cbor ([txid, u32]))] / [u8 .ne 0, encoded-cbor]
 // txout = [address, u64]
-// 
+//
 // tx = [[+ txin], [+ txout], attributes]
-// 
+//
 // txproof = [u32, hash, hash]
-// 
+//
 // twit = [0, #6.24(bytes .cbor ([pubkey, signature]))]
 //      / [1, #6.24(bytes .cbor ([[u16, bytes], [u16, bytes]]))]
 //      / [2, #6.24(bytes .cbor ([pubkey, signature]))]
 //      / [u8 .gt 2, encoded-cbor]
-// 
+//
 // ; Shared Seed Computation
-// 
+//
 // vsspubkey = bytes ; This is encoded using the 'Binary' instance
 //                   ; for Scrape.PublicKey
 // vsssec = bytes ; This is encoded using the 'Binary' instance
@@ -217,53 +259,54 @@ struct address
 // vssdec = bytes ; This is encoded using the 'Binary' instance
 //                ; for Scrape.DecryptedShare
 // vssproof = [bytes, bytes, bytes, [* bytes]] ; This is encoded using the
-//                                             ; 'Binary' instance for Scrape.Proof
-// 
+//                                             ; 'Binary' instance for
+//                                             Scrape.Proof
+//
 // ssccomm = [pubkey, [{vsspubkey => vssenc},vssproof], signature]
 // ssccomms = #6.258([* ssccomm])
-// 
+//
 // sscopens = {stakeholderid => vsssec}
-// 
+//
 // sscshares = {addressid => [addressid, [* vssdec]]}
-// 
+//
 // ssccert = [vsspubkey, pubkey, epochid, signature]
 // ssccerts = #6.258([* ssccert])
-// 
+//
 // ssc = [0, ssccomms, ssccerts]
 //     / [1, sscopens, ssccerts]
 //     / [2, sscshares, ssccerts]
 //     / [3, ssccerts]
-// 
+//
 // sscproof = [0, hash, hash]
 //          / [1, hash, hash]
 //          / [2, hash, hash]
 //          / [3, hash]
-// 
+//
 // ; Delegation
-// 
+//
 // dlg = [ epoch : epochid
 //       , issuer : pubkey
 //       , delegate : pubkey
 //       , certificate : signature
 //       ]
-// 
+//
 // dlgsig = [dlg, signature]
-// 
+//
 // lwdlg = [ epochRange : [epochid, epochid]
 //         , issuer : pubkey
 //         , delegate : pubkey
 //         , certificate : signature
 //         ]
-// 
+//
 // lwdlgsig = [lwdlg, signature]
-// 
+//
 // ; Updates
-// 
+//
 // bver = [u16, u16, u8]
-// 
+//
 // txfeepol = [0, #6.24(bytes .cbor ([bigint, bigint]))]
 //          / [u8 .gt 0, encoded-cbor]
-// 
+//
 // bvermod = [ scriptVersion : [? u16]
 //           , slotDuration : [? bigint]
 //           , maxBlockSize : [? bigint]
@@ -279,9 +322,9 @@ struct address
 //           , txFeePolicy : [? txfeepol]
 //           , unlockStakeEpoch : [? epochid]
 //           ]
-// 
+//
 // updata = [ hash, hash, hash, hash ]
-// 
+//
 // upprop = [ "blockVersion" : bver
 //          , "blockVersionMod" : bvermod
 //          , "softwareVersion" : [ text, u32 ]
@@ -290,77 +333,76 @@ struct address
 //          , "from" : pubkey
 //          , "signature" : signature
 //          ]
-// 
+//
 // upvote = [ "voter" : pubkey
 //          , "proposalId" : updid
 //          , "vote" : bool
 //          , "signature" : signature
 //          ]
-// 
+//
 // up = [ "proposal" :  [? upprop]
 //      , votes : [* upvote]
 //      ]
-// 
+//
 // ; Blocks
-// 
+//
 // difficulty = [u64]
-// 
+//
 // blocksig = [0, signature]
 //          / [1, lwdlgsig]
 //          / [2, dlgsig]
-// 
+//
 // blockcons = [slotid, pubkey, difficulty, blocksig]
-// 
+//
 // blockheadex = [ "blockVersion" : bver
 //               , "softwareVersion" : [ text, u32 ]
 //               , "attributes" : attributes
 //               , "extraProof" : hash
 //               ]
-// 
+//
 // blockproof = [ "txProof" : txproof
 //              , "sscProof" : sscproof
 //              , "dlgProof" : hash
 //              , "updProof" : hash
 //              ]
-// 
+//
 // blockhead = [ "protocolMagic" : u32
 //             , "prevBlock" : blockid
 //             , "bodyProof" : blockproof
 //             , "consensusData" : blockcons
 //             , "extraData" : blockheadex
 //             ]
-// 
+//
 // blockbody = [ "txPayload" : [* [tx, [* twit]]]
 //             , "sscPayload" : ssc
 //             , "dlgPayload" : [* dlg]
 //             , "updPayload" : up
 //             ]
-// 
+//
 // ; Epoch Boundary Blocks
-// 
+//
 // ebbcons = [ epochid, difficulty ]
-// 
+//
 // ebbhead = [ "protocolMagic" : u32
 //           , "prevBlock" : blockid
 //           , "bodyProof" : hash
 //           , "consensusData" : ebbcons
 //           , "extraData" : [attributes]
-//           ]    
-
+//           ]
 
 // block = [0, ebblock]
 //       / [1, mainblock]
-// 
+//
 // mainblock = [ "header" : blockhead
 //             , "body" : blockbody
 //             , "extra" : [attributes]
 //             ]
-// 
+//
 // ebblock = [ "header" : ebbhead
 //           , "body" : [+ stakeholderid]
 //           , extra : [attributes]
 //           ]
-// 
+//
 
 }  // namespace byron
 
@@ -374,7 +416,7 @@ namespace shelley
 // ; In the Shelley era there is only one such tag,
 // ; namely "\x00" for multisig scripts.
 // scripthash            = $hash28
- 
+
 /// $nonce /= [ 0 // 1, bytes .size 32 ]
 using Nonce = std::tuple<Byte, Bytes32>;
 
@@ -384,17 +426,19 @@ using Nonce = std::tuple<Byte, Bytes32>;
 //   / int
 //   / bytes .size (0..64)
 //   / text .size (0..64)
-// using TransactionMetadatum = std::variant<std::map<TransactionMetadatum, TransactionMetadatum>, 
-// std::vector<TransactionMetadatum>, int64_t, Bytes, std::string>;
+// using TransactionMetadatum = std::variant<std::map<TransactionMetadatum,
+// TransactionMetadatum>, std::vector<TransactionMetadatum>, int64_t, Bytes,
+// std::string>;
 using TransactionMetadatum = std::any;
 
 /// transaction_metadatum_label = uint
 using TransactionMetadatumLabel = uint;
- 
+
 // transaction_metadata =
 //   { * transaction_metadatum_label => transaction_metadatum }
-// 
-using TransactionMetadata = std::unordered_map<TransactionMetadatumLabel, TransactionMetadatum>;
+//
+using TransactionMetadata =
+    std::unordered_map<TransactionMetadatumLabel, TransactionMetadatum>;
 
 // bootstrap_witness =
 //   [ public_key : $vkey
@@ -423,7 +467,7 @@ struct MultisigScript
         multisig_pubkey = 0,
         multisig_all = 1,
         multisig_any = 2,
-        multisig_n_of_k = 3, 
+        multisig_n_of_k = 3,
     };
 
     const MultisigScript::Type type;
@@ -477,8 +521,8 @@ struct ProtocolVersion
 
     [[nodiscard]] auto isValid() -> bool
     {
-        return (major_protocol_version > 0) 
-            && (major_protocol_version <= next_major_protocol_version);
+        return (major_protocol_version > 0) &&
+               (major_protocol_version <= next_major_protocol_version);
     }
 };
 
@@ -525,11 +569,11 @@ struct ProtocolParamUpdate
     std::optional<Coin> key_deposit;
     std::optional<Coin> pool_deposit;
     std::optional<Epoch> maximum_epoch;
-    std::optional<Uint> n_opt; // desired number of stake pools
+    std::optional<Uint> n_opt;  // desired number of stake pools
     std::optional<Rational> pool_pledge_influence;
     std::optional<UnitInterval> expansion_rate;
     std::optional<UnitInterval> treasury_growth_rate;
-    std::optional<UnitInterval> d; // decentralization constant
+    std::optional<UnitInterval> d;  // decentralization constant
     std::optional<Nonce> extra_entropy;
     std::optional<ProtocolVersion> protocol_version;
     std::optional<Coin> min_utxo_value;
@@ -537,7 +581,8 @@ struct ProtocolParamUpdate
 
 // proposed_protocol_parameter_updates =
 //   { * genesishash => protocol_param_update }
-using ProposedProtocolParameterUpdate = std::vector<std::tuple<GenesisHash, ProtocolParamUpdate>>;
+using ProposedProtocolParameterUpdate =
+    std::vector<std::tuple<GenesisHash, ProtocolParamUpdate>>;
 
 // update = [ proposed_protocol_parameter_updates
 //          , epoch
@@ -548,7 +593,24 @@ using Update = std::tuple<ProposedProtocolParameterUpdate, Epoch>;
 using Withdrawals = std::vector<std::tuple<RewardAccount, Coin>>;
 
 // CDDL: pool_metadata = [url, pool_metadata_hash]
-using PoolMetadata = std::tuple<Url, PoolMetadataHash>;
+struct PoolMetadata : public ArraySerializable
+{
+    Url url{};
+    PoolMetadataHash hash{};
+
+    // PoolMetadata() = default;
+    PoolMetadata(std::string_view _url, PoolMetadataHash _hash)
+        : url{_url}, hash{_hash}
+    {
+    }
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        return cppbor::Array{
+            cppbor::Tstr(url), cppbor::Bstr{{hash.data(), hash.size()}}
+        };
+    }  // serializer
+};
 
 // relay =
 //   [  single_host_addr
@@ -565,6 +627,15 @@ struct Relay
     };  // Type
 
     const Relay::Type type;
+
+    [[nodiscard]] Relay(Relay::Type type) : type{type} {}
+
+    [[nodiscard]] virtual auto serializer() const -> cppbor::Array = 0;
+
+    [[nodiscard]] auto serialize() const -> Bytes
+    {
+        return serializer().encode();
+    }
 };  // Relay
 
 // single_host_addr = ( 0
@@ -574,10 +645,53 @@ struct Relay
 //                    )
 struct SingleHostAddr : public Relay
 {
+    std::optional<IPV4> ipv4{};
+    std::optional<IPV6> ipv6{};
+    std::optional<Port> port{};
+
     SingleHostAddr() : Relay{Relay::Type::single_host_addr} {}
-    std::optional<Port> port;
-    std::optional<IPV4> ipv4;
-    std::optional<IPV6> ipv6;
+    SingleHostAddr(Bytes4 ip) : Relay{Relay::Type::single_host_addr}, ipv4{ip}
+    {
+    }
+    SingleHostAddr(Bytes16 ip) : Relay{Relay::Type::single_host_addr}, ipv6{ip}
+    {
+    }
+    SingleHostAddr(Bytes4 ip, size_t p)
+        : Relay{Relay::Type::single_host_addr}, ipv4{ip}, port{p}
+    {
+    }
+    SingleHostAddr(Bytes16 ip, size_t p)
+        : Relay{Relay::Type::single_host_addr}, ipv6{ip}, port{p}
+    {
+    }
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        auto cbor_serializer = cppbor::Array{cppbor::Uint(type)};
+        if (port.has_value())
+        {
+            cbor_serializer.add(cppbor::Uint(port.value()));
+        }
+        else
+        {
+            cbor_serializer.add(cppbor::Null());
+        }
+        if (ipv4.has_value())
+        {
+            cbor_serializer.add(
+                cppbor::Bstr({ipv4.value().data(), ipv4.value().size()})
+            );
+            cbor_serializer.add(cppbor::Null());
+        }
+        else if (ipv6.has_value())
+        {
+            cbor_serializer.add(cppbor::Null());
+            cbor_serializer.add(
+                cppbor::Bstr({ipv6.value().data(), ipv4.value().size()})
+            );
+        }
+        return cbor_serializer;
+    }  // serializer
 };
 
 // single_host_name = ( 1
@@ -586,18 +700,52 @@ struct SingleHostAddr : public Relay
 //                    )
 struct SingleHostName : public Relay
 {
+    DnsName dns_name{};
+    std::optional<Port> port{};
+
     SingleHostName() : Relay{Relay::Type::single_host_name} {}
-    std::optional<Port> port;
-    DnsName dns_name;
+    SingleHostName(std::string_view name)
+        : Relay{Relay::Type::single_host_name}, dns_name{name}
+    {
+    }
+    SingleHostName(std::string_view name, size_t port_num)
+        : Relay{Relay::Type::single_host_name}, dns_name{name}, port{port_num}
+    {
+    }
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        auto cbor_serializer = cppbor::Array{cppbor::Uint(type)};
+        if (port.has_value())
+        {
+            cbor_serializer.add(cppbor::Uint(port.value()));
+        }
+        else
+        {
+            cbor_serializer.add(cppbor::Null());
+        }
+        cbor_serializer.add(cppbor::Tstr(dns_name));
+        return cbor_serializer;
+    }  // serializer
 };
 
 // multi_host_name = ( 2
 //                    , dns_name ; A SRV DNS record
 //                    )
-struct MiltiHostName : public Relay
+struct MultiHostName : public Relay
 {
-    MiltiHostName() : Relay{Relay::Type::multi_host_name} {}
     DnsName dns_name;
+
+    MultiHostName() : Relay{Relay::Type::multi_host_name} {}
+    MultiHostName(std::string_view name)
+        : Relay{Relay::Type::multi_host_name}, dns_name{name}
+    {
+    }
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        return cppbor::Array{cppbor::Uint(type), cppbor::Tstr(dns_name)};
+    }  // serializer
 };
 
 // pool_params = ( operator:       pool_keyhash
@@ -612,23 +760,25 @@ struct MiltiHostName : public Relay
 //               )
 struct PoolParams
 {
-    PoolKeyHash pool_operator;
-    VrfKeyHash vrf_keyhash;
-    Coin pledge;
-    Coin cost;
-    RewardAccount reward_account;
-    std::set<AddrKeyHash> pool_owners;
-    std::vector<std::unique_ptr<Relay>> relays;
-    std::optional<PoolMetadata> pool_metadata;
+    PoolKeyHash pool_operator{};
+    VrfKeyHash vrf_keyhash{};
+    Coin pledge{};
+    Coin cost{};
+    UnitInterval margin{};
+    RewardAccount reward_account{};
+    std::set<AddrKeyHash> pool_owners{};
+    std::vector<std::unique_ptr<Relay>> relays{};
+    std::optional<PoolMetadata> pool_metadata{};
 };
 
-
 /// @brief A stake credential.
+/// @code
 /// stake_credential =
 ///   [  0, addr_keyhash
 ///   // 1, scripthash
 ///   ]
-struct StakeCredential
+/// @endcode
+struct StakeCredential : public ArraySerializable
 {
     enum Type
     {
@@ -638,6 +788,13 @@ struct StakeCredential
 
     Type type;
     Hash28 cred;
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        return cppbor::Array{
+            cppbor::Uint(type), cppbor::Bstr{{cred.data(), cred.size()}}
+        };
+    }  // serializer
 };
 
 /// move_instantaneous_reward = [ 0 / 1, { * stake_credential => coin } ]
@@ -651,6 +808,7 @@ struct MoveInstantaneousReward
 };
 
 /// @brief A transaction certificate (base type).
+/// @code
 /// certificate =
 ///   [ stake_registration
 ///   // stake_deregistration
@@ -666,10 +824,11 @@ struct MoveInstantaneousReward
 /// stake_delegation = (2, stake_credential, pool_keyhash)
 /// pool_registration = (3, pool_params)
 /// pool_retirement = (4, pool_keyhash, epoch)
-/// genesis_key_delegation = (5, genesishash, genesis_delegate_hash, vrf_keyhash)
-/// move_instantaneous_rewards_cert = (6, move_instantaneous_reward)
-///
-struct Certificate
+/// genesis_key_delegation = (5, genesishash, genesis_delegate_hash,
+/// vrf_keyhash) move_instantaneous_rewards_cert = (6,
+/// move_instantaneous_reward)
+/// @endcode
+struct Certificate : public ArraySerializable
 {
     enum Type
     {
@@ -683,6 +842,8 @@ struct Certificate
     };
 
     const Certificate::Type type;
+
+    [[nodiscard]] Certificate(Certificate::Type t) : type(t) {}
 };
 
 /// @brief A stake registration certificate.
@@ -691,6 +852,11 @@ struct StakeRegistration : public Certificate
 {
     StakeRegistration() : Certificate{Certificate::stake_registration} {}
     StakeCredential stake_credential;
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        return cppbor::Array{cppbor::Uint(0), stake_credential.serializer()};
+    }
 };
 
 /// @brief A stake deregistration certificate.
@@ -699,6 +865,11 @@ struct StakeDeregistration : public Certificate
 {
     StakeDeregistration() : Certificate{Certificate::stake_deregistration} {}
     StakeCredential stake_credential;
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        return cppbor::Array{cppbor::Uint(1), stake_credential.serializer()};
+    }
 };
 
 /// @brief A stake delegation certificate.
@@ -708,6 +879,14 @@ struct StakeDelegation : public Certificate
     StakeDelegation() : Certificate{Certificate::stake_delegation} {}
     StakeCredential stake_credential;
     PoolKeyHash pool_keyhash;
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        return cppbor::Array{
+            cppbor::Uint(0), stake_credential.serializer(),
+            cppbor::Bstr{{pool_keyhash.data(), pool_keyhash.size()}}
+        };
+    }
 };
 
 /// @brief A pool registration certificate.
@@ -716,6 +895,54 @@ struct PoolRegistration : public Certificate
 {
     PoolRegistration() : Certificate{Certificate::pool_registration} {}
     PoolParams pool_params;
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        auto cbor_serializer = cppbor::Array{
+            cppbor::Uint(3),
+            cppbor::Bstr{
+                {pool_params.pool_operator.data(),
+                 pool_params.pool_operator.size()}
+            },
+            cppbor::Bstr{
+                {pool_params.vrf_keyhash.data(), pool_params.vrf_keyhash.size()}
+            },
+            cppbor::Uint(pool_params.pledge),
+            cppbor::Uint(pool_params.cost),
+            pool_params.margin.serializer(),
+            cppbor::Bstr{
+                {pool_params.reward_account.data(),
+                 pool_params.reward_account.size()}
+            },
+        };
+
+        if (!pool_params.pool_owners.empty())
+        {
+            auto pool_owners = cppbor::Array{};
+            for (auto& owner : pool_params.pool_owners)
+            {
+                pool_owners.add(cppbor::Bstr{{owner.data(), owner.size()}});
+            }
+            cbor_serializer.add(std::move(pool_owners));
+        }
+
+        if (!pool_params.relays.empty())
+        {
+            auto relays = cppbor::Array{};
+            for (auto& relay : pool_params.relays)
+            {
+                relays.add(relay->serializer());
+            }
+            cbor_serializer.add(std::move(relays));
+        }
+
+        if (pool_params.pool_metadata.has_value())
+        {
+            cbor_serializer.add(pool_params.pool_metadata.value().serializer());
+        }
+
+        return cbor_serializer;
+    }
 };
 
 /// @brief A pool retirement certificate.
@@ -725,17 +952,32 @@ struct PoolRetirement : public Certificate
     PoolRetirement() : Certificate{Certificate::pool_retirement} {}
     PoolKeyHash pool_keyhash;
     Epoch epoch;
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        return cppbor::Array{
+            cppbor::Uint(4),
+            cppbor::Bstr{{pool_keyhash.data(), pool_keyhash.size()}},
+            cppbor::Uint(epoch)
+        };
+    }
 };
 
 /// @brief A genesis key delegation certificate.
-/// CDDL: 
-/// genesis_key_delegation = (5, genesishash, genesis_delegate_hash, vrf_keyhash)
+/// CDDL:
+/// genesis_key_delegation = (5, genesishash, genesis_delegate_hash,
+/// vrf_keyhash)
 struct GenesisKeyDelegation : public Certificate
 {
     GenesisKeyDelegation() : Certificate{Certificate::genesis_key_delegation} {}
     GenesisHash genesishash;
     GenesisDelegateHash genesis_delegate_hash;
     VrfKeyHash vrf_keyhash;
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        return cppbor::Array{cppbor::Uint(5)};
+    }
 };
 
 /// @brief A move instantaneous rewards certificate.
@@ -743,10 +985,16 @@ struct GenesisKeyDelegation : public Certificate
 struct MoveInstantaneousRewardsCert : public Certificate
 {
     MoveInstantaneousRewardsCert(MoveInstantaneousReward m)
-        : Certificate{Certificate::move_instantaneous_rewards_cert}, move_instantaneous_reward{m}
+        : Certificate{Certificate::move_instantaneous_rewards_cert},
+          move_instantaneous_reward{m}
     {
     }
     MoveInstantaneousReward move_instantaneous_reward;
+
+    [[nodiscard]] auto serializer() const -> cppbor::Array
+    {
+        return cppbor::Array{cppbor::Uint(6)};
+    }
 };
 
 /// @brief A transaction output
@@ -861,24 +1109,29 @@ struct Header
     KesSignature kes_signature;
 };
 
-/// @brief A block
-/// block =
-///   [ header
-///   , transaction_bodies         : [* transaction_body]
-///   , transaction_witness_sets   : [* transaction_witness_set]
-///   , transaction_metadata_set   :
-///       { * transaction_index => transaction_metadata }
-///   ]; Valid blocks must also satisfy the following two constraints:
-///    ; 1) the length of transaction_bodies and transaction_witness_sets
-///    ;    must be the same
-///    ; 2) every transaction_index must be strictly smaller than the
-///    ;    length of transaction_bodies
+/// @brief Represents the structure of a block on the chain.
+///
+/// The CDDL description of the object follows:
+///
+///     block =
+///       [ header
+///       , transaction_bodies         : [* transaction_body]
+///       , transaction_witness_sets   : [* transaction_witness_set]
+///       , transaction_metadata_set   :
+///           { * transaction_index => transaction_metadata }
+///       ]; Valid blocks must also satisfy the following two constraints:
+///        ; 1) the length of transaction_bodies and transaction_witness_sets
+///        ;    must be the same
+///        ; 2) every transaction_index must be strictly smaller than the
+///        ;    length of transaction_bodies
+///
 struct Block
 {
     Header header;
     std::vector<TransactionBody> transaction_bodies;
     std::vector<TransactionWitnessSet> transaction_witness_sets;
-    std::unordered_map<TransactionIndex, TransactionMetadata> transaction_metadata_set;
+    std::unordered_map<TransactionIndex, TransactionMetadata>
+        transaction_metadata_set;
 };
 
 // ; address format:
@@ -898,7 +1151,7 @@ struct Block
 // ;
 // ; byron addresses:
 // ; bits 7-4: 1000
-// 
+//
 // ; 0000: base address: keyhash28,keyhash28
 // ; 0001: base address: scripthash28,keyhash28
 // ; 0010: base address: keyhash28,scripthash28
@@ -914,7 +1167,7 @@ struct Block
 
 }  // namespace shelley
 
-/// @brief Allegra era ledger types
+// /// @brief Allegra era ledger types
 namespace allegra
 {
 
@@ -931,8 +1184,8 @@ struct ProtocolVersion
 
     [[nodiscard]] auto isValid() -> bool
     {
-        return (major_protocol_version > 0) 
-            && (major_protocol_version <= next_major_protocol_version);
+        return (major_protocol_version > 0) &&
+               (major_protocol_version <= next_major_protocol_version);
     }
 };
 
@@ -955,9 +1208,9 @@ struct NativeScript
         script_pubkey = 0,
         script_all = 1,
         script_any = 2,
-        script_n_of_k = 3, 
-        invalid_before = 4, 
-        invalid_hereafter = 5, 
+        script_n_of_k = 3,
+        invalid_before = 4,
+        invalid_hereafter = 5,
     };
 
     const NativeScript::Type type;
@@ -1016,7 +1269,7 @@ struct InvalidHereafter : public NativeScript
 //   ; , ? 4: [* foo_script ]
 //   ; , ? 5: [* plutus_script ]
 // }
- struct TransactionWitnessSet
+struct TransactionWitnessSet
 {
     std::vector<shelley::VkeyWitness> vkeywitnesses;
     std::vector<std::unique_ptr<NativeScript>> multisig_scripts;
@@ -1025,7 +1278,8 @@ struct InvalidHereafter : public NativeScript
 
 // auxiliary_data =
 //   { * transaction_metadatum_label => transaction_metadatum }
-//   / [ transaction_metadata: { * transaction_metadatum_label => transaction_metadatum }
+//   / [ transaction_metadata: { * transaction_metadatum_label =>
+//   transaction_metadatum }
 //     , auxiliary_scripts: [ * native_script ]
 //     ; other types of metadata...
 //     ]
@@ -1034,12 +1288,11 @@ using AuxilaryData = std::any;
 // multiasset<a> = { * policy_id => { * asset_name => a } }
 // policy_id = scripthash
 // asset_name = bytes .size (0..32)
-// 
+//
 // value = coin / [coin,multiasset<uint>]
 // mint = multiasset<int64>
-// 
+//
 // int64 = -9223372036854775808 .. 9223372036854775807
-
 
 // transaction_body =
 //   { 0 : set<transaction_input>
@@ -1058,7 +1311,8 @@ struct TransactionBody
     std::vector<shelley::TransactionOutput> transaction_outputs;
     Coin fee;
     Uint ttl;
-    std::optional<std::vector<std::unique_ptr<shelley::Certificate>>> certificates;
+    std::optional<std::vector<std::unique_ptr<shelley::Certificate>>>
+        certificates;
     std::optional<shelley::Withdrawals> withdrawals;
     std::optional<shelley::Update> update;
     std::optional<MetadataHash> metadata_hash;
@@ -1100,13 +1354,13 @@ struct Block
 
 }  // namespace allegra
 
-/// @brief Mary era ledger types
+// /// @brief Mary era ledger types
 namespace mary
 {
 
 }  // namespace mary
 
-/// @brief Alonzo era ledger types
+// /// @brief Alonzo era ledger types
 namespace alonzo
 {
 
@@ -1316,8 +1570,6 @@ using required_signers = std::set<AddrKeyHash>;
 // // protocol_version = (uint, uint)
 // using protocol_version = std::tuple<uint, uint>;
 
-
-
 // transaction_index = uint .size 2
 using transaction_index = uint16_t;
 
@@ -1347,8 +1599,6 @@ using withdrawal = std::map<RewardAccount, Coin>;
 // update = [ proposed_protocol_parameter_updates
 //          , epoch
 //          ]
-
-
 
 // protocol_param_update =
 //   { ? 0:  uint               ; minfee A
@@ -1544,7 +1794,7 @@ struct Block
 
 }  // namespace babbage
 
-/// @brief Conway era ledger types
+// /// @brief Conway era ledger types
 namespace conway
 {
 }  // namespace conway

@@ -34,6 +34,8 @@
 
 using namespace cardano::stake_pool;
 
+static constexpr auto MIN_POOL_COST_LOVELACE = 170000000;
+
 auto ColdVerificationKey::saveToFile(std::string_view fpath) const -> void
 {
     const auto key_bytes = this->bytes();
@@ -49,7 +51,8 @@ auto ColdVerificationKey::asBech32() const -> std::string
     return BECH32::encode(hrp, this->bytes());
 }  // ColdVerificationKey::asBech32
 
-auto ColdVerificationKey::poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>
+auto ColdVerificationKey::poolId() const
+    -> std::array<uint8_t, STAKE_POOL_ID_SIZE>
 {
     const auto key_bytes = this->bytes();
     const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
@@ -261,3 +264,94 @@ auto OperationalCertificateManager::saveToFile(
     const auto counter_cbor_hex = BASE16::encode(this->serialize(vkey));
     cardano::writeEnvelopeTextFile(fpath, type_str, "", counter_cbor_hex);
 }  // OperationalCertificateManager::saveToFile
+
+RegistrationCertificateManager::RegistrationCertificateManager(
+    const ColdVerificationKey& vkey,
+    const VrfVerificationKey& vrf_vkey,
+    uint64_t pledge_lovelace,
+    uint64_t cost_lovelace,
+    double margin,
+    const RewardsAddress& reward_account
+)
+{
+    if (margin < 0.0 || margin > 1.0)
+    {
+        throw std::invalid_argument("margin must be between 0 and 1");
+    }
+
+    if (cost_lovelace < MIN_POOL_COST_LOVELACE)
+    {
+        throw std::invalid_argument("cost must be above min pool cost.");
+    }
+
+    auto [n, d] = rationalApprox(margin, 4096);
+
+    this->cert_.pool_params.pool_operator = vkey.poolId();
+    this->cert_.pool_params.vrf_keyhash = vrf_vkey.hash();
+    this->cert_.pool_params.pledge = pledge_lovelace;
+    this->cert_.pool_params.cost = cost_lovelace;
+    this->cert_.pool_params.margin = {(uint64_t)n, (uint64_t)d};
+    this->cert_.pool_params.reward_account = reward_account.toBytes(true);
+}  // RegistrationCertificateManager::RegistrationCertificateManager
+
+auto RegistrationCertificateManager::setMargin(double margin) -> void
+{
+    if (margin < 0.0 || margin > 1.0)
+    {
+        throw std::invalid_argument("margin must be between 0 and 1");
+    }
+    auto [n, d] = rationalApprox(margin, 4096);
+    this->cert_.pool_params.margin = {(uint64_t)n, (uint64_t)d};
+}  // RegistrationCertificateManager::setMargin
+
+auto RegistrationCertificateManager::addOwner(const RewardsAddress& stake_addr)
+    -> void
+{
+    auto byte_vec = stake_addr.toBytes();
+    auto arr = vectorToArray<uint8_t, 28>(byte_vec);
+    this->cert_.pool_params.pool_owners.insert(arr);
+}  // RegistrationCertificateManager::addOwner
+
+auto RegistrationCertificateManager::addRelay(std::string_view relay) -> void
+{
+    this->cert_.pool_params.relays.push_back(
+        std::make_unique<shelley::MultiHostName>(relay)
+    );
+}  // RegistrationCertificateManager::addRelay
+
+auto RegistrationCertificateManager::addRelay(
+    std::string_view dns_name, uint16_t port
+) -> void
+{
+    this->cert_.pool_params.relays.push_back(
+        std::make_unique<shelley::SingleHostName>(dns_name, port)
+    );
+}  // RegistrationCertificateManager::addRelay
+
+auto RegistrationCertificateManager::addRelay(
+    std::array<uint8_t, 4> ip, uint16_t port
+) -> void
+{
+    this->cert_.pool_params.relays.push_back(
+        std::make_unique<shelley::SingleHostAddr>(ip, port)
+    );
+}  // RegistrationCertificateManager::addRelay
+
+auto RegistrationCertificateManager::addRelay(
+    std::array<uint8_t, 16> ip, uint16_t port
+) -> void
+{
+    this->cert_.pool_params.relays.push_back(
+        std::make_unique<shelley::SingleHostAddr>(ip, port)
+    );
+}  // RegistrationCertificateManager::addRelay
+
+auto RegistrationCertificateManager::setMetadata(
+    std::string_view metadata_url, std::span<const uint8_t> hash
+) -> void
+{
+    this->cert_.pool_params.pool_metadata.reset();
+    this->cert_.pool_params.pool_metadata.emplace(
+        metadata_url, vectorToArray<uint8_t, 32>(hash)
+    );
+}  // RegistrationCertificateManager::setMetadata
