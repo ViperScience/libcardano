@@ -31,10 +31,14 @@
 namespace cardano
 {
 
+/// @brief Namespace for utility functions.
+namespace utils
+{
+
 /// @brief Concatenate two byte ranges.
 /// @return A vector containing the elements of both ranges.
 template <class SizedRange1, class SizedRange2>
-auto concat_bytes(SizedRange1 const &r1, SizedRange2 const &r2)
+auto concatBytes(SizedRange1 const &r1, SizedRange2 const &r2)
 {
     std::vector<typename SizedRange1::value_type> ret;
     ret.reserve(r1.size() + r2.size());
@@ -42,14 +46,6 @@ auto concat_bytes(SizedRange1 const &r1, SizedRange2 const &r2)
     ret.insert(ret.end(), std::begin(r2), std::end(r2));
     return ret;
 }  // concat_bytes
-
-template <typename T, std::size_t N>
-std::array<T, N> vectorToArray(std::span<const T> vec)
-{
-    std::array<T, N> arr;
-    std::ranges::copy(vec | std::views::take(N), arr.begin());
-    return arr;
-}
 
 template <std::size_t N>
 auto makeByteArray(std::span<const uint8_t> vec) -> std::array<uint8_t, N>
@@ -185,6 +181,7 @@ constexpr auto rationalApprox(double f, int64_t md)
     return {num, denom};
 }  // rationalApprox
 
+}  // namespace utils
 }  // namespace cardano
 
 #endif  // _CARDANO_UTILS_HPP_

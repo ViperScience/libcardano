@@ -70,7 +70,9 @@ BaseAddress::BaseAddress(
 }  // BaseAddress::BaseAddress
 
 BaseAddress BaseAddress::fromKeys(
-    NetworkID nid, BIP32PublicKey pmt_key, BIP32PublicKey stake_key
+    NetworkID nid,
+    BIP32PublicKey pmt_key,
+    BIP32PublicKey stake_key
 )
 {
     const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
@@ -79,23 +81,16 @@ BaseAddress BaseAddress::fromKeys(
     blake2b->update(pmt_key_bytes.data(), pmt_key_bytes.size());
     const auto pmt_key_hash = blake2b->final();
 
-    // Put the hash in a std::array of bytes for the address constructor.
-    auto pmt_key_hash_array = std::array<uint8_t, KEY_HASH_LENGTH>();
-    std::copy_n(
-        pmt_key_hash.begin(), KEY_HASH_LENGTH, pmt_key_hash_array.begin()
-    );
-
     const auto stake_key_bytes = stake_key.toBytes(false);
     blake2b->update(stake_key_bytes.data(), stake_key_bytes.size());
     const auto stake_key_hash = blake2b->final();
 
-    // Put the hash in a std::array of bytes for the address constructor.
-    auto stake_key_hash_array = std::array<uint8_t, KEY_HASH_LENGTH>();
-    std::copy_n(
-        stake_key_hash.begin(), KEY_HASH_LENGTH, stake_key_hash_array.begin()
+    // Put the hashes in std::arrays of bytes for the address constructor.
+    return BaseAddress(
+        nid,
+        utils::makeByteArray<KEY_HASH_LENGTH>(pmt_key_hash),
+        utils::makeByteArray<KEY_HASH_LENGTH>(stake_key_hash)
     );
-
-    return BaseAddress(nid, pmt_key_hash_array, stake_key_hash_array);
 }  // BaseAddress::fromKeys
 
 auto BaseAddress::fromBech32(std::string addr_bech32) -> BaseAddress
@@ -118,7 +113,7 @@ auto BaseAddress::fromBech32(std::string addr_bech32) -> BaseAddress
 auto BaseAddress::toBytes(bool include_header_byte) const
     -> std::vector<uint8_t>
 {
-    auto bytes = concat_bytes(this->pmt_key_hash_, this->stk_key_hash_);
+    auto bytes = utils::concatBytes(this->pmt_key_hash_, this->stk_key_hash_);
     if (include_header_byte) bytes.insert(bytes.begin(), this->header_byte_);
     return bytes;
 }  // BaseAddress::toBytes
@@ -130,13 +125,14 @@ auto BaseAddress::toBase16(bool include_header_byte) const -> std::string
 
 auto BaseAddress::toBech32(std::string hrp) const -> std::string
 {
-    auto bytes = concat_bytes(this->pmt_key_hash_, this->stk_key_hash_);
+    auto bytes = utils::concatBytes(this->pmt_key_hash_, this->stk_key_hash_);
     bytes.insert(bytes.begin(), this->header_byte_);
     return BECH32::encode(hrp, bytes);
 }  // BaseAddress::toBech32
 
 EnterpriseAddress::EnterpriseAddress(
-    NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
+    NetworkID nid,
+    std::array<uint8_t, KEY_HASH_LENGTH> key_hash
 )
 {
     this->key_hash_ = std::move(key_hash);
@@ -156,8 +152,7 @@ auto EnterpriseAddress::fromKey(NetworkID nid, BIP32PublicKey key)
     const auto key_hash = blake2b->final();
 
     // Put the hash in a std::array of bytes for the address constructor.
-    auto key_hash_array = std::array<uint8_t, KEY_HASH_LENGTH>();
-    std::copy_n(key_hash.begin(), KEY_HASH_LENGTH, key_hash_array.begin());
+    auto key_hash_array = utils::makeByteArray<KEY_HASH_LENGTH>(key_hash);
 
     return EnterpriseAddress(nid, key_hash_array);
 }  // EnterpriseAddress::fromKeys
@@ -202,7 +197,8 @@ auto EnterpriseAddress::toBech32(std::string hrp) const -> std::string
 }  // EnterpriseAddress::toBech32
 
 RewardsAddress::RewardsAddress(
-    NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
+    NetworkID nid,
+    std::array<uint8_t, KEY_HASH_LENGTH> key_hash
 )
 {
     this->key_hash_ = std::move(key_hash);
@@ -222,8 +218,7 @@ auto RewardsAddress::fromKey(NetworkID nid, BIP32PublicKey stake_key)
     const auto key_hash = blake2b->final();
 
     // Put the hash in a std::array of bytes for the address constructor.
-    auto key_hash_array = std::array<uint8_t, KEY_HASH_LENGTH>();
-    std::copy_n(key_hash.begin(), KEY_HASH_LENGTH, key_hash_array.begin());
+    auto key_hash_array = utils::makeByteArray<KEY_HASH_LENGTH>(key_hash);
 
     return RewardsAddress(nid, key_hash_array);
 }  // RewardsAddress::fromKeys
@@ -331,14 +326,40 @@ static constexpr size_t DP_KEY_SIZE = 32;
 // Salt parameter used during generation of the derivation path encryption key.
 // This value was hard coded in the legacy Byron code.
 // String value: "address-hashing"
-static constexpr auto DP_SALT =
-    std::array<uint8_t, 15>{0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2d,
-                            0x68, 0x61, 0x73, 0x68, 0x69, 0x6e, 0x67};
+static constexpr auto DP_SALT = std::array<uint8_t, 15>{
+    0x61,
+    0x64,
+    0x64,
+    0x72,
+    0x65,
+    0x73,
+    0x73,
+    0x2d,
+    0x68,
+    0x61,
+    0x73,
+    0x68,
+    0x69,
+    0x6e,
+    0x67
+};
 
 // Nonce (hardcoded in legacy Bryon code) used for the address derivation path
 // encryption cipher.String value: "serokellfore".
 static constexpr auto DP_NONCE = std::array<uint8_t, 12>{
-    0x73, 0x65, 0x72, 0x6f, 0x6b, 0x65, 0x6c, 0x6c, 0x66, 0x6f, 0x72, 0x65};
+    0x73,
+    0x65,
+    0x72,
+    0x6f,
+    0x6b,
+    0x65,
+    0x6c,
+    0x6c,
+    0x66,
+    0x6f,
+    0x72,
+    0x65
+};
 
 /// Compute the CRC32 checksum of the provided bytes
 static auto compute_crc32(std::span<const uint8_t> bytes) -> uint32_t
@@ -410,7 +431,9 @@ auto ByronAddress::crc_check(std::span<const uint8_t> cbor, uint32_t crc)
 }  // check_byron_address_crc
 
 auto ByronAddress::Attributes::fromKey(
-    BIP32PublicKey xpub, std::span<const uint32_t> path, uint32_t magic
+    BIP32PublicKey xpub,
+    std::span<const uint32_t> path,
+    uint32_t magic
 ) -> ByronAddress::Attributes
 {
     // Create the passphrase for encrypting the derivation path.
@@ -419,8 +442,12 @@ auto ByronAddress::Attributes::fromKey(
     auto fam = Botan::PasswordHashFamily::create("PBKDF2(SHA-512)");
     const auto pbkdf2 = fam->from_params(DP_KEY_ITERATIONS);
     pbkdf2->derive_key(
-        key.data(), key.size(), (const char*)xpub_bytes.data(),
-        xpub_bytes.size(), DP_SALT.data(), DP_SALT.size()
+        key.data(),
+        key.size(),
+        (const char*)xpub_bytes.data(),
+        xpub_bytes.size(),
+        DP_SALT.data(),
+        DP_SALT.size()
     );
 
     // CBOR encode the derivation path(s). The CBOR is what is encrypted.

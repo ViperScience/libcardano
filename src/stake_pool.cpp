@@ -32,6 +32,7 @@
 
 #include "utils.hpp"
 
+using namespace cardano;
 using namespace cardano::stake_pool;
 
 static constexpr auto MIN_POOL_COST_LOVELACE = 170000000;
@@ -42,7 +43,7 @@ auto ColdVerificationKey::saveToFile(std::string_view fpath) const -> void
     const auto key_cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    cardano::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
+    utils::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
 }  // ColdVerificationKey::saveToFile
 
 auto ColdVerificationKey::asBech32() const -> std::string
@@ -58,9 +59,7 @@ auto ColdVerificationKey::poolId() const
     const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
     blake2b->update(key_bytes.data(), key_bytes.size());
     const auto hashed = blake2b->final();
-    auto ret = std::array<uint8_t, STAKE_POOL_ID_SIZE>();
-    std::copy_n(hashed.begin(), STAKE_POOL_ID_SIZE, ret.begin());
-    return ret;
+    return utils::makeByteArray<STAKE_POOL_ID_SIZE>(hashed);
 }  // ColdVerificationKey::poolId
 
 auto ColdSigningKey::saveToFile(std::string_view fpath) const -> void
@@ -69,7 +68,7 @@ auto ColdSigningKey::saveToFile(std::string_view fpath) const -> void
     const auto key_cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    cardano::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
+    utils::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
 }  // ColdSigningKey::saveToFile
 
 auto ColdSigningKey::asBech32() const -> std::string
@@ -118,7 +117,7 @@ auto ExtendedColdSigningKey::saveToFile(std::string_view fpath) const -> void
     const auto key_cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    cardano::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
+    utils::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
 }  // ExtendedColdSigningKey::saveToFile
 
 auto ExtendedColdSigningKey::asBech32() const -> std::string
@@ -151,17 +150,17 @@ auto OperationalCertificateIssueCounter::saveToFile(
     static constexpr auto desc_str_head = "Next certificate issue number: ";
     const auto desc_str = desc_str_head + std::to_string(this->count_);
     const auto counter_cbor_hex = BASE16::encode(this->serialize(vkey));
-    cardano::writeEnvelopeTextFile(fpath, type_str, desc_str, counter_cbor_hex);
+    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, counter_cbor_hex);
 }  // OperationalCertificateIssueCounter::saveToFile
 
 auto opCertMessageToSign(cardano::shelley::OperationalCert cert)
     -> std::vector<uint8_t>
 {
-    auto be = cardano::concat_bytes(
-        cardano::concat_bytes(
-            cert.hot_vkey, cardano::U64TO8_BE(cert.sequence_number)
+    auto be = utils::concatBytes(
+        utils::concatBytes(
+            cert.hot_vkey, utils::U64TO8_BE(cert.sequence_number)
         ),
-        cardano::U64TO8_BE(cert.kes_period)
+        utils::U64TO8_BE(cert.kes_period)
     );
     return be;
 }
@@ -262,7 +261,7 @@ auto OperationalCertificateManager::saveToFile(
 {
     static constexpr auto type_str = "NodeOperationalCertificate";
     const auto counter_cbor_hex = BASE16::encode(this->serialize(vkey));
-    cardano::writeEnvelopeTextFile(fpath, type_str, "", counter_cbor_hex);
+    utils::writeEnvelopeTextFile(fpath, type_str, "", counter_cbor_hex);
 }  // OperationalCertificateManager::saveToFile
 
 RegistrationCertificateManager::RegistrationCertificateManager(
@@ -284,7 +283,7 @@ RegistrationCertificateManager::RegistrationCertificateManager(
         throw std::invalid_argument("cost must be above min pool cost.");
     }
 
-    auto [n, d] = rationalApprox(margin, 4096);
+    auto [n, d] = utils::rationalApprox(margin, 4096);
 
     this->cert_.pool_params.pool_operator = vkey.poolId();
     this->cert_.pool_params.vrf_keyhash = vrf_vkey.hash();
@@ -300,7 +299,7 @@ auto RegistrationCertificateManager::setMargin(double margin) -> void
     {
         throw std::invalid_argument("margin must be between 0 and 1");
     }
-    auto [n, d] = rationalApprox(margin, 4096);
+    auto [n, d] = utils::rationalApprox(margin, 4096);
     this->cert_.pool_params.margin = {(uint64_t)n, (uint64_t)d};
 }  // RegistrationCertificateManager::setMargin
 
@@ -308,7 +307,7 @@ auto RegistrationCertificateManager::addOwner(const RewardsAddress& stake_addr)
     -> void
 {
     auto byte_vec = stake_addr.toBytes();
-    auto arr = vectorToArray<uint8_t, 28>(byte_vec);
+    auto arr = utils::makeByteArray<28>(byte_vec);
     this->cert_.pool_params.pool_owners.insert(arr);
 }  // RegistrationCertificateManager::addOwner
 
@@ -352,7 +351,7 @@ auto RegistrationCertificateManager::setMetadata(
 {
     this->cert_.pool_params.pool_metadata.reset();
     this->cert_.pool_params.pool_metadata.emplace(
-        metadata_url, vectorToArray<uint8_t, 32>(hash)
+        metadata_url, utils::makeByteArray<32>(hash)
     );
 }  // RegistrationCertificateManager::setMetadata
 
@@ -362,7 +361,7 @@ auto RegistrationCertificateManager::saveToFile(std::string_view fpath) const
     static constexpr auto type_str = "NodeOperationalCertificate";
     static constexpr auto desc_str = "Stake Pool Registration Certificate";
     const auto cbor_hex = BASE16::encode(this->serialize());
-    cardano::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // RegistrationCertificateManager::saveToFile
 
 auto DeregistrationCertificateManager::saveToFile(std::string_view fpath) const
@@ -371,7 +370,7 @@ auto DeregistrationCertificateManager::saveToFile(std::string_view fpath) const
     static constexpr auto type_str = "DeregistrationCertificateManager";
     static constexpr auto desc_str = "Stake Pool Retirement Certificate";
     const auto cbor_hex = BASE16::encode(this->serialize());
-    cardano::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // DeregistrationCertificateManager::saveToFile
 
 auto VrfVerificationKey::hash() const -> std::array<uint8_t, 32>
@@ -380,7 +379,5 @@ auto VrfVerificationKey::hash() const -> std::array<uint8_t, 32>
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
     blake2b->update(vkey_.bytes().data(), vkey_.bytes().size());
     const auto hashed = blake2b->final();
-    // auto ret = std::array<uint8_t, 32>{};
-    // std::copy(hashed.begin(), hashed.end(), ret.begin());
-    return makeByteArray<32>(hashed);
+    return utils::makeByteArray<32>(hashed);
 }  // VrfVerificationKey::hash

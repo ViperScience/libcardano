@@ -883,7 +883,8 @@ struct StakeDelegation : public Certificate
     [[nodiscard]] auto serializer() const -> cppbor::Array
     {
         return cppbor::Array{
-            cppbor::Uint(0), stake_credential.serializer(),
+            cppbor::Uint(0),
+            stake_credential.serializer(),
             cppbor::Bstr{{pool_keyhash.data(), pool_keyhash.size()}}
         };
     }

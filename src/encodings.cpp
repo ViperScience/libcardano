@@ -98,7 +98,8 @@ static constexpr int8_t B32_CHARSET_REV[128] = {
     5,  -1, -1, -1, -1, -1, -1, -1, 29, -1, 24, 13, 25, 9,  8,  23, -1, 18, 22,
     31, 27, 19, -1, 1,  0,  3,  16, 11, 28, 12, 14, 6,  4,  2,  -1, -1, -1, -1,
     -1, -1, 29, -1, 24, 13, 25, 9,  8,  23, -1, 18, 22, 31, 27, 19, -1, 1,  0,
-    3,  16, 11, 28, 12, 14, 6,  4,  2,  -1, -1, -1, -1, -1};
+    3,  16, 11, 28, 12, 14, 6,  4,  2,  -1, -1, -1, -1, -1
+};
 
 /// This function will compute what 6 5-bit values to XOR into the last 6 input
 /// values, in order to make the checksum 0. These 6 values are packed together
@@ -204,14 +205,14 @@ auto verify_checksum(std::string_view hrp, std::span<const uint8_t> values)
     // the case that appending a 0 to a valid list of values would result in a
     // new valid list. For that reason, Bech32 requires the resulting checksum
     // to be 1 instead.
-    const uint32_t check = polymod(concat_bytes(expand_hrp(hrp), values));
+    const uint32_t check = polymod(utils::concatBytes(expand_hrp(hrp), values));
     return check == 1;
 }  // verify_checksum
 
 auto create_checksum(std::string_view hrp, std::span<const uint8_t> values)
     -> std::vector<uint8_t>
 {
-    std::vector<uint8_t> enc = concat_bytes(expand_hrp(hrp), values);
+    std::vector<uint8_t> enc = utils::concatBytes(expand_hrp(hrp), values);
     enc.resize(enc.size() + 6);
     const uint32_t mod = polymod(enc) ^ 1;
     std::vector<uint8_t> ret;
@@ -225,7 +226,10 @@ auto create_checksum(std::string_view hrp, std::span<const uint8_t> values)
 }  // create_checksum
 
 auto convertbits(
-    std::span<const uint8_t> data, int frombits, int tobits, bool pad
+    std::span<const uint8_t> data,
+    int frombits,
+    int tobits,
+    bool pad
 ) -> std::vector<uint8_t>
 {
     int acc = 0;
@@ -270,7 +274,7 @@ auto BECH32::encode(std::string_view hrp, std::span<const uint8_t> values)
             );
     auto unpacked_values = convertbits(values, 8, 5, true);
     auto checksum = create_checksum(hrp, unpacked_values);
-    auto combined = concat_bytes(unpacked_values, checksum);
+    auto combined = utils::concatBytes(unpacked_values, checksum);
     auto ret = std::string(hrp) + '1';
     ret.reserve(ret.size() + combined.size());
     for (const auto c : combined) ret += B32_CHARSET[c];
@@ -346,7 +350,8 @@ static constexpr uint8_t B58_CHARSET[] = {
     '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
     'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',
     'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
+    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+};
 
 static constexpr int8_t B58_CHARSET_REV[128] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -355,7 +360,8 @@ static constexpr int8_t B58_CHARSET_REV[128] = {
     8,  -1, -1, -1, -1, -1, -1, -1, 9,  10, 11, 12, 13, 14, 15, 16, -1, 17, 18,
     19, 20, 21, -1, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, -1, -1, -1, -1,
     -1, -1, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, -1, 44, 45, 46, 47, 48,
-    49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1};
+    49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1
+};
 
 auto BASE58::encode(std::span<const uint8_t> values) -> std::string
 {

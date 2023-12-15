@@ -22,7 +22,7 @@
 
 #include <fstream>
 
-auto cardano::writeEnvelopeTextFile(
+auto cardano::utils::writeEnvelopeTextFile(
     const std::string_view file_path,
     const std::string_view type,
     const std::string_view description,

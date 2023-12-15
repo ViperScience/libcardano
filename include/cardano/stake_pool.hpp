@@ -87,7 +87,8 @@ class ColdVerificationKey
     /// @param msg A span of bytes (uint8_t) representing the original message.
     /// @param sig A span of 64 bytes (uint8_t) representing the signature.
     [[nodiscard]] auto verifySignature(
-        std::span<const uint8_t> msg, std::span<const uint8_t> sig
+        std::span<const uint8_t> msg,
+        std::span<const uint8_t> sig
     ) const -> bool
     {
         return this->vkey_.verifySignature(msg, sig);
@@ -550,7 +551,8 @@ class RegistrationCertificateManager
     /// @param metadata_url The metadata file URL.
     /// @param hash The metadata file hash.
     auto setMetadata(
-        std::string_view metadata_url, std::span<const uint8_t> hash
+        std::string_view metadata_url,
+        std::span<const uint8_t> hash
     ) -> void;
 
     /// @brief Provide a constant reference to the certificate struct.
@@ -570,7 +572,6 @@ class RegistrationCertificateManager
 
     /// @brief Export the certifiate to a file in the text envelope format.
     /// @param fpath Path to the file to be (over)written.
-    /// @param vkey The public key corresponding to the cert signing key.
     auto saveToFile(std::string_view fpath) const -> void;
 };
 
@@ -596,7 +597,8 @@ class DeregistrationCertificateManager
     /// @param vkey The verification key of the retiring pool.
     /// @param epoch The epoch in which the pool will retire.
     DeregistrationCertificateManager(
-        const ColdVerificationKey& vkey, uint64_t epoch
+        const ColdVerificationKey& vkey,
+        uint64_t epoch
     )
     {
         this->cert_.pool_keyhash = vkey.poolId();
@@ -624,7 +626,6 @@ class DeregistrationCertificateManager
 
     /// @brief Export the certifiate to a file in the text envelope format.
     /// @param fpath Path to the file to be (over)written.
-    /// @param vkey The public key corresponding to the cert signing key.
     auto saveToFile(std::string_view fpath) const -> void;
 };
 
