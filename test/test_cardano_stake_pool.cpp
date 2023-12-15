@@ -146,11 +146,13 @@ TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_
 
     SECTION( "deregistration certificate" )
     {
-        auto epoch = 460;
+        auto epoch = 459;
 
         auto cert = stake_pool::DeregistrationCertificateManager(
             vkey, epoch
         );
+
+        cert.setEpoch(460);
 
         REQUIRE( BASE16::encode(cert.serialize()) == POOL_DEREGISTRATION_CERT_CBOR_STR );
     }
