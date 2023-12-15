@@ -576,6 +576,11 @@ class RegistrationCertificateManager
     {
         return cert_.serialize();
     }
+
+    /// @brief Export the certifiate to a file in the text envelope format.
+    /// @param fpath Path to the file to be (over)written.
+    /// @param vkey The public key corresponding to the cert signing key.
+    auto saveToFile(std::string_view fpath) const -> void;
 };
 
 /// @brief An interface for managing stake pool retirement certificates.
@@ -625,6 +630,11 @@ class DeregistrationCertificateManager
     {
         return cert_.serialize();
     }
+
+    /// @brief Export the certifiate to a file in the text envelope format.
+    /// @param fpath Path to the file to be (over)written.
+    /// @param vkey The public key corresponding to the cert signing key.
+    auto saveToFile(std::string_view fpath) const -> void;
 };
 
 }  // namespace stake_pool

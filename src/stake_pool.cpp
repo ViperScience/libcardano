@@ -355,3 +355,21 @@ auto RegistrationCertificateManager::setMetadata(
         metadata_url, vectorToArray<uint8_t, 32>(hash)
     );
 }  // RegistrationCertificateManager::setMetadata
+
+auto RegistrationCertificateManager::saveToFile(std::string_view fpath) const
+    -> void
+{
+    static constexpr auto type_str = "NodeOperationalCertificate";
+    static constexpr auto desc_str = "Stake Pool Registration Certificate";
+    const auto cbor_hex = BASE16::encode(this->serialize());
+    cardano::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+}  // RegistrationCertificateManager::saveToFile
+
+auto DeregistrationCertificateManager::saveToFile(std::string_view fpath) const
+    -> void
+{
+    static constexpr auto type_str = "DeregistrationCertificateManager";
+    static constexpr auto desc_str = "Stake Pool Retirement Certificate";
+    const auto cbor_hex = BASE16::encode(this->serialize());
+    cardano::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+}  // DeregistrationCertificateManager::saveToFile
