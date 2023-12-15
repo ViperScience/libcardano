@@ -13,3 +13,7 @@ build
 # CLion
 .idea
 cmake-build*
+
+# Docs
+docs/html
+m.math.cache

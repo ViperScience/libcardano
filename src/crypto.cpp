@@ -128,7 +128,7 @@ auto hash_repeatedly(const std::vector<uint8_t>& key, size_t count)
 
     if (prv[31] & 0b00100000) return hash_repeatedly(key, count + 1);
 
-    return concat_bytes(prv, iR);
+    return utils::concatBytes(prv, iR);
 }  // hash_repeatedly
 
 auto hash_seed(std::span<const uint8_t> seed) -> std::vector<uint8_t>
@@ -177,7 +177,8 @@ auto BIP32PublicKey::fromBase16(std::string_view xpub) -> BIP32PublicKey
 }  // BIP32PublicKey::fromBase16
 
 auto BIP32PublicKey::fromBase16(
-    const std::string& pub_hex, const std::string& cc_hex
+    const std::string& pub_hex,
+    const std::string& cc_hex
 ) -> BIP32PublicKey
 {
     if (pub_hex.size() != PUBLIC_KEY_SIZE * 2)
@@ -202,12 +203,12 @@ auto BIP32PublicKey::toBytes(bool with_cc) const -> std::vector<uint8_t>
         ret.insert(ret.end(), begin(pub_bytes), end(pub_bytes));
         return ret;
     }
-    return concat_bytes(pub_bytes, this->cc_);
+    return utils::concatBytes(pub_bytes, this->cc_);
 }  // BIP32PublicKey::toBytes
 
 auto BIP32PublicKey::toBech32(std::string_view hrp) const -> std::string
 {
-    const auto data = concat_bytes(this->pub_.bytes(), this->cc_);
+    const auto data = utils::concatBytes(this->pub_.bytes(), this->cc_);
     return BECH32::encode(hrp, data);
 }  // BIP32PublicKey::toBech32
 
@@ -223,7 +224,8 @@ auto BIP32PublicKey::toCBOR(bool with_cc) const -> std::string
 }  // BIP32PublicKey::toCBOR
 
 auto BIP32PublicKey::deriveChild(
-    const uint32_t index, const DerivationMode mode
+    const uint32_t index,
+    const DerivationMode mode
 ) const -> BIP32PublicKey
 {
     if (index_is_hardened(index)) throw std::exception();
@@ -316,7 +318,8 @@ auto BIP32PrivateKey::fromMnemonicByron(const cardano::Mnemonic& mn)
 }  // BIP32PrivateKey::fromMnemonicByron
 
 auto BIP32PrivateKey::fromMnemonic(
-    const cardano::Mnemonic& mn, std::string_view passphrase
+    const cardano::Mnemonic& mn,
+    std::string_view passphrase
 ) -> BIP32PrivateKey
 {
     auto mac = Botan::MessageAuthenticationCode::create("HMAC(SHA-512)");
@@ -324,8 +327,12 @@ auto BIP32PrivateKey::fromMnemonic(
     const auto seed = mn.toSeed();
     auto key = std::vector<uint8_t>(96);
     pbkdf2->derive_key(
-        key.data(), key.size(), passphrase.data(), passphrase.size(),
-        seed.data(), seed.size()
+        key.data(),
+        key.size(),
+        passphrase.data(),
+        passphrase.size(),
+        seed.data(),
+        seed.size()
     );
     tweak_bits_icarus(key);
     return BIP32PrivateKey::fromBytes(key);
@@ -344,7 +351,7 @@ auto BIP32PrivateKey::toBytes(bool with_cc) const -> std::vector<uint8_t>
     {
         return std::vector<uint8_t>(prv_bytes.begin(), prv_bytes.end());
     }
-    return concat_bytes(prv_bytes, this->cc_);
+    return utils::concatBytes(prv_bytes, this->cc_);
 }  // BIP32PrivateKey::toBytes
 
 auto BIP32PrivateKey::toBech32(std::string_view hrp) const -> std::string
@@ -365,7 +372,7 @@ auto BIP32PrivateKey::toCBOR(bool with_cc) const -> std::string
 auto BIP32PrivateKey::toExtendedCBOR() const -> std::string
 {
     auto pubkey = this->toPublic().toBytes();  // <- includes the chain code
-    auto bytes = concat_bytes(this->prv_.bytes(), pubkey);
+    auto bytes = utils::concatBytes(this->prv_.bytes(), pubkey);
     return BASE16::encode(cppbor::Bstr(bytes).encode());
 }  // BIP32PrivateKey::toExtendedCBOR
 
@@ -375,7 +382,8 @@ auto BIP32PrivateKey::toPublic() const -> BIP32PublicKey
 }  // BIP32PrivateKey::toPublic
 
 auto BIP32PrivateKey::deriveChild(
-    const uint32_t index, const DerivationMode mode
+    const uint32_t index,
+    const DerivationMode mode
 ) const -> BIP32PrivateKey
 {
     const auto pkey_bytes = this->prv_.publicKey().bytes();
@@ -507,8 +515,12 @@ auto BIP32PrivateKey::encrypt(std::string_view password)
     const auto fam = Botan::PasswordHashFamily::create("PBKDF2(SHA-512)");
     const auto pbkdf2 = fam->from_params(NB_ITERATIONS);
     pbkdf2->derive_key(
-        stretched_password.data(), stretched_password.size(), password.data(),
-        password.size(), salt, sizeof(salt)
+        stretched_password.data(),
+        stretched_password.size(),
+        password.data(),
+        password.size(),
+        salt,
+        sizeof(salt)
     );
 
     // Encrypt the key with the strecthed password
@@ -525,7 +537,8 @@ auto BIP32PrivateKey::encrypt(std::string_view password)
 }  // BIP32PrivateKey::encrypt
 
 BIP32PrivateKeyEncrypted::BIP32PrivateKeyEncrypted(
-    const std::string& prv, const std::string& cc
+    const std::string& prv,
+    const std::string& cc
 )
 {
     if (prv.size() != this->xprv_.size() * 2)
@@ -570,7 +583,11 @@ auto BIP32PrivateKeyEncrypted::decrypt(std::string_view password) const
         auto fam = Botan::PasswordHashFamily::create("PBKDF2(SHA-512)");
         const auto pbkdf2 = fam->from_params(NB_ITERATIONS);
         pbkdf2->derive_key(
-            buf.data(), buf.size(), password.data(), password.size(), salt,
+            buf.data(),
+            buf.size(),
+            password.data(),
+            password.size(),
+            salt,
             sizeof(salt)
         );
         auto cipher = Botan::StreamCipher::create("ChaCha(20)");
@@ -583,7 +600,7 @@ auto BIP32PrivateKeyEncrypted::decrypt(std::string_view password) const
 
 auto BIP32PrivateKeyEncrypted::toBase16() const -> std::string
 {
-    const auto bytes = concat_bytes(this->xprv_, this->cc_);
+    const auto bytes = utils::concatBytes(this->xprv_, this->cc_);
     return BASE16::encode(bytes);
 }  // BIP32PrivateKeyEncrypted::toBase16
 
@@ -592,12 +609,13 @@ auto BIP32PrivateKeyEncrypted::toExtendedCBOR(std::string_view password) const
 {
     auto pubkey =
         this->toPublic(password).toBytes();  // <- includes the chain code
-    auto bytes = concat_bytes(this->xprv_, pubkey);
+    auto bytes = utils::concatBytes(this->xprv_, pubkey);
     return BASE16::encode(cppbor::Bstr(bytes).encode());
 }  // BIP32PrivateKeyEncrypted::toExtendedCBOR
 
 auto BIP32PrivateKeyEncrypted::sign(
-    std::string_view password, std::span<const uint8_t> msg
+    std::string_view password,
+    std::span<const uint8_t> msg
 ) const -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
 {
     auto unenc_key = this->decrypt(password);
