@@ -267,16 +267,7 @@ class VrfVerificationKey
         return this->vkey_.bytes();
     }
 
-    [[nodiscard]] auto hash() const -> std::array<uint8_t, 32>
-    {
-        // Blake2b-SHA256 encode the CBOR encoded seed (32 byte result).
-        const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
-        blake2b->update(vkey_.bytes().data(), vkey_.bytes().size());
-        const auto hashed = blake2b->final();
-        auto ret = std::array<uint8_t, 32>{};
-        std::copy(hashed.begin(), hashed.end(), ret.begin());
-        return ret;
-    }
+    [[nodiscard]] auto hash() const -> std::array<uint8_t, 32>;
 };
 
 class VrfSigningKey

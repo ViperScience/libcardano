@@ -51,6 +51,14 @@ std::array<T, N> vectorToArray(std::span<const T> vec)
     return arr;
 }
 
+template <std::size_t N>
+auto makeByteArray(std::span<const uint8_t> vec) -> std::array<uint8_t, N>
+{
+    std::array<uint8_t, N> arr;
+    std::ranges::copy(vec | std::views::take(N), arr.begin());
+    return arr;
+}  // makeByteArray
+
 /// @brief Case insensitive string compare.
 /// @return True if the strings are equal when ignoring case.
 constexpr auto strcmpi(std::string_view h1, std::string_view h2) -> bool
