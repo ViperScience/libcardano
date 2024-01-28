@@ -30,6 +30,7 @@ set(TEST_CARDANO_CRYPTO_SOURCES
 ADD_EXECUTABLE(test_cardano_crypto ${TEST_CARDANO_CRYPTO_SOURCES})
 target_link_libraries(test_cardano_crypto PRIVATE
     botan::botan
+    sodium::sodium
     Threads::Threads
     OpenSSL::SSL
 )
@@ -51,6 +52,7 @@ set(TEST_CARDANO_ADDRESS_SOURCES
 ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_address PRIVATE
     botan::botan
+    sodium::sodium
     Threads::Threads
     OpenSSL::SSL
 )
@@ -72,6 +74,7 @@ set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
 ADD_EXECUTABLE(test_cardano_byron_address ${TEST_CARDANO_BYRON_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_byron_address PRIVATE
     botan::botan
+    sodium::sodium
     Threads::Threads
     OpenSSL::SSL
 )
@@ -111,6 +114,7 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_address
 )
 target_link_libraries(test_cardano_mnemonic_to_address PRIVATE
     botan::botan
+    sodium::sodium
     Threads::Threads
     OpenSSL::SSL
 )
@@ -134,6 +138,7 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
 )
 target_link_libraries(test_cardano_mnemonic_to_stake_address PRIVATE
     botan::botan
+    sodium::sodium
     Threads::Threads
     OpenSSL::SSL
 )
@@ -160,6 +165,7 @@ ADD_EXECUTABLE(test_cardano_transaction_build
 )
 target_link_libraries(test_cardano_transaction_build PRIVATE
     botan::botan
+    sodium::sodium
     Threads::Threads
     OpenSSL::SSL
 )
@@ -184,6 +190,7 @@ ADD_EXECUTABLE(test_cardano_transaction_sign
 )
 target_link_libraries(test_cardano_transaction_sign PRIVATE
     botan::botan
+    sodium::sodium
     Threads::Threads
     OpenSSL::SSL
 )
@@ -210,8 +217,9 @@ ADD_EXECUTABLE(test_cardano_stake_pool
 )
 target_link_libraries(test_cardano_stake_pool PRIVATE
     botan::botan
+    Catch2::Catch2WithMain
+    sodium::sodium
     Threads::Threads
     OpenSSL::SSL
-    Catch2::Catch2WithMain
 )
 ADD_TEST(cardano_stake_pool test_cardano_stake_pool)

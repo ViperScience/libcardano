@@ -17,8 +17,9 @@ find_library(Botan_LIBRARY
 find_path(Botan_INCLUDE_DIR 
     NAMES botan/hash.h
     PATHS
-        /usr/local/include/botan-3
         /usr/include/botan-3
+        /usr/local/include/botan-3
+        /usr/include/x86_64-linux-gnu/botan-3
 )
 
 find_package_handle_standard_args(Botan REQUIRED_VARS Botan_LIBRARY Botan_INCLUDE_DIR)

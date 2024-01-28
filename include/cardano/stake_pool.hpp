@@ -23,18 +23,19 @@
 
 // Standard library headers
 #include <functional>
+// #include <ranges>
 
 // Third-party library headers
 #include <botan/hash.h>
 
 #include <viper25519/ed25519.hpp>
+#include <viper25519/vrf25519.hpp>
 
 // Public libcardano headers
 #include <cardano/address.hpp>
 #include <cardano/crypto.hpp>
 #include <cardano/encodings.hpp>
 #include <cardano/ledger.hpp>
-#include <ranges>
 
 /// @brief The root namespace for all Cardano functions and types.
 namespace cardano
@@ -252,26 +253,48 @@ class ExtendedColdSigningKey
 
 };  // ExtendedColdSigningKey
 
-// Placeholder class for Cert dev
-class VrfVerificationKey
+/// @brief A VRF verification key used by stake pools to verify leadership
+/// selection.
+class VrfVerificationKey : public ed25519::VRFPublicKey
 {
-  private:
-    ed25519::PublicKey vkey_{BASE16::decode(
-        "9f52b990a53f091cc43712728ebd9d69b277bf5bc673024736961376ce3f7053"
-    )};
-
   public:
-    [[nodiscard]] auto bytes() const
-        -> const std::array<uint8_t, ed25519::ED25519_KEY_SIZE>&
+    /// @brief Construct a new VrfVerificationKey object from a byte vector.
+    /// @param key_bytes The byte vector containing the key.
+    explicit VrfVerificationKey(std::span<const uint8_t> key_bytes)
+        : ed25519::VRFPublicKey{key_bytes}
     {
-        return this->vkey_.bytes();
     }
 
-    [[nodiscard]] auto hash() const -> std::array<uint8_t, 32>;
+    /// @brief Compute the blake2b-256 hash of the verification key.
+    /// @return The key hash as a 32 byte array.
+    [[nodiscard]] auto keyHash() const -> std::array<uint8_t, 32>;
+
+    /// @brief Export the key to a file in the cardano node JSON format.
+    /// @param fpath Path to the file to be (over)written.
+    auto saveToFile(std::string_view fpath) const -> void;
 };
 
-class VrfSigningKey
+/// @brief A VRF signing key used by stake pools to verify leadership selection.
+class VrfSigningKey : public ed25519::VRFSecretKey
 {
+  public:
+    /// @brief Construct a new VrfSigningKey object from a byte vector.
+    /// @param key_bytes The byte vector containing the key.
+    explicit VrfSigningKey(std::span<const uint8_t> key_bytes)
+        : ed25519::VRFSecretKey{key_bytes}
+    {
+    }
+
+    /// @brief Derive the corresponding verification (public) key.
+    /// @return The verification key object.
+    [[nodiscard]] auto verificationKey() const -> VrfVerificationKey
+    {
+        return VrfVerificationKey{this->publicKey().bytes()};
+    }
+
+    /// @brief Export the key to a file in the cardano node JSON format.
+    /// @param fpath Path to the file to be (over)written.
+    auto saveToFile(std::string_view fpath) const -> void;
 };
 
 // Placeholder class for Op Cert dev
@@ -495,7 +518,7 @@ class RegistrationCertificateManager
     /// @param vrf_vkey The stake pool VRF verification key.
     auto setVrfKey(const VrfVerificationKey& vrf_vkey) -> void
     {
-        this->cert_.pool_params.vrf_keyhash = vrf_vkey.hash();
+        this->cert_.pool_params.vrf_keyhash = vrf_vkey.keyHash();
     }
 
     /// @brief Set the stake pool pledge.

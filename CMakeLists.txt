@@ -46,6 +46,8 @@ else()
 endif()
 
 # Add 3rd party libraries that should be installed on the system
+set(sodium_USE_STATIC_LIBS ON)
+find_package(Sodium REQUIRED)
 find_package(Botan REQUIRED)
 
 # Add the submodules
@@ -116,6 +118,7 @@ add_library(${PROJECT_NAME} ${CARDANO_SOURCES})
 # Specify libraries for linking
 target_link_libraries(${PROJECT_NAME} PRIVATE
     botan::botan
+    sodium::sodium
     Threads::Threads
     OpenSSL::SSL
 )

@@ -22,6 +22,7 @@
 #include <array>
 #include <cmath>
 #include <ranges>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -48,7 +49,8 @@ auto concatBytes(SizedRange1 const &r1, SizedRange2 const &r2)
 }  // concat_bytes
 
 template <std::size_t N>
-auto makeByteArray(std::span<const uint8_t> vec) -> std::array<uint8_t, N>
+constexpr auto makeByteArray(std::span<const uint8_t> vec)
+    -> std::array<uint8_t, N>
 {
     std::array<uint8_t, N> arr;
     std::ranges::copy(vec | std::views::take(N), arr.begin());

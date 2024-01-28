@@ -143,7 +143,8 @@ auto OperationalCertificateIssueCounter::serialize(
 }  // OperationalCertificateIssueCounter::toCBOR
 
 auto OperationalCertificateIssueCounter::saveToFile(
-    std::string_view fpath, const ColdVerificationKey& vkey
+    std::string_view fpath,
+    const ColdVerificationKey& vkey
 ) const -> void
 {
     static constexpr auto type_str = "NodeOperationalCertificateIssueCounter";
@@ -256,7 +257,8 @@ auto OperationalCertificateManager::serialize(const ColdVerificationKey& vkey
 }  // OperationalCertificateManager::serialize
 
 auto OperationalCertificateManager::saveToFile(
-    std::string_view fpath, const ColdVerificationKey& vkey
+    std::string_view fpath,
+    const ColdVerificationKey& vkey
 ) const -> void
 {
     static constexpr auto type_str = "NodeOperationalCertificate";
@@ -286,7 +288,7 @@ RegistrationCertificateManager::RegistrationCertificateManager(
     auto [n, d] = utils::rationalApprox(margin, 4096);
 
     this->cert_.pool_params.pool_operator = vkey.poolId();
-    this->cert_.pool_params.vrf_keyhash = vrf_vkey.hash();
+    this->cert_.pool_params.vrf_keyhash = vrf_vkey.keyHash();
     this->cert_.pool_params.pledge = pledge_lovelace;
     this->cert_.pool_params.cost = cost_lovelace;
     this->cert_.pool_params.margin = {(uint64_t)n, (uint64_t)d};
@@ -319,7 +321,8 @@ auto RegistrationCertificateManager::addRelay(std::string_view relay) -> void
 }  // RegistrationCertificateManager::addRelay
 
 auto RegistrationCertificateManager::addRelay(
-    std::string_view dns_name, uint16_t port
+    std::string_view dns_name,
+    uint16_t port
 ) -> void
 {
     this->cert_.pool_params.relays.push_back(
@@ -328,7 +331,8 @@ auto RegistrationCertificateManager::addRelay(
 }  // RegistrationCertificateManager::addRelay
 
 auto RegistrationCertificateManager::addRelay(
-    std::array<uint8_t, 4> ip, uint16_t port
+    std::array<uint8_t, 4> ip,
+    uint16_t port
 ) -> void
 {
     this->cert_.pool_params.relays.push_back(
@@ -337,7 +341,8 @@ auto RegistrationCertificateManager::addRelay(
 }  // RegistrationCertificateManager::addRelay
 
 auto RegistrationCertificateManager::addRelay(
-    std::array<uint8_t, 16> ip, uint16_t port
+    std::array<uint8_t, 16> ip,
+    uint16_t port
 ) -> void
 {
     this->cert_.pool_params.relays.push_back(
@@ -346,7 +351,8 @@ auto RegistrationCertificateManager::addRelay(
 }  // RegistrationCertificateManager::addRelay
 
 auto RegistrationCertificateManager::setMetadata(
-    std::string_view metadata_url, std::span<const uint8_t> hash
+    std::string_view metadata_url,
+    std::span<const uint8_t> hash
 ) -> void
 {
     this->cert_.pool_params.pool_metadata.reset();
@@ -373,11 +379,27 @@ auto DeregistrationCertificateManager::saveToFile(std::string_view fpath) const
     utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // DeregistrationCertificateManager::saveToFile
 
-auto VrfVerificationKey::hash() const -> std::array<uint8_t, 32>
+auto VrfVerificationKey::keyHash() const -> std::array<uint8_t, 32>
 {
     // Blake2b-SHA256 encode the CBOR encoded seed (32 byte result).
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
-    blake2b->update(vkey_.bytes().data(), vkey_.bytes().size());
+    blake2b->update(this->bytes().data(), this->bytes().size());
     const auto hashed = blake2b->final();
     return utils::makeByteArray<32>(hashed);
 }  // VrfVerificationKey::hash
+
+auto VrfVerificationKey::saveToFile(std::string_view fpath) const -> void
+{
+    static constexpr auto type_str = "VrfVerificationKey_PraosVRF";
+    static constexpr auto desc_str = "VRF Verification Key";
+    const auto cbor_hex = BASE16::encode(this->bytes());
+    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+}  // VrfVerificationKey::saveToFile
+
+auto VrfSigningKey::saveToFile(std::string_view fpath) const -> void
+{
+    static constexpr auto type_str = "VrfSigningKey_PraosVRF";
+    static constexpr auto desc_str = "VRF Signing Key";
+    const auto cbor_hex = BASE16::encode(this->bytes());
+    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+}  // VrfSigningKey::saveToFile
