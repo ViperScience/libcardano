@@ -2,7 +2,9 @@ FROM python:3.11-slim-bookworm
 
 RUN apt-get update && apt-get install -y \
   curl \
+  git \
   libssl-dev \
+  libtool \
   build-essential \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
