@@ -31,6 +31,25 @@
 
 using namespace cardano;
 
+auto shelley::TransactionWitnessSet::serializer() const -> cppbor::Map
+{
+    auto witness_set = cppbor::Map{};
+    if (vkeywitnesses)
+    {
+        auto vkeys_array = cppbor::Array{};
+        for (auto const& [vkey, sige] : vkeywitnesses.value())
+        {
+            vkeys_array.add(cppbor::Array{
+                cppbor::Bstr{{vkey.data(), vkey.size()}},
+                cppbor::Bstr{{sige.data(), sige.size()}}
+            });
+        }
+        witness_set.add(0, std::move(vkeys_array));
+    }
+    // do the same for multisig_script and bootstrap_witness
+    return witness_set;
+}  // shelley::TransactionWitnessSet::serializer
+
 auto shelley::StakeRegistration::serializer() const -> cppbor::Array
 {
     return cppbor::Array{cppbor::Uint(0), stake_credential.serializer()};
@@ -115,3 +134,217 @@ auto shelley::MoveInstantaneousRewardsCert::serializer() const -> cppbor::Array
 {
     return cppbor::Array{cppbor::Uint(6)};
 }
+
+auto shelley::TransactionOutput::serializer() const -> cppbor::Array
+{
+    return cppbor::Array{
+        cppbor::Bstr{{address.data(), address.size()}}, cppbor::Uint(amount)
+    };
+}
+
+auto shelley::TransactionInput::serializer() const -> cppbor::Array
+{
+    return cppbor::Array{
+        cppbor::Bstr{{transaction_id.data(), transaction_id.size()}},
+        cppbor::Uint(index)
+    };
+}
+
+///     transaction_body =
+///       { 0 : set<transaction_input>
+///       , 1 : [* transaction_output]
+///       , 2 : coin ; fee
+///       , 3 : uint ; ttl
+///       , ? 4 : [* certificate]
+///       , ? 5 : withdrawals
+///       , ? 6 : update
+///       , ? 7 : metadata_hash
+///       }
+// transaction_inputs = std::set<TransactionInput>{};
+//         transaction_outputs = std::vector<TransactionOutput>{};
+//         fee = Coin{};
+//         ttl = 0;
+//         certificates = std::nullopt;
+//         withdrawals = std::nullopt;
+//         update = std::nullopt;
+//         metadata_hash = std::nullopt;
+auto shelley::TransactionBody::serializer() const -> cppbor::Map
+{
+    auto tx_body = cppbor::Map{};
+
+    auto tx_inputs = cppbor::Array{};
+    for (auto const& input : transaction_inputs)
+    {
+        tx_inputs.add(input.serializer());
+    }
+    tx_body.add(0, std::move(tx_inputs));
+
+    auto tx_outputs = cppbor::Array{};
+    for (auto const& output : transaction_outputs)
+    {
+        tx_outputs.add(output.serializer());
+    }
+    tx_body.add(1, std::move(tx_outputs));
+
+    tx_body.add(2, fee);
+    tx_body.add(3, ttl);
+
+    if (certificates)
+    {
+        // auto certificates_array = cppbor::Array{};
+        // for (auto const& certificate : certificates.value())
+        // {
+        //     certificates_array.add(certificate->serializer());
+        // }
+        // transaction_body.add(4, std::move(certificates_array));
+    }
+
+    if (withdrawals)
+    {
+    }
+
+    if (update)
+    {
+    }
+
+    if (metadata_hash)
+    {
+    }
+
+    return tx_body;
+}  // shelley::TransactionBody::serializer
+
+auto shelley::Transaction::serializer() const -> cppbor::Array
+{
+    auto transaction = cppbor::Array{
+        transaction_body.serializer(), transaction_witness_set.serializer()
+    };
+    if (transaction_metadata)
+    {
+    }
+    else
+    {
+        transaction.add(nullptr);
+    }
+
+    return transaction;
+}  // shelley::Transaction::serializer
+
+auto alonzo::TransactionOutput::serializer() const -> cppbor::Array
+{
+    auto tx_output = cppbor::Array(
+        cppbor::Bstr{{address.data(), address.size()}}, cppbor::Uint(amount)
+    );
+    if (datum_hash)
+    {
+        tx_output.add(
+            cppbor::Bstr{{datum_hash.value().data(), datum_hash.value().size()}}
+        );
+    }
+    return tx_output;
+};  // babbage::LegacyTransactionOutput::serializer
+
+auto babbage::PostAlonzoTransactionOutput::serializer() const -> cppbor::Map
+{
+    auto tx_output = cppbor::Map();
+    tx_output.add(0, cppbor::Bstr{{address.data(), address.size()}});
+    tx_output.add(1, cppbor::Uint(amount));
+    // TODO
+    // if (datum_option) {}
+    // if (script_ref) {}
+    return tx_output;
+};  // babbage::PostAlonzoTransactionOutput::serializer
+
+auto babbage::TransactionBody::serializer() const -> cppbor::Map
+{
+    auto tx_body = cppbor::Map{};
+
+    auto tx_inputs = cppbor::Array{};
+    for (auto const& input : transaction_inputs)
+    {
+        tx_inputs.add(input.serializer());
+    }
+    tx_body.add(0, std::move(tx_inputs));
+
+    auto tx_outputs = cppbor::Array{};
+    for (auto const& output : transaction_outputs)
+    {
+        if (const auto pval =
+                std::get_if<babbage::PreBabbageTransactionOutput>(&output))
+        {
+            tx_outputs.add(pval->serializer());
+        }
+        if (const auto pval =
+                std::get_if<babbage::PostAlonzoTransactionOutput>(&output))
+        {
+            tx_outputs.add(pval->serializer());
+        }
+    }
+    tx_body.add(1, std::move(tx_outputs));
+
+    tx_body.add(2, fee);
+
+    if (this->ttl)
+    {
+        tx_body.add(3, this->ttl.value());
+    }
+
+    //     if (certificates)
+    //     {
+    //         // auto certificates_array = cppbor::Array{};
+    //         // for (auto const& certificate : certificates.value())
+    //         // {
+    //         //     certificates_array.add(certificate->serializer());
+    //         // }
+    //         // transaction_body.add(4, std::move(certificates_array));
+    //     }
+    //
+    //     if (withdrawals)
+    //     {
+    //     }
+    //
+    //     if (update)
+    //     {
+    //     }
+    //
+    //     if (metadata_hash)
+    //     {
+    //     }
+
+    return tx_body;
+}  // babbage::TransactionBody::serializer
+
+auto babbage::TransactionWitnessSet::serializer() const -> cppbor::Map
+{
+    auto witness_set = cppbor::Map{};
+    if (!vkeywitnesses.empty())
+    {
+        auto vkeys_array = cppbor::Array{};
+        for (auto const& [vkey, sige] : vkeywitnesses)
+        {
+            vkeys_array.add(cppbor::Array{
+                cppbor::Bstr{{vkey.data(), vkey.size()}},
+                cppbor::Bstr{{sige.data(), sige.size()}}
+            });
+        }
+        witness_set.add(0, std::move(vkeys_array));
+    }
+    // do the same for multisig_script and bootstrap_witness
+    return witness_set;
+}  // babbage::TransactionWitnessSet::serializer
+
+///       [ transaction_body
+///       , transaction_witness_set
+///       , bool
+///       , auxiliary_data / null
+///       ]
+auto babbage::Transaction::serializer() const -> cppbor::Array
+{
+    auto tx = cppbor::Array(
+        this->transaction_body.serializer(),
+        this->transaction_witness_set.serializer(),
+        cppbor::Bool(this->flag),
+        nullptr
+    );
+    return tx;
+}  // babbage::Transaction::serializer
