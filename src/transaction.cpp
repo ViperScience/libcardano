@@ -68,6 +68,20 @@ auto BabbageTransactionBuilder::addOutput(
     return *this;
 }  // BabbageTransactionBuilder::addOutput
 
+auto BabbageTransactionBuilder::addOutput(
+    const EnterpriseAddress& addr,
+    uint64_t amount
+) -> BabbageTransactionBuilder&
+{
+    auto output = babbage::PostAlonzoTransactionOutput();
+    output.address = addr.toBytes(true);
+    output.amount = amount;
+
+    this->tx_.transaction_body.transaction_outputs.push_back(output);
+
+    return *this;
+}  // BabbageTransactionBuilder::addOutput
+
 auto BabbageTransactionBuilder::setTtl(size_t ttl) -> BabbageTransactionBuilder&
 {
     this->tx_.transaction_body.ttl = ttl;

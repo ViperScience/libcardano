@@ -86,6 +86,9 @@ class BabbageTransactionBuilder
     auto addOutput(const BaseAddress& addr, uint64_t amount)
         -> BabbageTransactionBuilder&;
 
+    auto addOutput(const EnterpriseAddress& addr, uint64_t amount)
+        -> BabbageTransactionBuilder&;
+
     /// @brief Set the transaction fee.
     /// @param fee The transaction fee in lovelaces.
     /// @return A reference to the transaction builder.
