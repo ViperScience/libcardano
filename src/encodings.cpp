@@ -155,7 +155,7 @@ static constexpr auto polymod(std::span<const uint8_t> values) -> uint32_t
         // c'(x) = (c1*x^5 + c2*x^4 + c3*x^3 + c4*x^2 + c5*x + v_i) + c0*k(x)
 
         // First, determine the value of c0:
-        uint8_t c0 = c >> 25;
+        uint8_t c0 = static_cast<uint8_t>(c >> 25);
 
         // Then compute c1*x^5 + c2*x^4 + c3*x^3 + c4*x^2 + c5*x + v_i:
         c = ((c & 0x1ffffff) << 5) ^ v_i;
@@ -245,13 +245,15 @@ auto convertbits(
         while (bits >= tobits)
         {
             bits -= tobits;
-            ret.push_back((acc >> bits) & maxv);
+            ret.push_back(static_cast<uint8_t>((acc >> bits) & maxv));
         }
     }
 
     if (pad)
     {
-        if (bits != 0) ret.push_back((acc << (tobits - bits)) & maxv);
+        if (bits != 0)
+            ret.push_back(static_cast<uint8_t>((acc << (tobits - bits)) & maxv)
+            );
     }
     else if (bits >= frombits || ((acc << (tobits - bits)) & maxv))
     {
@@ -392,8 +394,8 @@ auto BASE58::decode(std::string_view str) -> std::vector<uint8_t>
     std::vector<uint8_t> result;
     result.push_back(0);
     int res_len = 1;
-    int enc_len = str.length();
-    for (int i = 0; i < enc_len; i++)
+    size_t enc_len = str.length();
+    for (size_t i = 0; i < enc_len; i++)
     {
         auto charset_index = static_cast<uint8_t>(str[i]);
         unsigned int carry = (unsigned int)B58_CHARSET_REV[charset_index];
@@ -411,7 +413,7 @@ auto BASE58::decode(std::string_view str) -> std::vector<uint8_t>
         }
     }
 
-    for (int i = 0; i < enc_len && str[i] == '1'; i++)
+    for (size_t i = 0; i < enc_len && str[i] == '1'; i++)
     {
         res_len++;
         result.push_back(0);
@@ -419,7 +421,7 @@ auto BASE58::decode(std::string_view str) -> std::vector<uint8_t>
 
     for (int i = res_len - 1, z = (res_len >> 1) + (res_len & 1); i >= z; i--)
     {
-        int k = result[i];
+        uint8_t k = result[i];
         result[i] = result[res_len - i - 1];
         result[res_len - i - 1] = k;
     }

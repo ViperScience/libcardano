@@ -70,7 +70,8 @@ Mnemonic::Mnemonic(
 }  // Mnemonic::Mnemonic(std::span<std::string_view>, std::span<uint16_t>)
 
 Mnemonic::Mnemonic(
-    std::span<std::string> seed_phrase, std::span<const uint16_t> word_indexes
+    std::span<std::string> seed_phrase,
+    std::span<const uint16_t> word_indexes
 )
 {
     if (seed_phrase.size() != word_indexes.size())
@@ -204,7 +205,10 @@ auto Mnemonic::generate(size_t mnemonic_size, BIP39Language lang) -> Mnemonic
     auto hashed_entropy = sha256->final();  // <- std::vector
 
     // Add the checksum byte(s) to the end of the entropy vector.
-    for (auto i = 0ul; i < std::ceil(checksum_size_bits / (float)8); i++)
+    const auto checksum_size_bytes_ceil = static_cast<size_t>(
+        std::ceil(static_cast<double>(checksum_size_bits) / 8.0)
+    );
+    for (auto i = 0ul; i < checksum_size_bytes_ceil; i++)
         entropy_byte_vector.push_back(hashed_entropy[i]);
 
     // Use the dictionary for the specified language.
@@ -267,7 +271,8 @@ auto Mnemonic::toEntropy() const -> std::tuple<std::vector<uint8_t>, uint8_t>
         // Finish filling the entropy byte with bits from the current mnemonic
         // word index. This byte will always be full at this point so increment
         // the entropy vector index.
-        entropy_byte_vector[ent_idx++] |= widx >> (3 + n_carry_bits);
+        entropy_byte_vector[ent_idx++] |=
+            static_cast<uint8_t>(widx >> (3 + n_carry_bits));
 
         // If there are 8-bits remaining in the 11-bit word, pack them into the
         // next entropy byte. Unless the entropy byte vector is full, in that
@@ -277,7 +282,8 @@ auto Mnemonic::toEntropy() const -> std::tuple<std::vector<uint8_t>, uint8_t>
         if ((ent_idx < entropy_size_bytes) && (n_bits_remain >= 8))
         {
             entropy_byte_vector[ent_idx] = 0;
-            entropy_byte_vector[ent_idx] |= word_index >> (n_bits_remain - 8);
+            entropy_byte_vector[ent_idx] |=
+                static_cast<uint8_t>(word_index >> (n_bits_remain - 8));
             n_bits_remain -= 8;
             ent_idx++;
         }
@@ -286,7 +292,8 @@ auto Mnemonic::toEntropy() const -> std::tuple<std::vector<uint8_t>, uint8_t>
         // entropy byte. If the entropy byte vector is full, the carry bits are
         // the checksum.
         n_carry_bits = n_bits_remain;
-        carry_bits = word_index & (65535 >> (16 - n_bits_remain));
+        carry_bits =
+            static_cast<uint8_t>(word_index & (0xFFFF >> (16 - n_bits_remain)));
     }
 
     return std::make_tuple(entropy_byte_vector, (uint8_t)carry_bits);

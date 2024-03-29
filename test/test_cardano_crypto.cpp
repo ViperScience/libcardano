@@ -1,7 +1,9 @@
 #include <string>
-#include <test/tests.hpp>
+
 #include <cardano/crypto.hpp>
 #include <cardano/encodings.hpp>
+
+#include "tests.hpp"
 
 auto testBasic() -> void
 {

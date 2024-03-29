@@ -1,10 +1,11 @@
 #include <iostream>
 #include <string>
 
-#include <test/tests.hpp>
 #include <cardano/address.hpp>
 #include <cardano/crypto.hpp>
 #include <cardano/encodings.hpp>
+
+#include "tests.hpp"
 
 void testBasic() {
 }

@@ -1,7 +1,8 @@
 #include <iostream>
 #include <string>
+#include <span>
 
-#include <test/tests.hpp>
+#include "tests.hpp"
 #include <cardano/encodings.hpp>
 
 void testBech32Basic() {

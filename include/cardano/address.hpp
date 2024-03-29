@@ -60,12 +60,12 @@ class BaseAddress
     BaseAddress() = default;
 
   public:
-
     /// @brief Construct a new BaseAddress object.
     /// @param nid The network ID.
     /// @param pmt_key_hash The payment key hash.
     /// @param stake_key_hash The stake key hash.
-    /// @note The payment and stake key hashes must be of length KEY_HASH_LENGTH.
+    /// @note The payment and stake key hashes must be of length
+    /// KEY_HASH_LENGTH.
     BaseAddress(
         NetworkID nid,
         std::array<uint8_t, KEY_HASH_LENGTH> pmt_key_hash,
@@ -77,9 +77,9 @@ class BaseAddress
     /// @param pmt_key The payment key.
     /// @param stake_key The stake key.
     /// @return The created BaseAddress object.
-    static auto fromKeys(
-        NetworkID nid, BIP32PublicKey pmt_key, BIP32PublicKey stake_key
-    ) -> BaseAddress;
+    static auto
+    fromKeys(NetworkID nid, BIP32PublicKey pmt_key, BIP32PublicKey stake_key)
+        -> BaseAddress;
 
     /// @brief Create a new BaseAddress object from a bech32 address.
     static auto fromBech32(std::string addr) -> BaseAddress;
@@ -89,12 +89,12 @@ class BaseAddress
     /// @return The address as a byte array.
     [[nodiscard]] auto toBytes(bool with_header = false) const
         -> std::vector<uint8_t>;
-    
+
     /// @brief Encode the address as a base16 string.
     /// @param with_header Whether to include the header byte in the output.
     /// @return The base16 encoded address.
     [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
-    
+
     /// @brief Encode the address as a bech32 string.
     /// @param hrp The human-readable part of the bech32 string.
     /// @return The bech32 encoded address.
@@ -117,7 +117,8 @@ class EnterpriseAddress
     /// @param nid The network ID enum.
     /// @param key_hash The key hash.
     EnterpriseAddress(
-        NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
+        NetworkID nid,
+        std::array<uint8_t, KEY_HASH_LENGTH> key_hash
     );
 
     /// @brief Factory method to create an EnterpriseAddress object from a key.
@@ -126,18 +127,19 @@ class EnterpriseAddress
     /// @return The created EnterpriseAddress object.
     static auto fromKey(NetworkID nid, BIP32PublicKey pub_key)
         -> EnterpriseAddress;
-    
-    /// @brief Factory method to create an EnterpriseAddress object from a bech32 address.
+
+    /// @brief Factory method to create an EnterpriseAddress object from a
+    /// bech32 address.
     /// @param addr The bech32 address.
     /// @return The created EnterpriseAddress object.
     static auto fromBech32(std::string addr) -> EnterpriseAddress;
-    
+
     /// @brief Return the address as a byte array.
     /// @param with_header Whether to include the header byte in the output.
     /// @return The address as a byte array.
     [[nodiscard]] auto toBytes(bool with_header = false) const
         -> std::vector<uint8_t>;
-    
+
     /// @brief Encode the address as a base16 string.
     /// @param with_header Whether to include the header byte in the output.
     /// @return The base16 encoded address.
@@ -165,12 +167,12 @@ class RewardsAddress
     RewardsAddress() = default;
 
   public:
-
     /// @brief Construct a new RewardsAddress object.
     /// @param nid The network ID enum.
     /// @param key_hash The key hash.
     RewardsAddress(
-        NetworkID nid, std::array<uint8_t, KEY_HASH_LENGTH> key_hash
+        NetworkID nid,
+        std::array<uint8_t, KEY_HASH_LENGTH> key_hash
     );
 
     /// @brief Factory method to create a RewardsAddress object from a key.
@@ -179,23 +181,24 @@ class RewardsAddress
     /// @return The created RewardsAddress object.
     static auto fromKey(NetworkID nid, BIP32PublicKey stake_key)
         -> RewardsAddress;
-    
-    /// @brief Factory method to create a RewardsAddress object from a bech32 address.
+
+    /// @brief Factory method to create a RewardsAddress object from a bech32
+    /// address.
     /// @param addr The bech32 address.
     /// @return The created RewardsAddress object.
     static auto fromBech32(std::string addr) -> RewardsAddress;
-    
+
     /// @brief Return the address as a byte array.
     /// @param with_header Whether to include the header byte in the output.
     /// @return The address as a byte array.
     [[nodiscard]] auto toBytes(bool with_header = false) const
         -> std::vector<uint8_t>;
-    
+
     /// @brief Encode the address as a base16 string.
     /// @param with_header Whether to include the header byte in the output.
     /// @return The base16 encoded address.
     [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
-    
+
     /// @brief Encode the address as a bech32 string.
     /// @param hrp The human-readable part of the bech32 string.
     /// @return The bech32 encoded address.
@@ -206,7 +209,6 @@ class RewardsAddress
 class ByronAddress
 {
   public:
-
     /// @brief The attributes of a ByronAddress.
     struct Attributes
     {
@@ -223,8 +225,8 @@ class ByronAddress
 
         /// Constructor
         /// Take ownership of the chipertext vector (move it into the object).
-        Attributes(std::vector<uint8_t> bytes, uint32_t magic)
-            : ciphertext{std::move(bytes)}, magic{magic}
+        Attributes(std::vector<uint8_t> bytes, uint32_t network_magic)
+            : ciphertext{std::move(bytes)}, magic{network_magic}
         {
         }
 
@@ -267,12 +269,14 @@ class ByronAddress
         uint32_t network_magic = 0
     ) -> ByronAddress;
 
-    /// @brief Factory method to create a ByronAddress object from a CBOR encoded address.
+    /// @brief Factory method to create a ByronAddress object from a CBOR
+    /// encoded address.
     /// @param cbor_data The CBOR encoded address.
     /// @return The created ByronAddress object.
     static auto fromCBOR(std::span<const uint8_t> cbor_data) -> ByronAddress;
-    
-    /// Factory method to create a ByronAddress object from a base58 encoded address.
+
+    /// Factory method to create a ByronAddress object from a base58 encoded
+    /// address.
     /// @param addr The base58 encoded address.
     /// @return The created ByronAddress object.
     static auto fromBase58(std::string addr) -> ByronAddress;

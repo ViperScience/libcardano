@@ -1,7 +1,8 @@
 #include <string>
 
 #include <cardano/mnemonic.hpp>
-#include <test/tests.hpp>
+
+#include "tests.hpp"
 
 auto testBasic() -> void
 {

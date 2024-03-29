@@ -42,7 +42,7 @@
 #include <cppbor/cppbor_parse.h>
 
 // Libcardano Headers
-#include "serialization.hpp"
+#include <cardano/serialization.hpp>
 
 // Official Spec (Babbage Era):
 // https://github.com/input-output-hk/cardano-ledger/blob/master/eras/babbage/test-suite/cddl-files/babbage.cddl#L13
@@ -596,7 +596,7 @@ struct Relay : public ArraySerializable
 
     /// @brief Construct a new Certificate object with a type.
     /// @param t Type enum for the certificate (cannot be changed).
-    [[nodiscard]] Relay(Relay::Type type) : type{type} {}
+    [[nodiscard]] Relay(Relay::Type relayType) : type{relayType} {}
 };  // Relay
 
 // single_host_addr = ( 0

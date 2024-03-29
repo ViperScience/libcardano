@@ -254,7 +254,7 @@ auto BIP32PublicKey::deriveChild(
             auto prev_acc = uint8_t(0);
             for (auto i = 0UL; i < 32; i++)
             {
-                zl8[i] = (z[i] << 3) + (prev_acc & 0x8);
+                zl8[i] = static_cast<uint8_t>((z[i] << 3) + (prev_acc & 0x8));
                 prev_acc = z[i] >> 5;
             }
             break;
@@ -265,7 +265,7 @@ auto BIP32PublicKey::deriveChild(
             uint8_t prev_acc = 0;
             for (auto i = 0UL; i < 28; i++)
             {
-                zl8[i] = (z[i] << 3) + (prev_acc & 0x7);
+                zl8[i] = static_cast<uint8_t>((z[i] << 3) + (prev_acc & 0x7));
                 prev_acc = z[i] >> 5;
             }
             zl8[28] = z[27] >> 5;
@@ -420,7 +420,7 @@ auto BIP32PrivateKey::deriveChild(
             auto prev_acc = static_cast<uint8_t>(0);
             for (auto i = 0UL; i < 32; i++)
             {
-                zl8[i] = (z[i] << 3) + (prev_acc & 0x8);
+                zl8[i] = static_cast<uint8_t>((z[i] << 3) + (prev_acc & 0x8));
                 prev_acc = z[i] >> 5;
             }
 
@@ -445,17 +445,16 @@ auto BIP32PrivateKey::deriveChild(
             auto prev_acc = static_cast<uint8_t>(0);
             for (auto i = 0UL; i < 28; i++)
             {
-                zl8[i] = (z[i] << 3) + (prev_acc & 0x7);
+                zl8[i] = static_cast<uint8_t>((z[i] << 3) + (prev_acc & 0x7));
                 prev_acc = z[i] >> 5;
             }
             zl8[28] = z[27] >> 5;
 
             // Kl = 8*Zl + parent(K)l
-            auto r = static_cast<uint16_t>(0);
+            auto r = 0;
             for (auto i = 0UL; i < 32; i++)
             {
-                r = static_cast<uint16_t>(zl8[i]) +
-                    static_cast<uint16_t>(skey_bytes[i]) + r;
+                r = zl8[i] + skey_bytes[i] + r;
                 res_key[i] = static_cast<uint8_t>(r);
                 r >>= 8;
             }
@@ -466,9 +465,8 @@ auto BIP32PrivateKey::deriveChild(
             {
                 auto a = z[i + 32];
                 auto b = skey_bytes[i + 32];
-                auto r = static_cast<uint16_t>(a) + static_cast<uint16_t>(b) +
-                         static_cast<uint16_t>(carry);
-                res_key[i + 32] = static_cast<uint8_t>(r & 0xff);
+                r = a + b + carry;
+                res_key[i + 32] = static_cast<uint8_t>(r) & 0xff;
                 carry = (r >= 0x100) ? 1 : 0;
             }
             break;

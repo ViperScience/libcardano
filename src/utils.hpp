@@ -149,7 +149,7 @@ constexpr auto rationalApprox(double f, int64_t md)
         n <<= 1;
         f *= 2;
     }
-    d = f;
+    d = static_cast<int64_t>(f);
 
     // continued fraction and check denominator each step
     for (i = 0; i < 64; i++)

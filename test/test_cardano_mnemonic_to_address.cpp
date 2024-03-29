@@ -3,7 +3,8 @@
 #include <cardano/address.hpp>
 #include <cardano/crypto.hpp>
 #include <cardano/mnemonic.hpp>
-#include <test/tests.hpp>
+
+#include "tests.hpp"
 
 auto main() -> int
 {

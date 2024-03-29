@@ -20,11 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
 set(LIBCARDANO_LINK_LIBS
     botan::botan
     sodium::sodium
     Threads::Threads
     OpenSSL::SSL
+    cppbor::cppbor
 )
 
 set(TEST_LIBCARDANO_LIBS
@@ -32,7 +36,14 @@ set(TEST_LIBCARDANO_LIBS
     OpenSSL::SSL
     Threads::Threads
     botan::botan
+    cppbor::cppbor
     sodium::sodium
+)
+
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${VIPER25519_INCLUDE}
 )
 
 ################################################################################
@@ -110,6 +121,7 @@ set(TEST_CARDANO_MNEMONIC_SOURCES
 ADD_EXECUTABLE(test_cardano_mnemonic ${TEST_CARDANO_MNEMONIC_SOURCES})
 target_link_libraries(test_cardano_mnemonic PRIVATE
     botan::botan
+    cppbor::cppbor
     Threads::Threads
     OpenSSL::SSL
 )
@@ -132,6 +144,7 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_address
 )
 target_link_libraries(test_cardano_mnemonic_to_address PRIVATE
     botan::botan
+    cppbor::cppbor
     sodium::sodium
     Threads::Threads
     OpenSSL::SSL
@@ -155,6 +168,7 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
 )
 target_link_libraries(test_cardano_mnemonic_to_stake_address PRIVATE
     botan::botan
+    cppbor::cppbor
     sodium::sodium
     Threads::Threads
     OpenSSL::SSL
