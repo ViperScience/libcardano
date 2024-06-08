@@ -225,11 +225,23 @@ target_link_libraries(test_cardano_transaction PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("CardanoTransactions" test_cardano_transaction)
 
 ################################################################################
-# Test Cardano Ed25519 API (libsodium wrapper)
+# Test the Cardano Ed25519 API (libsodium wrapper)
 ################################################################################
 ADD_EXECUTABLE(test_cardano_ed25519_api
     test_cardano_ed25519_api.cpp
     ${CMAKE_SOURCE_DIR}/src/ed25519.cpp
 )
 target_link_libraries(test_cardano_ed25519_api PRIVATE ${TEST_LIBCARDANO_LIBS})
-ADD_TEST("Test Cardano Ed25519 API" test_cardano_ed25519_api)
+ADD_TEST("Cardano Ed25519 API" test_cardano_ed25519_api)
+
+################################################################################
+# Test the Cardano VRF API (libsodium wrapper)
+################################################################################
+ADD_EXECUTABLE(test_cardano_vrf_api
+    test_cardano_vrf_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/ed25519.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/vrf.cpp
+)
+target_link_libraries(test_cardano_vrf_api PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano VRF API" test_cardano_vrf_api)

@@ -74,6 +74,7 @@ set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/stake_pool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/transaction.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vrf.cpp
     ${VIPER25519_SOURCES}
     ${LIBCPPBOR_SOURCES}
 )
