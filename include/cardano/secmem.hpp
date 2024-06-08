@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Viper Science LLC
+// Copyright (c) 2024 Viper Science LLC
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,15 +18,39 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef _CARDANO_CARDANO_HPP_
-#define _CARDANO_CARDANO_HPP_
+#ifndef _CARDANO_SECMEM_HPP_
+#define _CARDANO_SECMEM_HPP_
 
-#include <cardano/address.hpp>
-#include <cardano/bip39_dictionary.hpp>
-#include <cardano/crypto.hpp>
-#include <cardano/ed25519.hpp>
-#include <cardano/encodings.hpp>
-#include <cardano/mnemonic.hpp>
-#include <cardano/stake_pool.hpp>
+#include <sys/mman.h>
 
-#endif  // _CARDANO_CARDANO_HPP_
+#include <algorithm>
+#include <array>
+
+namespace cardano
+{
+
+template <std::size_t Size>
+struct ByteArray : public std::array<uint8_t, Size>
+{
+};
+
+template <std::size_t Size>
+struct SecureByteArray : public std::array<uint8_t, Size>
+{
+    SecureByteArray()
+    {
+        mlock(std::array<uint8_t, Size>::data(), sizeof(uint8_t) * Size);
+    }
+
+    ~SecureByteArray()
+    {
+        char *bytes =
+            reinterpret_cast<char *>(std::array<uint8_t, Size>::data());
+        std::fill_n<volatile char *>(bytes, sizeof(uint8_t) * Size, 0);
+        munlock(bytes, sizeof(uint8_t) * Size);
+    }
+};  // SecureByteArray
+
+}  // namespace cardano
+
+#endif  // _CARDANO_SECMEM_HPP_
