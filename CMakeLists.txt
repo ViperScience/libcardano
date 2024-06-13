@@ -55,7 +55,7 @@ endif()
 # Add 3rd party libraries that should be installed on the system
 set(sodium_USE_STATIC_LIBS ON)
 find_package(Sodium REQUIRED)
-find_package(Botan REQUIRED)
+find_package(Botan 3.4.0 REQUIRED)
 
 # Add the submodules
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs)
@@ -129,7 +129,8 @@ endif()
 # Specify libraries for linking
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        botan::botan
+        Botan::Botan
+        cryptopp::cryptopp
         sodium::sodium
         Threads::Threads
         OpenSSL::SSL
