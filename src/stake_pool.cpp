@@ -392,7 +392,10 @@ auto VrfVerificationKey::saveToFile(std::string_view fpath) const -> void
 {
     static constexpr auto type_str = "VrfVerificationKey_PraosVRF";
     static constexpr auto desc_str = "VRF Verification Key";
-    const auto cbor_hex = BASE16::encode(this->bytes());
+    const auto key_bytes = this->bytes();
+    const auto cbor_hex = BASE16::encode(
+        cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
+    );
     utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // VrfVerificationKey::saveToFile
 
@@ -400,6 +403,31 @@ auto VrfSigningKey::saveToFile(std::string_view fpath) const -> void
 {
     static constexpr auto type_str = "VrfSigningKey_PraosVRF";
     static constexpr auto desc_str = "VRF Signing Key";
-    const auto cbor_hex = BASE16::encode(this->bytes());
+    const auto key_bytes = this->bytes();
+    const auto cbor_hex = BASE16::encode(
+        cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
+    );
     utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // VrfSigningKey::saveToFile
+
+auto KesVerificationKey::saveToFile(std::string_view fpath) const -> void
+{
+    static constexpr auto type_str = "KesVerificationKey_ed25519_kes_2^6";
+    static constexpr auto desc_str = "KES Verification Key";
+    const auto key_bytes = this->bytes();
+    const auto cbor_hex = BASE16::encode(
+        cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
+    );
+    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+}  // KesVerificationKey::saveToFile
+
+auto KesSigningKey::saveToFile(std::string_view fpath) const -> void
+{
+    static constexpr auto type_str = "KesSigningKey_ed25519_kes_2^6";
+    static constexpr auto desc_str = "KES Signing Key";
+    const auto key_bytes = this->bytes();
+    const auto cbor_hex = BASE16::encode(
+        cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
+    );
+    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+}  // KesVerificationKey::saveToFile

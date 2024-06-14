@@ -306,21 +306,24 @@ class VrfSigningKey : public VRFSecretKey
 // Placeholder class for Op Cert dev
 class KesVerificationKey : public KesPublicKey
 {
-//   private:
-//     ed25519::PublicKey vkey_{BASE16::decode(
-//         "b4f7f2d8506deebd885e41e9d510a5eb7cd4101275d1860fc243c869470b26e5"
-//     )};
-
   public:
     /// @brief Construct a verification key object from a span of key bytes.
     /// @param pub A span of 32 bytes that will be copied into the object.
     explicit KesVerificationKey(std::span<const uint8_t, 32> pub) : KesPublicKey(pub)
     {
     }
+
+    /// @brief Export the key to a file in the cardano node JSON format.
+    /// @param fpath Path to the file to be (over)written.
+    auto saveToFile(std::string_view fpath) const -> void;
 };
 
 class KesSigningKey : SumKesPrivateKey<6>
 {
+  public:
+    /// @brief Export the key to a file in the cardano node JSON format.
+    /// @param fpath Path to the file to be (over)written.
+    auto saveToFile(std::string_view fpath) const -> void;
 };
 
 /// @brief A node operational certificate issue counter.
