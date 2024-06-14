@@ -19,9 +19,9 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.25.1/cmake-3.
 
 # Build and install Botan 3
 WORKDIR /tmp
-RUN curl -LO https://botan.randombit.net/releases/Botan-3.1.1.tar.xz \
-  && tar --extract --file Botan-3.1.1.tar.xz \
-  && cd Botan-3.1.1 \
+RUN curl -LO https://botan.randombit.net/releases/Botan-3.4.0.tar.xz \
+  && tar --extract --file Botan-3.4.0.tar.xz \
+  && cd Botan-3.4.0 \
   && python3 ./configure.py \
   && make -j8 \
   && make install \
