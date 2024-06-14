@@ -9,7 +9,7 @@
 	url = https://github.com/catchorg/Catch2.git
 [submodule "libs/cryptopp"]
 	path = libs/cryptopp
-	url = git@github.com:ViperScience/cryptopp.git
+	url = https://github.com/ViperScience/cryptopp.git
 [submodule "libs/cryptopp-cmake"]
 	path = libs/cryptopp-cmake
-	url = git@github.com:abdes/cryptopp-cmake.git
+	url = https://github.com/abdes/cryptopp-cmake.git
