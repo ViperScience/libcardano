@@ -23,15 +23,6 @@
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-set(LIBCARDANO_LINK_LIBS
-    Botan::Botan
-    cryptopp::cryptopp
-    sodium::sodium
-    Threads::Threads
-    OpenSSL::SSL
-    cppbor::cppbor
-)
-
 set(TEST_LIBCARDANO_LIBS
     Catch2::Catch2WithMain
     OpenSSL::SSL
@@ -40,24 +31,18 @@ set(TEST_LIBCARDANO_LIBS
     cryptopp::cryptopp
     cppbor::cppbor
     sodium::sodium
+    cardano::cardano
 )
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../src
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${VIPER25519_INCLUDE}
 )
 
 ################################################################################
 # Test the encoding APIs
 ################################################################################
-set(TEST_CARDANO_ENCODINGS_SOURCES
-    test_cardano_encoding_apis.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
-    ${LIBCPPBOR_SOURCES}
-)
-ADD_EXECUTABLE(test_cardano_encodings ${TEST_CARDANO_ENCODINGS_SOURCES})
+ADD_EXECUTABLE(test_cardano_encodings  test_cardano_encoding_apis.cpp)
 target_link_libraries(test_cardano_encodings PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Encoding APIs" test_cardano_encodings)
 
@@ -190,10 +175,7 @@ ADD_TEST("Encoding APIs" test_cardano_encodings)
 ################################################################################
 # Test the Cardano Ed25519 API (libsodium wrapper)
 ################################################################################
-ADD_EXECUTABLE(test_cardano_ed25519_api
-    test_cardano_ed25519_api.cpp
-    ${CMAKE_SOURCE_DIR}/src/ed25519.cpp
-)
+ADD_EXECUTABLE(test_cardano_ed25519_api test_cardano_ed25519_api.cpp)
 target_link_libraries(test_cardano_ed25519_api PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Ed25519 API" test_cardano_ed25519_api)
 
@@ -202,49 +184,30 @@ ADD_TEST("Cardano Ed25519 API" test_cardano_ed25519_api)
 ################################################################################
 ADD_EXECUTABLE(test_cardano_bip32_ed25519_api
     test_cardano_bip32_ed25519_api.cpp
-    ${CMAKE_SOURCE_DIR}/src/bip32_ed25519.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
 )
-target_link_libraries(test_cardano_bip32_ed25519_api PRIVATE ${TEST_LIBCARDANO_LIBS})
+target_link_libraries(test_cardano_bip32_ed25519_api PRIVATE 
+    ${TEST_LIBCARDANO_LIBS}
+)
 ADD_TEST("Cardano BIP32-Ed25519 API" test_cardano_bip32_ed25519_api)
 
 ################################################################################
 # Test the Cardano VRF API (libsodium wrapper)
 ################################################################################
-ADD_EXECUTABLE(test_cardano_vrf_api
-    test_cardano_vrf_api.cpp
-    ${CMAKE_SOURCE_DIR}/src/ed25519.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/vrf.cpp
-)
+ADD_EXECUTABLE(test_cardano_vrf_api test_cardano_vrf_api.cpp)
 target_link_libraries(test_cardano_vrf_api PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano VRF API" test_cardano_vrf_api)
 
 ################################################################################
 # Test the Cardano KES API
 ################################################################################
-ADD_EXECUTABLE(test_cardano_kes_api
-    test_cardano_kes_api.cpp
-    ${CMAKE_SOURCE_DIR}/src/ed25519.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/kes.cpp
-)
+ADD_EXECUTABLE(test_cardano_kes_api test_cardano_kes_api.cpp)
 target_link_libraries(test_cardano_kes_api PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano KES API" test_cardano_kes_api)
 
 ################################################################################
 # Test the Cardano Address API
 ################################################################################
-set(TEST_CARDANO_ADDRESS_SOURCES
-    test_cardano_address_api.cpp
-    ${CMAKE_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_SOURCE_DIR}/src/bip32_ed25519.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${LIBCPPBOR_SOURCES}
-)
-ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
+ADD_EXECUTABLE(test_cardano_address test_cardano_address_api.cpp)
 target_link_libraries(test_cardano_address PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Address API" test_cardano_address)
 
@@ -263,22 +226,9 @@ ADD_TEST("Cardano Address API" test_cardano_address)
 ################################################################################
 # Test Cardano Stake Pool API
 ################################################################################
-set(TEST_CARDANO_STAKE_POOL_SOURCES
-    test_cardano_stake_pool_api.cpp
-    ${CMAKE_SOURCE_DIR}/src/bip32_ed25519.cpp
-    ${CMAKE_SOURCE_DIR}/src/ed25519.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${CMAKE_SOURCE_DIR}/src/ledger.cpp
-    ${CMAKE_SOURCE_DIR}/src/stake_pool.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
-    ${CMAKE_SOURCE_DIR}/src/vrf.cpp
-    ${CMAKE_SOURCE_DIR}/src/kes.cpp
-    ${LIBCPPBOR_SOURCES}
-)
 ADD_EXECUTABLE(test_cardano_stake_pool
-    ${TEST_CARDANO_STAKE_POOL_SOURCES}
+    test_cardano_stake_pool_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils.cpp
 )
 target_link_libraries(test_cardano_stake_pool PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Stake Pool API" test_cardano_stake_pool)
