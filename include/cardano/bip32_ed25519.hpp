@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef _CARDANO_ED25519_HPP_
-#define _CARDANO_ED25519_HPP_
+#ifndef _CARDANO_BIP32ED25519_HPP_
+#define _CARDANO_BIP32ED25519_HPP_
 
 // Standard library headers
 #include <cstdint>
@@ -264,4 +264,4 @@ class EncryptedPrivateKey
 }  // namespace bip32_ed25519
 }  // namespace cardano
 
-#endif  // _CARDANO_ED25519_HPP_
+#endif  // _CARDANO_BIP32ED25519_HPP_

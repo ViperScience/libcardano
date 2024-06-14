@@ -26,8 +26,8 @@
 // #include <string>
 // #include <vector>
 
-#ifndef _CARDANO_UTILS_HPP_
-#define _CARDANO_UTILS_HPP_
+#ifndef _CARDANO_UTIL_HPP_
+#define _CARDANO_UTIL_HPP_
 
 // Standard Library Headers
 #include <concepts>
@@ -98,4 +98,4 @@ struct BytePacker
 }  // namespace util
 }  // namespace cardano
 
-#endif  // _CARDANO_UTILS_HPP_
+#endif  // _CARDANO_UTIL_HPP_

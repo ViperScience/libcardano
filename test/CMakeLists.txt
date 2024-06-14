@@ -171,27 +171,6 @@ ADD_TEST("Encoding APIs" test_cardano_encodings)
 # ADD_TEST("CardanoLedger" test_cardano_ledger)
 
 # ################################################################################
-# # Test stake pool code
-# ################################################################################
-# set(TEST_CARDANO_STAKE_POOL_SOURCES
-#     test_cardano_stake_pool.cpp
-#     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
-#     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-#     ${CMAKE_SOURCE_DIR}/src/address.cpp
-#     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-#     ${CMAKE_SOURCE_DIR}/src/ledger.cpp
-#     ${CMAKE_SOURCE_DIR}/src/stake_pool.cpp
-#     ${CMAKE_SOURCE_DIR}/src/utils.cpp
-#     ${VIPER25519_SOURCES}
-#     ${LIBCPPBOR_SOURCES}
-# )
-# ADD_EXECUTABLE(test_cardano_stake_pool
-#     ${TEST_CARDANO_STAKE_POOL_SOURCES}
-# )
-# target_link_libraries(test_cardano_stake_pool PRIVATE ${TEST_LIBCARDANO_LIBS})
-# ADD_TEST("CardanoStakePool" test_cardano_stake_pool)
-
-# ################################################################################
 # # Test Cardano transaction building, signing, and serializing to CBOR
 # ################################################################################
 # ADD_EXECUTABLE(test_cardano_transaction
@@ -269,3 +248,40 @@ set(TEST_CARDANO_ADDRESS_SOURCES
 ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
 target_link_libraries(test_cardano_address PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Address API" test_cardano_address)
+
+################################################################################
+# Test the Cardano Mnemonic API
+################################################################################
+
+################################################################################
+# Test Cardano transaction building, signing, and serializing to CBOR
+################################################################################
+
+################################################################################
+# Test Cardano ledger types and CBOR serialization.
+################################################################################
+
+################################################################################
+# Test Cardano Stake Pool API
+################################################################################
+set(TEST_CARDANO_STAKE_POOL_SOURCES
+    test_cardano_stake_pool_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
+    ${CMAKE_SOURCE_DIR}/src/bip32_ed25519.cpp
+    ${CMAKE_SOURCE_DIR}/src/ed25519.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
+    ${CMAKE_SOURCE_DIR}/src/ledger.cpp
+    ${CMAKE_SOURCE_DIR}/src/stake_pool.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils.cpp
+    ${CMAKE_SOURCE_DIR}/src/vrf.cpp
+    ${CMAKE_SOURCE_DIR}/src/kes.cpp
+    ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
+)
+ADD_EXECUTABLE(test_cardano_stake_pool
+    ${TEST_CARDANO_STAKE_POOL_SOURCES}
+)
+target_link_libraries(test_cardano_stake_pool PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Stake Pool API" test_cardano_stake_pool)

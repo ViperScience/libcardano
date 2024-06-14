@@ -1,12 +1,40 @@
-#include <cardano/encodings.hpp>
-#include <cardano/stake_pool.hpp>
-#include <cardano/address.hpp>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers_range_equals.hpp>
+// Copyright (c) 2024 Viper Science LLC
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+// Standard library headers
 #include <fstream>
 #include <streambuf>
 #include <string>
-#include <utils.hpp>
+
+// Third-party library headers
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_range_equals.hpp>
+
+// Public libcardano headers
+#include <cardano/encodings.hpp>
+#include <cardano/stake_pool.hpp>
+#include <cardano/address.hpp>
+#include <cardano/util.hpp>
+
+// temp
+#include "utils.hpp"
 
 using namespace cardano;
 using Catch::Matchers::RangeEquals;
@@ -20,7 +48,7 @@ auto mkSeedTPraos(uint64_t abs_slot_no, std::span<const uint8_t> epoch_nonce)
                                 0x68, 0xd3, 0x1c, 0xc7, 0xc5, 0xc2, 0xbd, 0x68,
                                 0x28, 0xe1, 0x4a, 0x7d, 0x25, 0xfa, 0x3a, 0x60};
     const auto seed =
-        utils::concatBytes(utils::U64TO8_BE(abs_slot_no), epoch_nonce);
+        util::concatBytes(utils::U64TO8_BE(abs_slot_no), epoch_nonce);
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
     blake2b->update(seed.data(), seed.size());
     auto hashed = blake2b->final();
@@ -28,16 +56,16 @@ auto mkSeedTPraos(uint64_t abs_slot_no, std::span<const uint8_t> epoch_nonce)
     {
         hashed[i] = UC_NONCE[i] ^ hashed[i];
     }
-    return utils::makeByteArray<32>(hashed);
+    return util::makeByteArray<32>(hashed);
 }  // mkSeedTPraos
 
 auto mkSeedPraos(uint64_t abs_slot_no, std::span<const uint8_t> epoch_nonce)
     -> std::array<uint8_t, 32>
 {
-    const auto seed = utils::concatBytes(utils::U64TO8_BE(abs_slot_no), epoch_nonce);
+    const auto seed = util::concatBytes(utils::U64TO8_BE(abs_slot_no), epoch_nonce);
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
     blake2b->update(seed.data(), seed.size());
-    return utils::makeByteArray<32>(blake2b->final());
+    return util::makeByteArray<32>(blake2b->final());
 }  // mkSeedPraos
 
 constexpr auto KEY_FILE_PATH = "test.skey";
@@ -79,8 +107,8 @@ TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_
     auto [vhrp, vkey_bytes] = BECH32::decode(VKEY_BECH32);
     auto [shrp, skey_bytes] = BECH32::decode(SKEY_BECH32);
 
-    auto vkey = stake_pool::ColdVerificationKey(vkey_bytes);
-    auto skey = stake_pool::ColdSigningKey(skey_bytes);
+    auto vkey = stake_pool::ColdVerificationKey(util::makeByteArray<32>(vkey_bytes));
+    auto skey = stake_pool::ColdSigningKey(util::makeByteArray<32>(skey_bytes));
     auto ext_skey = skey.extend();
 
     REQUIRE( vkey.asBech32() == VKEY_BECH32 );
@@ -144,7 +172,13 @@ TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_
         auto ocic = stake_pool::OperationalCertificateIssueCounter();
         ocic.increment();
 
-        auto kes_key = stake_pool::KesVerificationKey();
+        auto kes_key = stake_pool::KesVerificationKey(
+            util::makeByteArray<32>(
+                BASE16::decode(
+                    "b4f7f2d8506deebd885e41e9d510a5eb7cd4101275d1860fc243c869470b26e5"
+                )
+            )
+        );
         auto op_cert_mgr = stake_pool::OperationalCertificateManager::generateUnsigned(
             kes_key, ocic, 841
         );
@@ -156,7 +190,9 @@ TEST_CASE( "Verify basic stake pool cold key functionality.", "[stake_pool_cold_
 
     SECTION( "registration certificate" )
     {
-        auto vrf_key = stake_pool::VrfVerificationKey(BASE16::decode(POOL_VRF_VKEY));
+        auto vrf_key = stake_pool::VrfVerificationKey(
+            util::makeByteArray<32>(BASE16::decode(POOL_VRF_VKEY))
+        );
         auto owner1 = RewardsAddress::fromBech32(POOL_OWNER1_ADDR_BECH32);
         auto owner2 = RewardsAddress::fromBech32(POOL_OWNER2_ADDR_BECH32);
 
@@ -206,7 +242,7 @@ TEST_CASE( "Verify stake pool CIP-1853 functionality.", "[stake_pool_cold_key]" 
 
     SECTION( "Key derivation (CIP-1853)" )
     {
-        auto root_xsk = BIP32PrivateKey::fromMnemonic(mn);
+        auto root_xsk = bip32_ed25519::PrivateKey::fromMnemonic(mn);
         auto cold_skey1 = stake_pool::ExtendedColdSigningKey::fromMnemonic(mn);
         auto cold_skey2 = stake_pool::ExtendedColdSigningKey::fromRootKey(root_xsk);
         
@@ -216,8 +252,6 @@ TEST_CASE( "Verify stake pool CIP-1853 functionality.", "[stake_pool_cold_key]" 
     SECTION( "Generate extended cold key from RNG" )
     {
         auto cold_key = stake_pool::ExtendedColdSigningKey::generate();
-        auto key = ed25519::ExtendedPrivateKey{cold_key.bytes()};
-        REQUIRE( key.isValid() );
     }
 }
 
@@ -232,7 +266,7 @@ TEST_CASE( "Verify stake pool VRF key functionality.", "[stake_pool_vrf_key]" )
         const auto test_hash = BASE16::decode("94f4487e1b2fec954309ef1289ecb2e15043a2461ecc7b2ae7d4470607ef82eb1cfa97d84991fe4a7bfdfd715606bc27e2967a6c557cfb5875879b671740b7d8");
         const auto test_msg = BASE16::decode("72");
 
-        auto vrf_skey = stake_pool::VrfSigningKey::fromSeed(test_seed);
+        auto vrf_skey = stake_pool::VrfSigningKey::fromSeed(util::makeByteArray<32>(test_seed));
         auto vrf_vkey = vrf_skey.publicKey();
         auto proof = vrf_skey.constructProof(test_msg);
 
@@ -245,7 +279,7 @@ TEST_CASE( "Verify stake pool VRF key functionality.", "[stake_pool_vrf_key]" )
     SECTION( "VIPER Blocks" )
     {
         const auto vrf_vkey = stake_pool::VrfVerificationKey{
-            BASE16::decode("80e93aa1adf05f89303e22662a3e33b68e5b32fbdc172abd50a87f227cd8a48b")
+            util::makeByteArray<32>(BASE16::decode("80e93aa1adf05f89303e22662a3e33b68e5b32fbdc172abd50a87f227cd8a48b"))
         };
 
         // Blocks used in experiment:

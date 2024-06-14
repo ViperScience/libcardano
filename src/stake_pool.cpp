@@ -84,30 +84,30 @@ auto ColdSigningKey::poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>
 
 auto ColdSigningKey::extend() const -> ExtendedColdSigningKey
 {
-    const auto key_bytes = this->skey_.extend().bytes();
-    return ExtendedColdSigningKey(key_bytes);
+    const auto xsk = bip32_ed25519::PrivateKey::fromSeed(this->skey_.bytes());
+    return ExtendedColdSigningKey(xsk.xbytes());
 }  // ColdSigningKey::extend
 
-auto ExtendedColdSigningKey::fromRootKey(const BIP32PrivateKey& root)
+auto ExtendedColdSigningKey::fromRootKey(const bip32_ed25519::PrivateKey& root)
     -> ExtendedColdSigningKey
 {
-    const auto pool_key = root.deriveChild(HardenIndex(1853))
-                              .deriveChild(HardenIndex(1815))
-                              .deriveChild(HardenIndex(0))
-                              .deriveChild(HardenIndex(0));
-    const auto pool_key_bytes = pool_key.toBytes(false);
+    const auto pool_key = root.deriveChild(bip32_ed25519::HardenIndex(1853))
+                              .deriveChild(bip32_ed25519::HardenIndex(1815))
+                              .deriveChild(bip32_ed25519::HardenIndex(0))
+                              .deriveChild(bip32_ed25519::HardenIndex(0));
+    const auto pool_key_bytes = pool_key.xbytes();
     return ExtendedColdSigningKey(pool_key_bytes);
 }  // ExtendedColdSigningKey::fromRootKey
 
 auto ExtendedColdSigningKey::fromMnemonic(const cardano::Mnemonic& mn)
     -> ExtendedColdSigningKey
 {
-    const auto root_key = BIP32PrivateKey::fromMnemonic(mn);
-    const auto pool_key = root_key.deriveChild(HardenIndex(1853))
-                              .deriveChild(HardenIndex(1815))
-                              .deriveChild(HardenIndex(0))
-                              .deriveChild(HardenIndex(0));
-    const auto pool_key_bytes = pool_key.toBytes(false);
+    const auto root_key = bip32_ed25519::PrivateKey::fromMnemonic(mn);
+    const auto pool_key = root_key.deriveChild(bip32_ed25519::HardenIndex(1853))
+                                  .deriveChild(bip32_ed25519::HardenIndex(1815))
+                                  .deriveChild(bip32_ed25519::HardenIndex(0))
+                                  .deriveChild(bip32_ed25519::HardenIndex(0));
+    const auto pool_key_bytes = pool_key.xbytes();
     return ExtendedColdSigningKey(pool_key_bytes);
 }  // ExtendedColdSigningKey::fromMnemonic
 
