@@ -24,7 +24,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(LIBCARDANO_LINK_LIBS
-    botan::botan
+    Botan::Botan
+    cryptopp::cryptopp
     sodium::sodium
     Threads::Threads
     OpenSSL::SSL
@@ -35,7 +36,8 @@ set(TEST_LIBCARDANO_LIBS
     Catch2::Catch2WithMain
     OpenSSL::SSL
     Threads::Threads
-    botan::botan
+    Botan::Botan
+    cryptopp::cryptopp
     cppbor::cppbor
     sodium::sodium
 )
@@ -120,7 +122,7 @@ set(TEST_CARDANO_MNEMONIC_SOURCES
 )
 ADD_EXECUTABLE(test_cardano_mnemonic ${TEST_CARDANO_MNEMONIC_SOURCES})
 target_link_libraries(test_cardano_mnemonic PRIVATE
-    botan::botan
+    Botan::Botan
     cppbor::cppbor
     Threads::Threads
     OpenSSL::SSL
@@ -143,7 +145,7 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_address
     ${TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES}
 )
 target_link_libraries(test_cardano_mnemonic_to_address PRIVATE
-    botan::botan
+    Botan::Botan
     cppbor::cppbor
     sodium::sodium
     Threads::Threads
@@ -167,7 +169,7 @@ ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
     ${TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES}
 )
 target_link_libraries(test_cardano_mnemonic_to_stake_address PRIVATE
-    botan::botan
+    Botan::Botan
     cppbor::cppbor
     sodium::sodium
     Threads::Threads
@@ -233,6 +235,18 @@ ADD_EXECUTABLE(test_cardano_ed25519_api
 )
 target_link_libraries(test_cardano_ed25519_api PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Ed25519 API" test_cardano_ed25519_api)
+
+################################################################################
+# Test the Cardano BIP32-Ed25519 API
+################################################################################
+ADD_EXECUTABLE(test_cardano_bip32_ed25519_api
+    test_cardano_bip32_ed25519_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/bip32_ed25519.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
+)
+target_link_libraries(test_cardano_bip32_ed25519_api PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano BIP32-Ed25519 API" test_cardano_bip32_ed25519_api)
 
 ################################################################################
 # Test the Cardano VRF API (libsodium wrapper)

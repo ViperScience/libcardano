@@ -67,6 +67,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs)
 # Specify the libcardano source files (including submodules)
 set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/bip32_ed25519.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ed25519.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/encodings.cpp
