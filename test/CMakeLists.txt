@@ -259,3 +259,15 @@ ADD_EXECUTABLE(test_cardano_vrf_api
 )
 target_link_libraries(test_cardano_vrf_api PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano VRF API" test_cardano_vrf_api)
+
+################################################################################
+# Test the Cardano KES API
+################################################################################
+ADD_EXECUTABLE(test_cardano_kes_api
+    test_cardano_kes_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/ed25519.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/kes.cpp
+)
+target_link_libraries(test_cardano_kes_api PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano KES API" test_cardano_kes_api)

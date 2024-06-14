@@ -23,10 +23,15 @@
 
 #include <cardano/address.hpp>
 #include <cardano/bip39_dictionary.hpp>
-#include <cardano/crypto.hpp>
+#include <cardano/bip32_ed25519.hpp>
 #include <cardano/ed25519.hpp>
 #include <cardano/encodings.hpp>
+#include <cardano/kes.hpp>
+#include <cardano/ledger.hpp>
 #include <cardano/mnemonic.hpp>
+#include <cardano/secmem.hpp>
 #include <cardano/stake_pool.hpp>
+#include <cardano/util.hpp>
+#include <cardano/vrf.hpp>
 
 #endif  // _CARDANO_CARDANO_HPP_
