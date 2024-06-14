@@ -40,33 +40,10 @@
 // Public libcardano headers
 #include <cardano/ed25519.hpp>
 #include <cardano/secmem.hpp>
+#include <cardano/util.hpp>
 
 namespace cardano
 {
-
-// Function to convert a 32 bit integer to 4 bytes using Big Endian.
-inline auto u32_to_be(uint32_t value) -> std::array<uint8_t, 4>
-{
-    std::array<uint8_t, 4> bytes;
-    bytes[0] = static_cast<uint8_t>((value >> 24) & 0xFF);
-    bytes[1] = static_cast<uint8_t>((value >> 16) & 0xFF);
-    bytes[2] = static_cast<uint8_t>((value >> 8) & 0xFF);
-    bytes[3] = static_cast<uint8_t>(value & 0xFF);
-    return bytes;
-}
-
-// Function to convert four Big Endian bytes to a 32 bit integer.
-inline auto be_to_u32(std::span<const uint8_t> bytes) -> uint32_t
-{
-    if (bytes.size() != 4)
-    {
-        throw std::invalid_argument("bytes must be of length 4");
-    }
-    return (static_cast<uint32_t>(bytes[0]) << 24) |
-           (static_cast<uint32_t>(bytes[1]) << 16) |
-           (static_cast<uint32_t>(bytes[2]) << 8) |
-           static_cast<uint32_t>(bytes[3]);
-}
 
 // A key evolving signatures implementation based on
 // "Composition and Efficiency Tradeoffs for Forward-Secure Digital Signatures"
@@ -256,6 +233,7 @@ class SumKesSignature
     ) const -> bool
         requires KesDepth0<Depth>
     {
+        (void)period; // unused param
         return crypto_sign_verify_detached(
                    this->bytes_.data(),
                    msg.data(),
@@ -380,8 +358,8 @@ class SumKesPrivateKey
 
         // We write the period to the main data.
         std::copy_n(
-            u32_to_be(0).data(),
-            4,
+            util::BytePacker<uint32_t>::pack(0).data(),
+            sizeof(uint32_t),
             key_buffer.data() + SumKesPrivateKey<Depth>::size
         );
 
@@ -409,8 +387,8 @@ class SumKesPrivateKey
 
         // We write the period to the main data.
         std::copy_n(
-            u32_to_be(0).data(),
-            4,
+            util::BytePacker<uint32_t>::pack(0).data(),
+            sizeof(uint32_t),
             key_buffer.data() + SumKesPrivateKey<Depth>::size
         );
 
@@ -656,8 +634,8 @@ class SumKesPrivateKey
         SumKesPrivateKey<Depth>::update_buffer(this->prv_, current_period);
         this->period_ = current_period + 1;  // use only this in the future
         std::copy_n(                         // get rid of this eventually
-            u32_to_be(current_period + 1).data(),
-            4,
+            util::BytePacker<uint32_t>::pack(current_period + 1).data(),
+            sizeof(uint32_t),
             this->prv_.data() + SumKesPrivateKey<Depth>::size
         );
     }  // update
@@ -672,9 +650,9 @@ class SumKesPrivateKey
     [[nodiscard]] auto period() -> size_t
         requires KesDepthN0<Depth>
     {
-        return be_to_u32(std::span<const uint8_t>{
-            this->prv_.data() + SumKesPrivateKey<Depth>::size, 4
-        });
+        return util::BytePacker<uint32_t>::unpack(
+            std::span<const uint8_t>(this->prv_).last<4>()
+        );
     }
 
     static auto sign_from_buffer(
@@ -740,8 +718,8 @@ class SumKesPrivateKey
     /// @brief Generate a message signature from the private key.
     /// @param msg A span of bytes (uint8_t) representing the message to
     /// sign.
-    [[nodiscard]] auto sign(std::span<const uint8_t> msg
-    ) const -> SumKesSignature<Depth>
+    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
+        -> SumKesSignature<Depth>
         requires KesDepth0<Depth>
     {
         auto pk = ByteArray<crypto_sign_PUBLICKEYBYTES>();
@@ -755,15 +733,15 @@ class SumKesPrivateKey
         return SumKesSignature<Depth>(sig);
     }  // sign
 
-    [[nodiscard]] auto sign(std::span<const uint8_t> msg
-    ) const -> SumKesSignature<Depth>
+    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
+        -> SumKesSignature<Depth>
         requires KesDepthN0<Depth>
     {
         return SumKesPrivateKey<Depth>::sign_from_buffer(this->bytes(), msg);
     }  // sign
 
-    [[nodiscard]] auto sign(std::string_view msg
-    ) const -> SumKesSignature<Depth>
+    [[nodiscard]] auto sign(std::string_view msg) const
+        -> SumKesSignature<Depth>
     {
         const auto msg_bytes =
             std::span<const uint8_t>((const uint8_t*)msg.data(), msg.size());

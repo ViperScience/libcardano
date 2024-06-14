@@ -80,36 +80,6 @@ auto writeEnvelopeTextFile(
     const std::string_view cbor_hex
 ) -> void;
 
-/// @brief Convert a 64-bit integer to a byte array in big-endian order.
-constexpr auto U64TO8_BE(const uint64_t v) -> std::array<uint8_t, 8>
-{
-    auto out = std::array<uint8_t, 8>{};
-    out[7] = (uint8_t)v;
-    out[6] = (uint8_t)(v >> 8);
-    out[5] = (uint8_t)(v >> 16);
-    out[4] = (uint8_t)(v >> 24);
-    out[3] = (uint8_t)(v >> 32);
-    out[2] = (uint8_t)(v >> 40);
-    out[1] = (uint8_t)(v >> 48);
-    out[0] = (uint8_t)(v >> 56);
-    return out;
-}  // U64TO8_BE
-
-/// @brief Convert a 64-bit integer to a byte array in little-endian order.
-constexpr auto U64TO8_LE(const uint64_t v) -> std::array<uint8_t, 8>
-{
-    auto out = std::array<uint8_t, 8>{};
-    out[0] = (uint8_t)v;
-    out[1] = (uint8_t)(v >> 8);
-    out[2] = (uint8_t)(v >> 16);
-    out[3] = (uint8_t)(v >> 24);
-    out[4] = (uint8_t)(v >> 32);
-    out[5] = (uint8_t)(v >> 40);
-    out[6] = (uint8_t)(v >> 48);
-    out[7] = (uint8_t)(v >> 56);
-    return out;
-}  // U64TO8_LE
-
 /// @brief Approximate a floating point number as a rational number.
 constexpr auto rationalApprox(double f, int64_t md)
     -> std::pair<int64_t, int64_t>

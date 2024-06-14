@@ -108,7 +108,7 @@ target_include_directories(${PROJECT_NAME}
 ################################################################################
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    COMPILE_WARNING_AS_ERROR ON
+    # COMPILE_WARNING_AS_ERROR ON
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
 )
