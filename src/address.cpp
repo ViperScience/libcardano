@@ -32,13 +32,13 @@
 
 // Public libcardano headers
 #include <cardano/address.hpp>
-#include <cardano/crypto.hpp>
 #include <cardano/encodings.hpp>
-
-// Private libcardano source
-#include "utils.hpp"
+#include <cardano/util.hpp>
 
 using namespace cardano;
+
+namespace
+{
 
 // Define header bytes as constants so they can be changed if need be.
 constexpr uint8_t NETWORK_TAG_MAINNET = 0b0001;
@@ -53,6 +53,8 @@ constexpr uint8_t SHELLY_ADDR_PAYMENTKEYHASH = 0b0110;
 // constexpr uint8_t SHELLY_ADDR_SCRIPTHASH = 0b0111;
 constexpr uint8_t STAKE_ADDR_STAKEKEYHASH = 0b1110;
 // constexpr uint8_t STAKE_ADDR_SCRIPTHASH = 0b1111;
+
+}  // unnamed namespace
 
 BaseAddress::BaseAddress(
     NetworkID nid,
@@ -69,31 +71,31 @@ BaseAddress::BaseAddress(
         this->header_byte_ |= NETWORK_TAG_TESTNET;
 }  // BaseAddress::BaseAddress
 
-BaseAddress BaseAddress::fromKeys(
+auto cardano::BaseAddress::fromKeys(
     NetworkID nid,
-    BIP32PublicKey pmt_key,
-    BIP32PublicKey stake_key
-)
+    const bip32_ed25519::PublicKey& pmt_key,
+    const bip32_ed25519::PublicKey& stake_key
+) -> BaseAddress
 {
     const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
 
-    const auto pmt_key_bytes = pmt_key.toBytes(false);
+    const auto pmt_key_bytes = pmt_key.bytes();
     blake2b->update(pmt_key_bytes.data(), pmt_key_bytes.size());
     const auto pmt_key_hash = blake2b->final();
 
-    const auto stake_key_bytes = stake_key.toBytes(false);
+    const auto stake_key_bytes = stake_key.bytes();
     blake2b->update(stake_key_bytes.data(), stake_key_bytes.size());
     const auto stake_key_hash = blake2b->final();
 
     // Put the hashes in std::arrays of bytes for the address constructor.
     return BaseAddress(
         nid,
-        utils::makeByteArray<KEY_HASH_LENGTH>(pmt_key_hash),
-        utils::makeByteArray<KEY_HASH_LENGTH>(stake_key_hash)
+        util::makeByteArray<KEY_HASH_LENGTH>(pmt_key_hash),
+        util::makeByteArray<KEY_HASH_LENGTH>(stake_key_hash)
     );
 }  // BaseAddress::fromKeys
 
-auto BaseAddress::fromBech32(std::string addr_bech32) -> BaseAddress
+auto BaseAddress::fromBech32(const std::string_view addr_bech32) -> BaseAddress
 {
     auto addr = BaseAddress();
     auto [hrp, data] = cardano::BECH32::decode(addr_bech32);
@@ -110,10 +112,10 @@ auto BaseAddress::fromBech32(std::string addr_bech32) -> BaseAddress
     return addr;
 }  // BaseAddress::fromBech32
 
-auto BaseAddress::toBytes(bool include_header_byte) const
-    -> std::vector<uint8_t>
+auto BaseAddress::toBytes(bool include_header_byte
+) const -> std::vector<uint8_t>
 {
-    auto bytes = utils::concatBytes(this->pmt_key_hash_, this->stk_key_hash_);
+    auto bytes = util::concatBytes(this->pmt_key_hash_, this->stk_key_hash_);
     if (include_header_byte) bytes.insert(bytes.begin(), this->header_byte_);
     return bytes;
 }  // BaseAddress::toBytes
@@ -123,9 +125,9 @@ auto BaseAddress::toBase16(bool include_header_byte) const -> std::string
     return BASE16::encode(this->toBytes(include_header_byte));
 }  // BaseAddress::toBase16
 
-auto BaseAddress::toBech32(std::string hrp) const -> std::string
+auto BaseAddress::toBech32(const std::string_view hrp) const -> std::string
 {
-    auto bytes = utils::concatBytes(this->pmt_key_hash_, this->stk_key_hash_);
+    auto bytes = util::concatBytes(this->pmt_key_hash_, this->stk_key_hash_);
     bytes.insert(bytes.begin(), this->header_byte_);
     return BECH32::encode(hrp, bytes);
 }  // BaseAddress::toBech32
@@ -143,21 +145,23 @@ EnterpriseAddress::EnterpriseAddress(
         this->header_byte_ |= NETWORK_TAG_TESTNET;
 }  // EnterpriseAddress::RewardsAddress
 
-auto EnterpriseAddress::fromKey(NetworkID nid, BIP32PublicKey key)
-    -> EnterpriseAddress
+auto EnterpriseAddress::fromKey(
+    NetworkID nid,
+    const bip32_ed25519::PublicKey& key
+) -> EnterpriseAddress
 {
-    const auto key_bytes = key.toBytes(false);
+    const auto key_bytes = key.bytes();
     const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
     blake2b->update(key_bytes.data(), key_bytes.size());
     const auto key_hash = blake2b->final();
 
     // Put the hash in a std::array of bytes for the address constructor.
-    auto key_hash_array = utils::makeByteArray<KEY_HASH_LENGTH>(key_hash);
+    auto key_hash_array = util::makeByteArray<KEY_HASH_LENGTH>(key_hash);
 
     return EnterpriseAddress(nid, key_hash_array);
 }  // EnterpriseAddress::fromKeys
 
-auto EnterpriseAddress::fromBech32(std::string addr_bech32) -> EnterpriseAddress
+auto EnterpriseAddress::fromBech32(const std::string_view addr_bech32) -> EnterpriseAddress
 {
     auto addr = EnterpriseAddress();
     auto [hrp, data] = cardano::BECH32::decode(addr_bech32);
@@ -171,8 +175,8 @@ auto EnterpriseAddress::fromBech32(std::string addr_bech32) -> EnterpriseAddress
     return addr;
 }  // EnterpriseAddress::fromBech32
 
-auto EnterpriseAddress::toBytes(bool include_header_byte) const
-    -> std::vector<uint8_t>
+auto EnterpriseAddress::toBytes(bool include_header_byte
+) const -> std::vector<uint8_t>
 {
     auto offset = (size_t)include_header_byte;
     auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH + offset);
@@ -191,7 +195,7 @@ auto EnterpriseAddress::toBase16(bool include_header_byte) const -> std::string
     return BASE16::encode(this->toBytes(include_header_byte));
 }  // EnterpriseAddress::toBase16
 
-auto EnterpriseAddress::toBech32(std::string hrp) const -> std::string
+auto EnterpriseAddress::toBech32(const std::string_view hrp) const -> std::string
 {
     return BECH32::encode(hrp, this->toBytes(true));
 }  // EnterpriseAddress::toBech32
@@ -209,21 +213,23 @@ RewardsAddress::RewardsAddress(
         this->header_byte_ |= NETWORK_TAG_TESTNET;
 }  // RewardsAddress::RewardsAddress
 
-auto RewardsAddress::fromKey(NetworkID nid, BIP32PublicKey stake_key)
-    -> RewardsAddress
+auto RewardsAddress::fromKey(
+    NetworkID nid,
+    const bip32_ed25519::PublicKey& stake_key
+) -> RewardsAddress
 {
-    const auto stake_key_bytes = stake_key.toBytes(false);
+    const auto stake_key_bytes = stake_key.bytes();
     const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
     blake2b->update(stake_key_bytes.data(), stake_key_bytes.size());
     const auto key_hash = blake2b->final();
 
     // Put the hash in a std::array of bytes for the address constructor.
-    auto key_hash_array = utils::makeByteArray<KEY_HASH_LENGTH>(key_hash);
+    auto key_hash_array = util::makeByteArray<KEY_HASH_LENGTH>(key_hash);
 
     return RewardsAddress(nid, key_hash_array);
 }  // RewardsAddress::fromKeys
 
-auto RewardsAddress::fromBech32(std::string addr_bech32) -> RewardsAddress
+auto RewardsAddress::fromBech32(const std::string_view addr_bech32) -> RewardsAddress
 {
     auto addr = RewardsAddress();
     auto [hrp, data] = BECH32::decode(addr_bech32);
@@ -237,8 +243,8 @@ auto RewardsAddress::fromBech32(std::string addr_bech32) -> RewardsAddress
     return addr;
 }  // RewardsAddress::fromBech32
 
-auto RewardsAddress::toBytes(bool include_header_byte) const
-    -> std::vector<uint8_t>
+auto RewardsAddress::toBytes(bool include_header_byte
+) const -> std::vector<uint8_t>
 {
     auto offset = (size_t)include_header_byte;
     auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH + offset);
@@ -257,7 +263,7 @@ auto RewardsAddress::toBase16(bool include_header_byte) const -> std::string
     return BASE16::encode(this->toBytes(include_header_byte));
 }  // RewardsAddress::toBase16
 
-auto RewardsAddress::toBech32(std::string hrp) const -> std::string
+auto RewardsAddress::toBech32(const std::string_view hrp) const -> std::string
 {
     return BECH32::encode(hrp, this->toBytes(true));
 }  // RewardsAddress::toBech32
@@ -372,8 +378,8 @@ static auto compute_crc32(std::span<const uint8_t> bytes) -> uint32_t
 }  // compute_crc32
 
 /// Parse the CBOR bytes and return the cppbor::Item.
-static auto cbor_decode(std::span<const uint8_t> bytes)
-    -> std::unique_ptr<cppbor::Item>
+static auto cbor_decode(std::span<const uint8_t> bytes
+) -> std::unique_ptr<cppbor::Item>
 {
     auto [item, pos, message] =
         cppbor::parse(bytes.data(), bytes.data() + bytes.size());
@@ -431,14 +437,14 @@ auto ByronAddress::crc_check(std::span<const uint8_t> cbor, uint32_t crc)
 }  // check_byron_address_crc
 
 auto ByronAddress::Attributes::fromKey(
-    BIP32PublicKey xpub,
+    const bip32_ed25519::PublicKey& xpub,
     std::span<const uint32_t> path,
     uint32_t magic
 ) -> ByronAddress::Attributes
 {
     // Create the passphrase for encrypting the derivation path.
     auto key = Botan::SecureVector<uint8_t>(DP_KEY_SIZE);
-    auto xpub_bytes = xpub.toBytes();  // <- get vector of pubkey and chain code
+    auto xpub_bytes = xpub.xbytes();  // <- get vector of pubkey and chain code
     auto fam = Botan::PasswordHashFamily::create("PBKDF2(SHA-512)");
     const auto pbkdf2 = fam->from_params(DP_KEY_ITERATIONS);
     pbkdf2->derive_key(
@@ -581,8 +587,8 @@ auto ByronAddress::toBase58() const -> std::string
     return BASE58::encode(this->toCBOR());
 }  // ByronAddress::toBase58
 
-auto sha3_then_blake2b224(std::span<const uint8_t> data)
-    -> std::array<uint8_t, 28>
+auto sha3_then_blake2b224(std::span<const uint8_t> data
+) -> std::array<uint8_t, 28>
 {
     auto sha3 = Botan::HashFunction::create("SHA-3(256)");
     auto blake2b = Botan::HashFunction::create("Blake2b(224)");
@@ -599,7 +605,7 @@ auto sha3_then_blake2b224(std::span<const uint8_t> data)
 }  // sha3_then_blake2b224
 
 auto ByronAddress::fromRootKey(
-    BIP32PrivateKey xprv,
+    const bip32_ed25519::PrivateKey& xprv,
     std::span<const uint32_t> dpath,
     uint32_t network_magic
 ) -> ByronAddress
@@ -608,7 +614,7 @@ auto ByronAddress::fromRootKey(
     const auto addr_type_int = (uint64_t)ByronAddress::typeToUint(addr_type);
 
     // Get the root public key
-    const auto xpub = xprv.toPublic();
+    const auto xpub = xprv.publicKey();
 
     // Create the address attributes
     auto attrs = ByronAddress::Attributes::fromKey(xpub, dpath, network_magic);
@@ -616,12 +622,16 @@ auto ByronAddress::fromRootKey(
     // Derive the address public key from the root private key.
     if (dpath.size() != 2)
         throw std::invalid_argument("Invalid Byron address derivation path.");
-    auto addr_xpub = xprv.deriveChild(dpath[0], DerivationMode::V1)
-                         .deriveChild(dpath[1], DerivationMode::V1)
-                         .toPublic();
+    auto addr_xpub =
+        xprv.deriveChild(dpath[0], bip32_ed25519::DerivationMode::V1)
+            .deriveChild(dpath[1], bip32_ed25519::DerivationMode::V1)
+            .publicKey();
 
     // CBOR encode the address spending data
-    auto spending_cbor = cppbor::Array(addr_type_int, addr_xpub.toBytes());
+    const auto addr_bytes = addr_xpub.xbytes();
+    auto spending_cbor = cppbor::Array(
+        addr_type_int, std::make_pair(addr_bytes.data(), addr_bytes.size())
+    );
 
     auto attrs_cbor = cppbor::Map();
     if (attrs.ciphertext.size() > 0)

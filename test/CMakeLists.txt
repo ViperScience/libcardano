@@ -254,18 +254,18 @@ ADD_EXECUTABLE(test_cardano_kes_api
 target_link_libraries(test_cardano_kes_api PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano KES API" test_cardano_kes_api)
 
-# ################################################################################
-# # Test the address implementations
-# ################################################################################
-# set(TEST_CARDANO_ADDRESS_SOURCES
-#     test_cardano_address.cpp
-#     ${CMAKE_SOURCE_DIR}/src/address.cpp
-#     ${CMAKE_SOURCE_DIR}/src/crypto.cpp
-#     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-#     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-#     ${VIPER25519_SOURCES}
-#     ${LIBCPPBOR_SOURCES}
-# )
-# ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
-# target_link_libraries(test_cardano_address PRIVATE ${LIBCARDANO_LINK_LIBS})
-# ADD_TEST(cardano_address test_cardano_address)
+################################################################################
+# Test the Cardano Address API
+################################################################################
+set(TEST_CARDANO_ADDRESS_SOURCES
+    test_cardano_address_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_SOURCE_DIR}/src/bip32_ed25519.cpp
+    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
+    ${VIPER25519_SOURCES}
+    ${LIBCPPBOR_SOURCES}
+)
+ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
+target_link_libraries(test_cardano_address PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Address API" test_cardano_address)
