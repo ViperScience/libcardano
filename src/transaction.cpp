@@ -104,20 +104,20 @@ auto BabbageTransactionBuilder::getID() const -> std::array<uint8_t, 32>
     return utils::makeByteArray<32>(blake2b->final());
 }  // BabbageTransactionBuilder::getID
 
-auto BabbageTransactionBuilder::makeWitness(const BIP32PrivateKey& skey)
-    -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
+auto BabbageTransactionBuilder::makeWitness(const bip32_ed25519::PrivateKey& skey)
+    -> std::array<uint8_t, bip32_ed25519::SIGNATURE_SIZE>
 {
     return skey.sign(this->getID());
 }  // BabbageTransactionBuilder::makeWitness
 
-auto BabbageTransactionBuilder::sign(const BIP32PrivateKey& skey)
+auto BabbageTransactionBuilder::sign(const bip32_ed25519::PrivateKey& skey)
     -> BabbageTransactionBuilder&
 {
     // Create the witness.
     const auto witness = this->makeWitness(skey);
 
     // Put the public key in a constant size array.
-    const auto key = utils::makeByteArray<32>(skey.toPublic().toBytes(false));
+    const auto key = utils::makeByteArray<32>(skey.publicKey().bytes());
 
     // Add the witness to the transaction witness set.
     this->tx_.transaction_witness_set.vkeywitnesses.push_back({key, witness});

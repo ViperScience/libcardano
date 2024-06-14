@@ -68,7 +68,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs)
 set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/address.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/bip32_ed25519.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ed25519.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/kes.cpp
@@ -77,7 +76,6 @@ set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/stake_pool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/transaction.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vrf.cpp
-    ${VIPER25519_SOURCES}
     ${LIBCPPBOR_SOURCES}
 )
 
@@ -97,7 +95,6 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${VIPER25519_INCLUDE}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -174,24 +171,17 @@ install(TARGETS ${PROJECT_NAME} cppbor
 set(CARDANO_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/cardano.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/address.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/bip32_ed25519.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/bip39_dictionary.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/crypto.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ed25519.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/encodings.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/kes.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/mnemonic.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/util.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/vrf.hpp
 )
 install(FILES ${CARDANO_HEADERS} 
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cardano
-)
-
-# We also need to install the Viper25519 headers since they are used in the 
-# cardano/crypto.hpp header.
-set(VIPER25519_HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/libs/viper25519/include/viper25519/ed25519.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/libs/viper25519/include/viper25519/curve25519.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/libs/viper25519/include/viper25519/secmem.hpp
-)
-install(FILES ${VIPER25519_HEADERS} 
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/viper25519
 )
 
 ################################################################################

@@ -28,7 +28,7 @@
 
 // Libcardano headers
 #include <cardano/address.hpp>
-#include <cardano/crypto.hpp>
+#include <cardano/bip32_ed25519.hpp>
 #include <cardano/ledger.hpp>
 
 namespace cardano
@@ -108,7 +108,7 @@ class BabbageTransactionBuilder
     /// @brief Sign the transaction and add the signature to the witness set.
     /// @param skey The signing key.
     /// @return A reference to the transaction builder.
-    auto sign(const BIP32PrivateKey& skey) -> BabbageTransactionBuilder&;
+    auto sign(const bip32_ed25519::PrivateKey& skey) -> BabbageTransactionBuilder&;
 
     /// @brief Compute the transaction ID.
     /// @note The transaction ID is the hash (Blake2b256) of the transaction
@@ -119,8 +119,8 @@ class BabbageTransactionBuilder
     /// @brief Sign the transaction and return the signature.
     /// @param skey The signing key.
     /// @returns The signature.
-    [[nodiscard]] auto makeWitness(const BIP32PrivateKey& skey)
-        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>;
+    [[nodiscard]] auto makeWitness(const bip32_ed25519::PrivateKey& skey)
+        -> std::array<uint8_t, bip32_ed25519::SIGNATURE_SIZE>;
 
     /// @brief Serialize the transaction to a CBOR byte vector.
     /// @return The serialized transaction bytes.

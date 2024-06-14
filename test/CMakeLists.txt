@@ -242,7 +242,6 @@ set(TEST_CARDANO_ADDRESS_SOURCES
     ${CMAKE_SOURCE_DIR}/src/bip32_ed25519.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${VIPER25519_SOURCES}
     ${LIBCPPBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
@@ -266,7 +265,6 @@ ADD_TEST("Cardano Address API" test_cardano_address)
 ################################################################################
 set(TEST_CARDANO_STAKE_POOL_SOURCES
     test_cardano_stake_pool_api.cpp
-    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
     ${CMAKE_SOURCE_DIR}/src/bip32_ed25519.cpp
     ${CMAKE_SOURCE_DIR}/src/ed25519.cpp
     ${CMAKE_SOURCE_DIR}/src/encodings.cpp
@@ -277,7 +275,6 @@ set(TEST_CARDANO_STAKE_POOL_SOURCES
     ${CMAKE_SOURCE_DIR}/src/utils.cpp
     ${CMAKE_SOURCE_DIR}/src/vrf.cpp
     ${CMAKE_SOURCE_DIR}/src/kes.cpp
-    ${VIPER25519_SOURCES}
     ${LIBCPPBOR_SOURCES}
 )
 ADD_EXECUTABLE(test_cardano_stake_pool
