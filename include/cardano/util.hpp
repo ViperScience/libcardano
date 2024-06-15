@@ -18,22 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// #include <algorithm>
-// #include <array>
-// #include <cmath>
-// #include <ranges>
-// #include <span>
-// #include <string>
-// #include <vector>
-
 #ifndef _CARDANO_UTIL_HPP_
 #define _CARDANO_UTIL_HPP_
 
 // Standard Library Headers
+#include <algorithm>
 #include <concepts>
 #include <cstdint>
 #include <ranges>
 #include <span>
+#include <type_traits>
 #include <vector>
 
 namespace cardano
@@ -66,30 +60,71 @@ constexpr auto makeByteArray(std::span<const uint8_t> vec)
     return arr;
 }  // makeByteArray
 
+enum class Endianness
+{
+    BigEndian,
+    LittleEndian
+};
+
+/// @brief Object for packing and unpacking bytes as integers.
+/// @tparam IntType The integer type to pack to or unpack from.
 template <typename IntType>
-    requires std::integral<IntType>
+    requires std::is_integral_v<IntType>
 struct BytePacker
 {
-    // need to specify endianess
-    static auto pack(IntType value) -> std::vector<uint8_t>
+    /// @brief Pack an integer into an array of bytes.
+    /// @param value The IntType value to pack.
+    /// @param endianness Specify big or little endianess (default: big).
+    /// @return A fixed size byte array of length sizeof(IntType).
+    static auto pack(
+        IntType value,
+        Endianness endianness = Endianness::BigEndian
+    ) -> std::array<uint8_t, sizeof(IntType)>
     {
-        constexpr auto nb = sizeof(IntType);
-        auto bytes = std::vector<uint8_t>(nb);
-        for (int i = 0; i < nb; ++i)
+        auto bytes = std::array<uint8_t, sizeof(IntType)>();
+        if (endianness == Endianness::BigEndian)
         {
-            bytes[i] = static_cast<uint8_t>(value >> (8 * (nb - 1 - i)));
+            for (size_t i = 0; i < sizeof(IntType); ++i)
+            {
+                bytes[i] = static_cast<uint8_t>(
+                    (value >> (8 * (sizeof(IntType) - 1 - i))) & 0xFF
+                );
+            }
+        }
+        else  // little endian
+        {
+            for (size_t i = 0; i < sizeof(IntType); ++i)
+            {
+                bytes[i] = static_cast<uint8_t>((value >> (8 * i)) & 0xFF);
+            }
         }
         return bytes;
     }
 
-    static auto unpack(std::span<const uint8_t> bytes) -> IntType
+    /// @brief Unpack a span of bytes as an integer.
+    /// @param bytes Bytes to unpack, must be fixed length of sizeof(IntType).
+    /// @param endianness Specify big or little endianess (default: big).
+    /// @return The unpacked integer of IntType.
+    static auto unpack(
+        std::span<const uint8_t, sizeof(IntType)> bytes,
+        Endianness endianness = Endianness::BigEndian
+    ) -> IntType
     {
         IntType value = 0;
-        for (int i = 0; i < sizeof(IntType); ++i)
+        if (endianness == Endianness::BigEndian)
         {
-            value |= static_cast<IntType>(
-                bytes[i] << (8 * (sizeof(IntType) - 1 - i))
-            );
+            for (size_t i = 0; i < sizeof(IntType); ++i)
+            {
+                value |= static_cast<IntType>(bytes[i])
+                         << (8 * (sizeof(IntType) - 1 - i));
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < sizeof(IntType); ++i)
+            {
+                value |= static_cast<IntType>(bytes[i]) << (8 * i);
+            }
         }
         return value;
     }

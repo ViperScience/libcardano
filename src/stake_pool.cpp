@@ -29,6 +29,7 @@
 
 // Libcardano headers
 #include <cardano/encodings.hpp>
+#include <cardano/util.hpp>
 
 #include "utils.hpp"
 
@@ -159,9 +160,10 @@ auto opCertMessageToSign(cardano::shelley::OperationalCert cert)
 {
     auto be = utils::concatBytes(
         utils::concatBytes(
-            cert.hot_vkey, utils::U64TO8_BE(cert.sequence_number)
+            cert.hot_vkey, 
+            util::BytePacker<uint64_t>::pack(cert.sequence_number)
         ),
-        utils::U64TO8_BE(cert.kes_period)
+        util::BytePacker<uint64_t>::pack(cert.kes_period)
     );
     return be;
 }
@@ -309,7 +311,7 @@ auto RegistrationCertificateManager::addOwner(const RewardsAddress& stake_addr)
     -> void
 {
     auto byte_vec = stake_addr.toBytes();
-    auto arr = utils::makeByteArray<28>(byte_vec);
+    auto arr = util::makeByteArray<28>(byte_vec);
     this->cert_.pool_params.pool_owners.insert(arr);
 }  // RegistrationCertificateManager::addOwner
 
@@ -357,7 +359,7 @@ auto RegistrationCertificateManager::setMetadata(
 {
     this->cert_.pool_params.pool_metadata.reset();
     this->cert_.pool_params.pool_metadata.emplace(
-        metadata_url, utils::makeByteArray<32>(hash)
+        metadata_url, util::makeByteArray<32>(hash)
     );
 }  // RegistrationCertificateManager::setMetadata
 
@@ -385,7 +387,7 @@ auto VrfVerificationKey::keyHash() const -> std::array<uint8_t, 32>
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
     blake2b->update(this->bytes().data(), this->bytes().size());
     const auto hashed = blake2b->final();
-    return utils::makeByteArray<32>(hashed);
+    return util::makeByteArray<32>(hashed);
 }  // VrfVerificationKey::hash
 
 auto VrfVerificationKey::saveToFile(std::string_view fpath) const -> void

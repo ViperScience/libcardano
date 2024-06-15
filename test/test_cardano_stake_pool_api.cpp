@@ -47,8 +47,10 @@ auto mkSeedTPraos(uint64_t abs_slot_no, std::span<const uint8_t> epoch_nonce)
                                 0x97, 0x92, 0x6d, 0xa0, 0x3a, 0xdb, 0x5a, 0x77,
                                 0x68, 0xd3, 0x1c, 0xc7, 0xc5, 0xc2, 0xbd, 0x68,
                                 0x28, 0xe1, 0x4a, 0x7d, 0x25, 0xfa, 0x3a, 0x60};
-    const auto seed =
-        util::concatBytes(utils::U64TO8_BE(abs_slot_no), epoch_nonce);
+    const auto seed = util::concatBytes(
+        util::BytePacker<uint64_t>::pack(abs_slot_no),
+        epoch_nonce
+    );
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
     blake2b->update(seed.data(), seed.size());
     auto hashed = blake2b->final();
@@ -62,7 +64,10 @@ auto mkSeedTPraos(uint64_t abs_slot_no, std::span<const uint8_t> epoch_nonce)
 auto mkSeedPraos(uint64_t abs_slot_no, std::span<const uint8_t> epoch_nonce)
     -> std::array<uint8_t, 32>
 {
-    const auto seed = util::concatBytes(utils::U64TO8_BE(abs_slot_no), epoch_nonce);
+    const auto seed = util::concatBytes(
+        util::BytePacker<uint64_t>::pack(abs_slot_no),
+        epoch_nonce
+    );
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
     blake2b->update(seed.data(), seed.size());
     return util::makeByteArray<32>(blake2b->final());
