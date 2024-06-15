@@ -214,6 +214,9 @@ ADD_TEST("Cardano Address API" test_cardano_address)
 ################################################################################
 # Test the Cardano Mnemonic API
 ################################################################################
+ADD_EXECUTABLE(test_cardano_mnemonic test_cardano_mnemonic_api.cpp)
+target_link_libraries(test_cardano_mnemonic PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Mnemonic API" test_cardano_mnemonic)
 
 ################################################################################
 # Test Cardano transaction building, signing, and serializing to CBOR
