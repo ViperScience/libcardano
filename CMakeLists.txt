@@ -115,9 +115,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)
-else()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang|GNU")
     target_compile_options(${PROJECT_NAME} PRIVATE
         -Wall -Wextra -Wpedantic  -Wshadow -Wconversion
+        "$<$<CONFIG:DEBUG>:-g;-O0;--coverage>"
+    )
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        "$<$<CONFIG:DEBUG>:--coverage>"
     )
 endif()
 
