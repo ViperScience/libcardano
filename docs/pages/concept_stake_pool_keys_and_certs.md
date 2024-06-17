@@ -3,8 +3,7 @@
 @subsection subsection-cold-keys Cold Keys
 
 Stake pool cold keys are simply Ed25519 public/private key pairs.
-Libcardano uses the Ed25519 implementation in [Viper25519](https://gitlab.com/viperscience/viper25519).
-Extended Ed25519 keys are also supported and [CIP-1853](https://github.com/cardano-foundation/CIPs/tree/master/CIP-1853) defines a standard way to derive them from a root seed or Mnemonic using the derivation path `1853H/1815H/0H/0H`.
+Extended Ed25519 keys, i.e., [BIP32-Ed25519](https://input-output-hk.github.io/adrestia/static/Ed25519_BIP.pdf) keys, are also supported and [CIP-1853](https://github.com/cardano-foundation/CIPs/tree/master/CIP-1853) defines a standard way to derive them from a root seed or Mnemonic using the derivation path `1853H/1815H/0H/0H`.
 
 The stake pool ID is the 28-byte `blake2b` hash of the verification (public) key bytes.
 The following pseudocode describes the process of obtaining a pool ID from the verification key.
@@ -20,7 +19,7 @@ Note that the pool IDs are often encoded in BECH32 format. In order to do this, 
 Stake pools use Verifiable Random Proofs (VRFs) to confirm slot leadership when forging blocks.
 Thus each pool requires a set of VRF keys to prove that they were in fact elected the leader for a specific slot.
 VRF keys are essentially Ed25519 keys with a VRF capability added.
-The VRF key implementation in libcardano is provided by that in the [viper25519](https://gitlab.com/viperscience/viper25519) library.
+The VRF key implementation in libcardano wraps functionality provided by the [Cardano fork of libsodium](https://github.com/IntersectMBO/libsodium).
 
 @subsubsection VRF Keys and Cardano Blocks
 
