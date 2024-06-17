@@ -22,6 +22,7 @@
 #define VIPER25519_KES25519_HPP_
 
 // Standard Library Headers
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <concepts>
@@ -233,7 +234,7 @@ class SumKesSignature
     ) const -> bool
         requires KesDepth0<Depth>
     {
-        (void)period; // unused param
+        (void)period;  // unused param
         return crypto_sign_verify_detached(
                    this->bytes_.data(),
                    msg.data(),
@@ -318,6 +319,15 @@ class SumKesPrivateKey
             );
         }
         std::move(bytes.begin(), bytes.end(), this->prv_.begin());
+        if (bytes.size() == SumKesPrivateKey<Depth>::size)
+        {
+            // Set the period to zero.
+            std::fill(
+                std::begin(this->prv_) + SumKesPrivateKey<Depth>::size,
+                std::end(this->prv_),
+                0
+            );
+        }
     }  // SumKesPrivateKey<Depth>::SumKesPrivateKey<Depth>
     // need to make one that takes size only bytes and a period int
 
@@ -395,6 +405,144 @@ class SumKesPrivateKey
         return {SumKesPrivateKey<Depth>(key_buffer), pk};
     }
 
+    /// Factory method to create a new set of KES keys from a
+    /// cryptographically secure random number generator.
+    /// @return A pair of the private key and the public key.
+    [[nodiscard]] static auto generate()
+        -> std::pair<SumKesPrivateKey<Depth>, KesPublicKey>
+    {
+        // Create a seed from an Ed25519 private key.
+        // We need to make a mutable copy to pass to the key generation
+        // function. Use a secure array so that the seed cannot be leaked.
+        auto pk = ByteArray<crypto_sign_PUBLICKEYBYTES>();
+        auto seed = SecureByteArray<crypto_sign_SECRETKEYBYTES>();
+        crypto_sign_keypair(pk.data(), seed.data());
+
+        auto mut_seed = SecureByteArray<KesSeed::size>();
+        std::copy_n(seed.begin(), KesSeed::size, mut_seed.begin());
+
+        // Provide a mutable buffer that will be filled with the KES key
+        // components. Use a secure array so that it is securely wiped after
+        // key generation.
+        auto mut_buffer = SecureByteArray<SumKesPrivateKey<Depth>::size + 4>();
+
+        return SumKesPrivateKey<Depth>::keygen(mut_buffer, mut_seed);
+    }  // generate
+
+    /// @brief Derive the public key paired with this private key.
+    [[nodiscard]] auto publicKey() const -> KesPublicKey
+        requires KesDepthN0<Depth>
+    {
+        const auto byte_view = std::span<const uint8_t>(this->prv_);
+
+        constexpr auto pklen = KesPublicKey::size;
+        constexpr auto offset0 = SumKesPrivateKey<Depth>::size - 2 * pklen;
+        constexpr auto offset1 = offset0 + pklen;
+
+        const auto pk0 =
+            KesPublicKey(byte_view.subspan(offset0, pklen).first<pklen>());
+        const auto pk1 =
+            KesPublicKey(byte_view.subspan(offset1, pklen).first<pklen>());
+
+        return pk0.hash_pair(pk1);
+    }  // publicKey
+
+    /// @brief Zero out the private key.
+    auto drop() -> void
+    {
+        Botan::secure_scrub_memory(this->prv_.data(), this->prv_.size());
+    }  // drop
+
+    /// @brief Return a constant reference to the private key bytes.
+    /// The encoding returns the following array of size `Self::SIZE + 4`:
+    /// ( sk_{-1} || seed || self.lhs_pk || self.rhs_pk || period )
+    /// where `sk_{-1}` is the secret secret key of lower depth.
+    /// Note that the period is only included in the last layer.
+    [[nodiscard]] constexpr auto bytes() const
+        -> const SecureByteArray<SumKesPrivateKey<Depth>::size + 4>&
+    {
+        return this->prv_;
+    }
+
+    auto update() -> void
+        requires KesDepth0<Depth>
+    {
+        throw std::runtime_error(
+            "The key cannot be furhter updated (the period has reached the "
+            "maximum allowed)"
+        );
+    }  // update
+
+    /// @brief Update the key to the next period.
+    /// @note This function mutates the key object.
+    auto update() -> void
+        requires KesDepthN0<Depth>
+    {
+        const auto current_period = this->period();
+        SumKesPrivateKey<Depth>::update_buffer(this->prv_, current_period);
+        this->period_ = current_period + 1;  // use only this in the future
+        std::copy_n(                         // get rid of this eventually
+            util::BytePacker<uint32_t>::pack(current_period + 1).data(),
+            sizeof(uint32_t),
+            this->prv_.data() + SumKesPrivateKey<Depth>::size
+        );
+    }  // update
+
+    /// @brief Return the current period of the secret key.
+    [[nodiscard]] auto period() -> size_t
+        requires KesDepth0<Depth>
+    {
+        return 0;
+    }
+
+    [[nodiscard]] auto period() -> size_t
+        requires KesDepthN0<Depth>
+    {
+        return util::BytePacker<uint32_t>::unpack(
+            std::span<const uint8_t>(this->prv_).last<4>()
+        );
+    }
+
+    /// @brief Generate a message signature from the private key.
+    /// @param msg A span of bytes (uint8_t) representing the message to
+    /// sign.
+    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
+        -> SumKesSignature<Depth>
+        requires KesDepth0<Depth>
+    {
+        auto pk = ByteArray<crypto_sign_PUBLICKEYBYTES>();
+        auto sk = SecureByteArray<crypto_sign_SECRETKEYBYTES>();
+        crypto_sign_seed_keypair(pk.data(), sk.data(), this->prv_.data());
+
+        auto sig = std::array<uint8_t, SumKesSignature<0>::size>();
+        crypto_sign_detached(
+            sig.data(), NULL, msg.data(), msg.size(), sk.data()
+        );
+        return SumKesSignature<Depth>(sig);
+    }  // sign
+
+    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
+        -> SumKesSignature<Depth>
+        requires KesDepthN0<Depth>
+    {
+        return SumKesPrivateKey<Depth>::sign_from_buffer(this->bytes(), msg);
+    }  // sign
+
+    [[nodiscard]] auto sign(std::string_view msg) const
+        -> SumKesSignature<Depth>
+    {
+        const auto msg_bytes =
+            std::span<const uint8_t>((const uint8_t*)msg.data(), msg.size());
+        return this->sign(msg_bytes);
+    }  // sign
+
+    // Make all template instantiations friend classes in order to access
+    // private methods and data.
+    template <size_t D>
+        requires KesValidDepth<D>
+    friend class SumKesPrivateKey;
+
+  private:
     static auto keygen_buffer(
         std::span<uint8_t> in_buffer,
         std::optional<std::span<uint8_t, KesSeed::size>> op_seed
@@ -507,69 +655,12 @@ class SumKesPrivateKey
         return pk_0.hash_pair(pk_1);
     }  // keygen_buffer
 
-    /// Factory method to create a new set of KES keys from a
-    /// cryptographically secure random number generator.
-    /// @return A pair of the private key and the public key.
-    [[nodiscard]] static auto generate()
-        -> std::pair<SumKesPrivateKey<Depth>, KesPublicKey>
-    {
-        // Create a seed from an Ed25519 private key.
-        // We need to make a mutable copy to pass to the key generation
-        // function. Use a secure array so that the seed cannot be leaked.
-        auto pk = ByteArray<crypto_sign_PUBLICKEYBYTES>();
-        auto seed = SecureByteArray<crypto_sign_SECRETKEYBYTES>();
-        crypto_sign_keypair(pk.data(), seed.data());
-
-        auto mut_seed = SecureByteArray<KesSeed::size>();
-        std::copy_n(seed.begin(), KesSeed::size, mut_seed.begin());
-
-        // Provide a mutable buffer that will be filled with the KES key
-        // components. Use a secure array so that it is securely wiped after
-        // key generation.
-        auto mut_buffer = SecureByteArray<SumKesPrivateKey<Depth>::size + 4>();
-
-        return SumKesPrivateKey<Depth>::keygen(mut_buffer, mut_seed);
-    }  // generate
-
-    /// @brief Derive the public key paired with this private key.
-    [[nodiscard]] auto publicKey() const -> KesPublicKey
-        requires KesDepthN0<Depth>
-    {
-        const auto byte_view = std::span<const uint8_t>(this->prv_);
-
-        constexpr auto pklen = KesPublicKey::size;
-        constexpr auto offset0 = SumKesPrivateKey<Depth>::size - 2 * pklen;
-        constexpr auto offset1 = offset0 + pklen;
-
-        const auto pk0 =
-            KesPublicKey(byte_view.subspan(offset0, pklen).first<pklen>());
-        const auto pk1 =
-            KesPublicKey(byte_view.subspan(offset1, pklen).first<pklen>());
-
-        return pk0.hash_pair(pk1);
-    }  // publicKey
-
-    /// @brief Zero out the private key.
-    auto drop() -> void
-    {
-        Botan::secure_scrub_memory(this->prv_.data(), this->prv_.size());
-    }  // drop
-
-    /// @brief Return a constant reference to the private key bytes.
-    /// The encoding returns the following array of size `Self::SIZE + 4`:
-    /// ( sk_{-1} || seed || self.lhs_pk || self.rhs_pk || period )
-    /// where `sk_{-1}` is the secret secret key of lower depth.
-    /// Note that the period is only included in the last layer.
-    [[nodiscard]] constexpr auto bytes() const
-        -> const SecureByteArray<SumKesPrivateKey<Depth>::size + 4>&
-    {
-        return this->prv_;
-    }
-
     static auto update_buffer(std::span<uint8_t> in_buffer, uint32_t period)
         -> void
         requires KesDepth0<Depth>
     {
+        (void)in_buffer; // unused input
+        (void)period; // unused input
         throw std::runtime_error(
             "The key cannot be furhter updated (the period has reached the "
             "maximum allowed)"
@@ -615,45 +706,6 @@ class SumKesPrivateKey
             );
         }
     }  // update_buffer
-
-    auto update() -> void
-        requires KesDepth0<Depth>
-    {
-        throw std::runtime_error(
-            "The key cannot be furhter updated (the period has reached the "
-            "maximum allowed)"
-        );
-    }  // update
-
-    /// @brief Update the key to the next period.
-    /// @note This function mutates the key object.
-    auto update() -> void
-        requires KesDepthN0<Depth>
-    {
-        const auto current_period = this->period();
-        SumKesPrivateKey<Depth>::update_buffer(this->prv_, current_period);
-        this->period_ = current_period + 1;  // use only this in the future
-        std::copy_n(                         // get rid of this eventually
-            util::BytePacker<uint32_t>::pack(current_period + 1).data(),
-            sizeof(uint32_t),
-            this->prv_.data() + SumKesPrivateKey<Depth>::size
-        );
-    }  // update
-
-    /// @brief Return the current period of the secret key.
-    [[nodiscard]] auto period() -> size_t
-        requires KesDepth0<Depth>
-    {
-        return 0;
-    }
-
-    [[nodiscard]] auto period() -> size_t
-        requires KesDepthN0<Depth>
-    {
-        return util::BytePacker<uint32_t>::unpack(
-            std::span<const uint8_t>(this->prv_).last<4>()
-        );
-    }
 
     static auto sign_from_buffer(
         std::span<const uint8_t> in_buffer,
@@ -715,40 +767,6 @@ class SumKesPrivateKey
         return SumKesSignature<Depth>(sig_bytes);
     }  // sign_from_buffer
 
-    /// @brief Generate a message signature from the private key.
-    /// @param msg A span of bytes (uint8_t) representing the message to
-    /// sign.
-    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
-        -> SumKesSignature<Depth>
-        requires KesDepth0<Depth>
-    {
-        auto pk = ByteArray<crypto_sign_PUBLICKEYBYTES>();
-        auto sk = SecureByteArray<crypto_sign_SECRETKEYBYTES>();
-        crypto_sign_seed_keypair(pk.data(), sk.data(), this->prv_.data());
-
-        auto sig = std::array<uint8_t, SumKesSignature<0>::size>();
-        crypto_sign_detached(
-            sig.data(), NULL, msg.data(), msg.size(), sk.data()
-        );
-        return SumKesSignature<Depth>(sig);
-    }  // sign
-
-    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
-        -> SumKesSignature<Depth>
-        requires KesDepthN0<Depth>
-    {
-        return SumKesPrivateKey<Depth>::sign_from_buffer(this->bytes(), msg);
-    }  // sign
-
-    [[nodiscard]] auto sign(std::string_view msg) const
-        -> SumKesSignature<Depth>
-    {
-        const auto msg_bytes =
-            std::span<const uint8_t>((const uint8_t*)msg.data(), msg.size());
-        return this->sign(msg_bytes);
-    }  // sign
-
-  private:
     SecureByteArray<size + 4> prv_;
     uint32_t period_ = 0;
 

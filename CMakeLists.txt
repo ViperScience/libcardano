@@ -151,10 +151,13 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif()
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(libs/Catch2)
-    
+
     # Individual tests may be found in the `tests`subdirectory of the
     # repository.
     add_subdirectory(test)
+
+    # Copy data files for integration tests
+    file(COPY test/data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/test)
 endif()
 
 ################################################################################

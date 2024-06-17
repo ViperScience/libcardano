@@ -104,6 +104,14 @@ target_link_libraries(test_cardano_kes_api PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano KES API" test_cardano_kes_api)
 
 ################################################################################
+# Test the Cardano KES Implementation for Integration with the Haskell code
+################################################################################
+
+ADD_EXECUTABLE(test_cardano_kes_integration test_cardano_kes_integration.cpp)
+target_link_libraries(test_cardano_kes_integration PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano KES Integration" test_cardano_kes_integration)
+
+################################################################################
 # Test Cardano Stake Pool API
 ################################################################################
 ADD_EXECUTABLE(test_cardano_stake_pool
