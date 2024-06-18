@@ -29,11 +29,8 @@
 #ifndef _CARDANO_UTILS_HPP_
 #define _CARDANO_UTILS_HPP_
 
-namespace cardano
-{
-
 /// @brief Namespace for utility functions.
-namespace utils
+namespace cardano::utils
 {
 
 /// @brief Concatenate two byte ranges.
@@ -153,7 +150,6 @@ constexpr auto rationalApprox(double f, int64_t md)
     return {num, denom};
 }  // rationalApprox
 
-}  // namespace utils
-}  // namespace cardano
+}  // namespace cardano::utils
 
 #endif  // _CARDANO_UTILS_HPP_

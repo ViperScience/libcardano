@@ -185,7 +185,7 @@ auto EnterpriseAddress::toBytes(bool include_header_byte
         bytes[0] = this->header_byte_;
     }
     std::copy_n(
-        this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + offset
+        this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + (long)offset
     );
     return bytes;
 }  // EnterpriseAddress::toBytes
@@ -253,7 +253,7 @@ auto RewardsAddress::toBytes(bool include_header_byte
         bytes[0] = this->header_byte_;
     }
     std::copy_n(
-        this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + offset
+        this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + (int)offset
     );
     return bytes;
 }  // RewardsAddress::toBytes
@@ -373,8 +373,8 @@ static auto compute_crc32(std::span<const uint8_t> bytes) -> uint32_t
     auto crc32 = Botan::HashFunction::create("CRC32");
     crc32->update(bytes.data(), bytes.size());
     auto hash = crc32->final();
-    uint32_t val = (hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3];
-    return val;
+    auto val = (hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3];
+    return (uint32_t)val;
 }  // compute_crc32
 
 /// Parse the CBOR bytes and return the cppbor::Item.

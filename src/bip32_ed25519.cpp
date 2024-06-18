@@ -19,7 +19,6 @@
 // THE SOFTWARE.
 
 // Standard Library Headers
-#include <numeric>
 #include <stdexcept>
 
 // Third-Party Library Headers

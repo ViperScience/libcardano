@@ -23,18 +23,14 @@
 
 // Standard Library Headers
 #include <algorithm>
-#include <concepts>
 #include <cstdint>
 #include <ranges>
 #include <span>
 #include <type_traits>
 #include <vector>
 
-namespace cardano
-{
-
 /// @brief Utility namespace
-namespace util
+namespace cardano::util
 {
 
 /// @brief Concatenate two byte ranges.
@@ -130,7 +126,6 @@ struct BytePacker
     }
 };
 
-}  // namespace util
-}  // namespace cardano
+}  // namespace cardano::util
 
 #endif  // _CARDANO_UTIL_HPP_

@@ -89,7 +89,7 @@ struct Rational : public TagSerializable
     uint64_t den;
 
     // Serialize as 2-elem array with tag 6.30
-    [[nodiscard]] auto serializer() const -> cppbor::SemanticTag
+    [[nodiscard]] auto serializer() const -> cppbor::SemanticTag override
     {
         return cppbor::SemanticTag{30, cppbor::Array{num, den}};
     }  // serializer

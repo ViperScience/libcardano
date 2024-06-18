@@ -28,11 +28,8 @@
 // Public libcardano headers
 #include <cardano/secmem.hpp>
 
-namespace cardano
-{
-
 /// @brief Root namespace for the Ed25519 classes.
-namespace ed25519
+namespace cardano::ed25519
 {
 
 /// ED25519 secret key size.
@@ -114,7 +111,6 @@ class PrivateKey
     ) const -> ByteArray<SIGNATURE_SIZE>;
 };  // PrivateKey
 
-}  // namespace ed25519
-}  // namespace cardano
+}  // namespace cardano::ed25519
 
 #endif  // _CARDANO_ED25519_HPP_

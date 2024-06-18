@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Viper Science LLC
+// Copyright (c) 2024 Viper Science LLC
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,8 +19,6 @@
 // THE SOFTWARE.
 
 // Standard Library Headers
-#include <memory>
-#include <stdexcept>
 
 // Third-Party Library Headers
 #include <botan/auto_rng.h>

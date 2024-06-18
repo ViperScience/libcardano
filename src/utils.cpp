@@ -20,6 +20,7 @@
 
 #include "utils.hpp"
 
+// Standard Library Headers
 #include <fstream>
 
 auto cardano::utils::writeEnvelopeTextFile(
@@ -31,9 +32,9 @@ auto cardano::utils::writeEnvelopeTextFile(
 {
     std::ofstream out(std::string(file_path).c_str());
     out << "{\n";
-    out << "    \"type\": \"" << type << "\",\n";
-    out << "    \"description\": \"" << description << "\",\n";
-    out << "    \"cborHex\": \"" << cbor_hex << "\"\n";
+    out << R"(    "type": ")" << type << "\",\n";
+    out << R"(    "description": ")" << description << "\",\n";
+    out << R"(    "cborHex": ")" << cbor_hex << "\"\n";
     out << "}";
     out.close();
 }  // write_key_file

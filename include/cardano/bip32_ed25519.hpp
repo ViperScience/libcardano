@@ -30,11 +30,8 @@
 #include <cardano/mnemonic.hpp>
 #include <cardano/secmem.hpp>
 
-namespace cardano
-{
-
 /// @brief Root namespace for the BIP32-Ed25519 key classes.
-namespace bip32_ed25519
+namespace cardano::bip32_ed25519
 {
 
 /// ED25519 seed size.
@@ -261,7 +258,6 @@ class EncryptedPrivateKey
     [[nodiscard]] auto decrypt(std::string_view password) -> PrivateKey;
 };
 
-}  // namespace bip32_ed25519
-}  // namespace cardano
+}  // namespace cardano::bip32_ed25519
 
 #endif  // _CARDANO_BIP32ED25519_HPP_
