@@ -42,13 +42,6 @@ TEST_CASE("testCardanoKESAPI")
         REQUIRE(sigma.verify(0, pkey, dummy_message));
     }
 
-    SECTION("CompactSumKesKey_Depth0")
-    {
-        // auto key = ed25519::Sum0CompactKesPrivateKey::generate();
-        // CHECK(key.period() == 0);
-        // CHECK_THROWS(key.update());
-    }
-
     SECTION("SumKesKey_Depth1")
     {
         auto [skey, pkey] = SumKesPrivateKey<1>::generate();
@@ -69,8 +62,6 @@ TEST_CASE("testCardanoKESAPI")
         REQUIRE(skey.bytes() == z);
     }
 
-    SECTION("CompactSumKesKey_Depth1") {}
-
     SECTION("SumKesKey_Depth4")
     {
         auto [skey, pkey] = SumKesPrivateKey<4>::generate();
@@ -89,7 +80,31 @@ TEST_CASE("testCardanoKESAPI")
         REQUIRE(skey.sign(dummy_message).verify(15, pkey, dummy_message));
     }
 
-    SECTION("CompactSumKesKey_Depth4") {}
+    SECTION("CompactSumKesKey_Depth1")
+    {
+        auto [skey, pkey] = SumKesPrivateKey<1>::generate();
+
+        constexpr auto dummy_message = "tilin";
+        auto sigma = skey.signCompact(dummy_message);
+        REQUIRE(sigma.verify(0, pkey, dummy_message));
+    }
+
+    SECTION("CompactSumKesKey_Depth4")
+    {
+        auto [skey, pkey] = SumKesPrivateKey<4>::generate();
+
+        constexpr auto dummy_message = "tilin";
+        auto sigma = skey.signCompact(dummy_message);
+        REQUIRE(sigma.verify(0, pkey, dummy_message));
+
+        for (int i = 0; i < 15; i++)
+        {
+            REQUIRE_NOTHROW(skey.update());
+        }
+        REQUIRE(skey.period() == 15);
+
+        REQUIRE(skey.signCompact(dummy_message).verify(15, pkey, dummy_message));
+    }
 
     SECTION("KesKey_to_PublicKey")
     {

@@ -265,13 +265,13 @@ class SumKesSignature
             byte_view.first<SumKesSignature<Depth - 1>::size>()
         );
 
-        const auto half_depth = KesDepth(Depth).half();
-        if (period < half_depth)
+        const auto t0 = KesDepth(Depth).half();
+        if (period < t0)
         {
             return sigma.verify(period, lhs_pk, msg);
         }
 
-        return sigma.verify(period - half_depth, rhs_pk, msg);
+        return sigma.verify(period - t0, rhs_pk, msg);
     }  // verify
 
     /// @brief Verify the KES signature.
@@ -328,7 +328,7 @@ class SumKesCompactSignature
     /// @param period The KES period of the signature.
     /// @param msg The message used to create the signature (bytes).
     [[nodiscard]] auto recompute(uint32_t period, std::span<const uint8_t> msg)
-        -> KesPublicKey
+        const -> KesPublicKey
         requires KesDepth0<Depth>
     {
         (void)period;  // unused param
@@ -343,21 +343,24 @@ class SumKesCompactSignature
     }  // recompute
 
     [[nodiscard]] auto recompute(uint32_t period, std::span<const uint8_t> msg)
-        -> KesPublicKey
+        const -> KesPublicKey
         requires KesDepthN0<Depth>
     {
-        const auto depth = KesDepth(Depth);
         const auto sig_view = std::span<const uint8_t>(this->bytes_);
         const auto pk = KesPublicKey(sig_view.last<KesPublicKey::size>());
         const auto sigma = SumKesCompactSignature<Depth - 1>(
             sig_view.first<SumKesCompactSignature<Depth - 1>::size>()
         );
-        if (period >= depth.half())
+
+        const auto t0 = KesDepth(Depth).half();
+        if (period < t0)
         {
-            period -= depth.half();
+            const auto recomputed_key = sigma.recompute(period, msg);
+            return recomputed_key.hash_pair(pk);
         }
-        const auto recomputed_key = sigma.recompute(period, msg);
-        return recomputed_key.hash_pair(pk);
+
+        const auto recomputed_key = sigma.recompute(period - t0, msg);
+        return pk.hash_pair(recomputed_key);
     }  // recompute
 
     /// @brief Verify the KES compact signature.
@@ -385,7 +388,7 @@ class SumKesCompactSignature
         requires KesDepthN0<Depth>
     {
         const auto pk_subtree = this->recompute(period, msg);
-        return pk == pk_subtree;
+        return pk.bytes() == pk_subtree.bytes();
     }  // verify
 
     /// @brief Verify the KES signature.
