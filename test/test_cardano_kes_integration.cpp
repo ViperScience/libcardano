@@ -22,11 +22,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 // Public libcardano headers
+#include <cardano/encodings.hpp>
 #include <cardano/kes.hpp>
-#include <cardano/util.hpp>
-// #include <cardano/secmem.hpp>
 
-//
+// // Local headers
 #include "test_utils.hpp"
 
 // using namespace cardano;
@@ -34,50 +33,76 @@
 TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
 {
     auto seed = std::array<uint8_t, 32>{
-        116, 101, 115, 116, 32, 115, 116, 114, 105, 110, 103, 32, 111, 102, 32,
-        51, 50, 32, 98, 121, 116, 101, 32, 111, 102, 32, 108, 101, 110, 103,
-        104, 116,
+        116, 101, 115, 116, 32,  115, 116, 114, 105, 110, 103,
+        32,  111, 102, 32,  51,  50,  32,  98,  121, 116, 101,
+        32,  111, 102, 32,  108, 101, 110, 103, 104, 116,
     };
 
-    SECTION("haskel_depth_1") {
+    SECTION("haskel_depth_1")
+    {
         // haskell generated key
         auto h_key = cardano_test::load_bytes("data/kes/key1.bin");
         const auto parsed_h_key = cardano::SumKesPrivateKey<1>(h_key);
 
-        auto key_buffer = std::array<uint8_t, cardano::SumKesPrivateKey<1>::size + 4>{};
-        auto [skey, vkey] = cardano::SumKesPrivateKey<1>::keygen(key_buffer, seed);
+        auto key_buffer =
+            std::array<uint8_t, cardano::SumKesPrivateKey<1>::size + 4>{};
+        auto [skey, vkey] =
+            cardano::SumKesPrivateKey<1>::keygen(key_buffer, seed);
 
-        REQUIRE(skey.bytes() == parsed_h_key.bytes());
+        // Compare hex strings for easier debugging if needed
+        REQUIRE(
+            cardano::BASE16::encode(skey.bytes()) ==
+            cardano::BASE16::encode(parsed_h_key.bytes())
+        );
     }
 
-    SECTION("haskel_depth_6") {
+    SECTION("haskel_depth_6")
+    {
         // haskell generated key
         auto h_key = cardano_test::load_bytes("data/kes/key6.bin");
         const auto parsed_h_key = cardano::SumKesPrivateKey<6>(h_key);
 
-        auto key_buffer = std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
-        auto [skey, vkey] = cardano::SumKesPrivateKey<6>::keygen(key_buffer, seed);
+        auto key_buffer =
+            std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
+        auto [skey, vkey] =
+            cardano::SumKesPrivateKey<6>::keygen(key_buffer, seed);
 
-        REQUIRE(skey.bytes() == parsed_h_key.bytes());
+        // Compare hex strings for easier debugging if needed
+        REQUIRE(
+            cardano::BASE16::encode(skey.bytes()) ==
+            cardano::BASE16::encode(parsed_h_key.bytes())
+        );
     }
 
-    SECTION("haskell_signature_6") {
-        const auto h_signature = cardano_test::load_bytes("data/kes/key6Sig.bin");
+    SECTION("haskell_signature_6")
+    {
+        const auto h_signature =
+            cardano_test::load_bytes("data/kes/key6Sig.bin");
 
-        auto key_buffer = std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
-        auto [skey, vkey] = cardano::SumKesPrivateKey<6>::keygen(key_buffer, seed);
+        auto key_buffer =
+            std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
+        auto [skey, vkey] =
+            cardano::SumKesPrivateKey<6>::keygen(key_buffer, seed);
 
         constexpr auto message = "test message";
         auto signature = skey.sign(message);
 
-        REQUIRE(signature.bytes() == cardano::util::makeByteArray<448>(h_signature));
+        // Compare hex strings for easier debugging if needed
+        REQUIRE(
+            cardano::BASE16::encode(signature.bytes()) ==
+            cardano::BASE16::encode(h_signature)
+        );
     }
 
-    SECTION("haskell_signature_6_update_5") {
-        const auto h_signature = cardano_test::load_bytes("data/kes/key6Sig5.bin");
+    SECTION("haskell_signature_6_update_5")
+    {
+        const auto h_signature =
+            cardano_test::load_bytes("data/kes/key6Sig5.bin");
 
-        auto key_buffer = std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
-        auto [skey, vkey] = cardano::SumKesPrivateKey<6>::keygen(key_buffer, seed);
+        auto key_buffer =
+            std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
+        auto [skey, vkey] =
+            cardano::SumKesPrivateKey<6>::keygen(key_buffer, seed);
         skey.update();
         skey.update();
         skey.update();
@@ -87,6 +112,90 @@ TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
         constexpr auto message = "test message";
         auto signature = skey.sign(message);
 
-        REQUIRE(signature.bytes() == cardano::util::makeByteArray<448>(h_signature));
+        // Compare hex strings for easier debugging if needed
+        REQUIRE(
+            cardano::BASE16::encode(signature.bytes()) ==
+            cardano::BASE16::encode(h_signature)
+        );
+    }
+
+    SECTION("haskel_compact_depth_1")
+    {
+        // haskell generated key
+        auto h_key = cardano_test::load_bytes("data/kes/compactkey1.bin");
+        const auto parsed_h_key = cardano::SumKesPrivateKey<1>(h_key);
+
+        auto key_buffer =
+            std::array<uint8_t, cardano::SumKesPrivateKey<1>::size + 4>{};
+        auto [skey, vkey] =
+            cardano::SumKesPrivateKey<1>::keygen(key_buffer, seed);
+
+        // Compare hex strings for easier debugging if needed
+        REQUIRE(
+            cardano::BASE16::encode(skey.bytes()) ==
+            cardano::BASE16::encode(parsed_h_key.bytes())
+        );
+    }
+
+    SECTION("haskell_compact_depth_6")
+    {
+        // haskell generated key
+        auto h_key = cardano_test::load_bytes("data/kes/compactkey6.bin");
+        const auto parsed_h_key = cardano::SumKesPrivateKey<6>(h_key);
+
+        auto key_buffer =
+            std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
+        auto [skey, vkey] =
+            cardano::SumKesPrivateKey<6>::keygen(key_buffer, seed);
+
+        REQUIRE(
+            cardano::BASE16::encode(skey.bytes()) ==
+            cardano::BASE16::encode(parsed_h_key.bytes())
+        );
+    }
+
+    SECTION("haskell_compact_signature_6")
+    {
+        const auto h_signature =
+            cardano_test::load_bytes("data/kes/compactkey6Sig.bin");
+
+        auto key_buffer =
+            std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
+        auto [skey, vkey] =
+            cardano::SumKesPrivateKey<6>::keygen(key_buffer, seed);
+
+        constexpr auto message = "test message";
+        auto signature = skey.signCompact(message);
+
+        // Compare hex strings for easier debugging if needed
+        REQUIRE(
+            cardano::BASE16::encode(signature.bytes()) ==
+            cardano::BASE16::encode(h_signature)
+        );
+    }
+
+    SECTION("haskell_compact_signature_6_update_5")
+    {
+        const auto h_signature =
+            cardano_test::load_bytes("data/kes/compactkey6Sig5.bin");
+
+        auto key_buffer =
+            std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
+        auto [skey, vkey] =
+            cardano::SumKesPrivateKey<6>::keygen(key_buffer, seed);
+        skey.update();
+        skey.update();
+        skey.update();
+        skey.update();
+        skey.update();
+
+        constexpr auto message = "test message";
+        auto signature = skey.signCompact(message);
+
+        // Compare hex strings for easier debugging if needed
+        REQUIRE(
+            cardano::BASE16::encode(signature.bytes()) ==
+            cardano::BASE16::encode(h_signature)
+        );
     }
 }

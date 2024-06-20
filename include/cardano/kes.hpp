@@ -115,25 +115,25 @@ struct KesDepth
         return value == d.value;
     }
 
-    constexpr auto get_value() const -> uint32_t { return value; }
+    [[nodiscard]] constexpr auto get_value() const -> uint32_t { return value; }
 
     /// Compute the total number of signatures one can generate with the given
     /// `KesDepth`
-    constexpr auto total() const -> uint32_t
+    [[nodiscard]] constexpr auto total() const -> uint32_t
     {
         return static_cast<uint32_t>(::lround(::pow(2, this->value)));
     }
 
     /// Compute half of the total number of signatures one can generate with the
     /// given `KesDepth`
-    constexpr auto half() const -> uint32_t
+    [[nodiscard]] constexpr auto half() const -> uint32_t
     {
         if (this->value <= 0) throw std::runtime_error("KES depth 0");
         return static_cast<uint32_t>(::lround(::pow(2, this->value - 1)));
     }
 
     /// Returns a new `KesDepth` value with one less depth as `self`.
-    auto decr() const -> KesDepth
+    [[nodiscard]] auto decr() const -> KesDepth
     {
         if (this->value <= 0) throw std::runtime_error("KES depth 0");
         return KesDepth(this->value - 1);
@@ -184,8 +184,15 @@ class KesPublicKey
         return this->pub_;
     }
 
+    /// @brief Convert to an Ed25519 public key.
+    [[nodiscard]] auto asEd25519() const -> ed25519::PublicKey
+    {
+        return ed25519::PublicKey(this->pub_);
+    }
+
     /// @brief Hash two public keys using Blake2b.
-    auto hash_pair(const KesPublicKey& other) const -> KesPublicKey;
+    [[nodiscard]] auto hash_pair(const KesPublicKey& other
+    ) const -> KesPublicKey;
 
   private:
     std::array<uint8_t, size> pub_;
@@ -225,7 +232,7 @@ class SumKesSignature
     /// @param period The KES period of the signature.
     /// @param pk The KES public key.
     /// @param msg The message used to create the signature (bytes).
-    auto verify(
+    [[nodiscard]] auto verify(
         uint32_t period,
         const KesPublicKey& pk,
         std::span<const uint8_t> msg
@@ -233,15 +240,10 @@ class SumKesSignature
         requires KesDepth0<Depth>
     {
         (void)period;  // unused param
-        return crypto_sign_verify_detached(
-                   this->bytes_.data(),
-                   msg.data(),
-                   msg.size(),
-                   pk.bytes().data()
-               ) == 0;
+        return pk.asEd25519().verifySignature(msg, this->bytes_);
     }  // verify
 
-    auto verify(
+    [[nodiscard]] auto verify(
         uint32_t period,
         const KesPublicKey& pk,
         std::span<const uint8_t> msg
@@ -277,8 +279,11 @@ class SumKesSignature
     /// @param period The KES period of the signature.
     /// @param pk The KES public key.
     /// @param msg The message used to create the signature (string).
-    auto verify(uint32_t period, const KesPublicKey& pk, std::string_view msg)
-        const -> bool
+    [[nodiscard]] auto verify(
+        uint32_t period,
+        const KesPublicKey& pk,
+        std::string_view msg
+    ) const -> bool
     {
         const auto msg_bytes =
             std::span<const uint8_t>((const uint8_t*)msg.data(), msg.size());
@@ -288,6 +293,120 @@ class SumKesSignature
   private:
     std::array<uint8_t, size> bytes_;
 };  // SumKesSignature
+
+/// @brief KES signature in compact form.
+/// @tparam Depth The depth of the KES key used to create the signature.
+template <size_t Depth>
+    requires KesValidDepth<Depth>
+class SumKesCompactSignature
+{
+  public:
+    /// Size of the signature in bytes.
+    static constexpr size_t size = 64 + (Depth + 1) * KesPublicKey::size;
+
+    /// @brief Create a signature object from a span of bytes.
+    /// @param bytes The signature byte string.
+    explicit SumKesCompactSignature(std::span<const uint8_t> bytes)
+    {
+        if (bytes.size() != SumKesCompactSignature<Depth>::size)
+        {
+            throw std::runtime_error(
+                "Invalid byte string size: " + std::to_string(bytes.size())
+            );
+        }
+        std::copy_n(bytes.begin(), bytes.size(), this->bytes_.begin());
+    }  // SumKesCompactSignature
+
+    /// @brief Return a constant reference to the signature bytes.
+    [[nodiscard]] constexpr auto bytes() const
+        -> const std::array<uint8_t, SumKesCompactSignature<Depth>::size>&
+    {
+        return this->bytes_;
+    }
+
+    /// @brief Recompute the root of the subtree, and verify ed25519 if on a
+    /// leaf.
+    /// @param period The KES period of the signature.
+    /// @param msg The message used to create the signature (bytes).
+    [[nodiscard]] auto recompute(uint32_t period, std::span<const uint8_t> msg)
+        -> KesPublicKey
+        requires KesDepth0<Depth>
+    {
+        (void)period;  // unused param
+        const auto sig_view = std::span<const uint8_t>(this->bytes_);
+        const auto sig = sig_view.first<ed25519::SIGNATURE_SIZE>();
+        const auto pk = KesPublicKey(sig_view.last<KesPublicKey::size>());
+        if (!pk.asEd25519().verifySignature(msg, sig))
+        {
+            throw std::runtime_error("Cannot verify invalid signature.");
+        }
+        return pk;
+    }  // recompute
+
+    [[nodiscard]] auto recompute(uint32_t period, std::span<const uint8_t> msg)
+        -> KesPublicKey
+        requires KesDepthN0<Depth>
+    {
+        const auto depth = KesDepth(Depth);
+        const auto sig_view = std::span<const uint8_t>(this->bytes_);
+        const auto pk = KesPublicKey(sig_view.last<KesPublicKey::size>());
+        const auto sigma = SumKesCompactSignature<Depth - 1>(
+            sig_view.first<SumKesCompactSignature<Depth - 1>::size>()
+        );
+        if (period >= depth.half())
+        {
+            period -= depth.half();
+        }
+        const auto recomputed_key = sigma.recompute(period, msg);
+        return recomputed_key.hash_pair(pk);
+    }  // recompute
+
+    /// @brief Verify the KES compact signature.
+    /// @param period The KES period of the signature.
+    /// @param pk The KES public key.
+    /// @param msg The message used to create the signature (bytes).
+    [[nodiscard]] auto verify(
+        uint32_t period,
+        const KesPublicKey& pk,
+        std::span<const uint8_t> msg
+    ) const -> bool
+        requires KesDepth0<Depth>
+    {
+        (void)period;  // unused param
+        const auto sig = std::span<const uint8_t>(this->bytes_)
+                             .first<ed25519::SIGNATURE_SIZE>();
+        return pk.asEd25519().verifySignature(msg, sig);
+    }  // verify
+
+    [[nodiscard]] auto verify(
+        uint32_t period,
+        const KesPublicKey& pk,
+        std::span<const uint8_t> msg
+    ) const -> bool
+        requires KesDepthN0<Depth>
+    {
+        const auto pk_subtree = this->recompute(period, msg);
+        return pk == pk_subtree;
+    }  // verify
+
+    /// @brief Verify the KES signature.
+    /// @param period The KES period of the signature.
+    /// @param pk The KES public key.
+    /// @param msg The message used to create the signature (string).
+    [[nodiscard]] auto verify(
+        uint32_t period,
+        const KesPublicKey& pk,
+        std::string_view msg
+    ) const -> bool
+    {
+        const auto msg_bytes =
+            std::span<const uint8_t>((const uint8_t*)msg.data(), msg.size());
+        return this->verify(period, pk, msg_bytes);
+    }  // sign
+
+  private:
+    std::array<uint8_t, size> bytes_;
+};  // SumKesCompactSignature
 
 /// @brief KES private key based on the sum composition.
 /// @tparam Depth The key depth. Max evolutions are 1^Depth - 1.
@@ -462,6 +581,8 @@ class SumKesPrivateKey
         return this->prv_;
     }
 
+    /// @brief Update the key to the next period.
+    /// @note This function mutates the key object.
     auto update() -> void
         requires KesDepth0<Depth>
     {
@@ -471,8 +592,6 @@ class SumKesPrivateKey
         );
     }  // update
 
-    /// @brief Update the key to the next period.
-    /// @note This function mutates the key object.
     auto update() -> void
         requires KesDepthN0<Depth>
     {
@@ -502,37 +621,90 @@ class SumKesPrivateKey
     }
 
     /// @brief Generate a message signature from the private key.
-    /// @param msg A span of bytes (uint8_t) representing the message to
-    /// sign.
-    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
-        -> SumKesSignature<Depth>
+    /// @param msg A span of bytes (uint8_t) representing the message to sign.
+    /// @return The KES signature object.
+    [[nodiscard]] auto sign(std::span<const uint8_t> msg
+    ) const -> SumKesSignature<Depth>
         requires KesDepth0<Depth>
     {
+        // auto sk_copy = SecureByteArray<ed25519::KEY_SIZE>();
+        // std::copy(this->prv_.begin(), this->prv_.end(), sk_copy.begin());
+        // const auto sk = ed25519::PrivateKey(sk_copy);
+        // return SumKesSignature<0>(sk.sign(msg));
+        // ^^^ broken but update like this eventually ^^^
+
         auto pk = ByteArray<crypto_sign_PUBLICKEYBYTES>();
         auto sk = SecureByteArray<crypto_sign_SECRETKEYBYTES>();
         crypto_sign_seed_keypair(pk.data(), sk.data(), this->prv_.data());
 
         auto sig = std::array<uint8_t, SumKesSignature<0>::size>();
         crypto_sign_detached(
-            sig.data(), NULL, msg.data(), msg.size(), sk.data()
+            sig.data(), nullptr, msg.data(), msg.size(), sk.data()
         );
         return SumKesSignature<Depth>(sig);
     }  // sign
 
-    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
-        -> SumKesSignature<Depth>
+    [[nodiscard]] auto sign(std::span<const uint8_t> msg
+    ) const -> SumKesSignature<Depth>
         requires KesDepthN0<Depth>
     {
         return SumKesPrivateKey<Depth>::sign_from_buffer(this->bytes(), msg);
     }  // sign
 
-    [[nodiscard]] auto sign(std::string_view msg) const
-        -> SumKesSignature<Depth>
+    /// @brief Sign the message with the private key and produce a compact
+    /// signature.
+    /// @param msg A span of bytes (uint8_t) representing the message to sign.
+    /// @return The KES compact signature object.
+    [[nodiscard]] auto signCompact(std::span<const uint8_t> msg
+    ) const -> SumKesCompactSignature<Depth>
+        requires KesDepth0<Depth>
+    {
+        auto sk_copy = SecureByteArray<ed25519::KEY_SIZE>();
+        std::copy_n(this->prv_.begin(), ed25519::KEY_SIZE, sk_copy.begin());
+        const auto skey = ed25519::PrivateKey(sk_copy);
+        const auto pkey = skey.publicKey();
+        const auto sigma = skey.sign(msg);
+        auto sig_bytes = ByteArray<SumKesSignature<0>::size>();
+        std::copy_n(
+            pkey.bytes().begin(),
+            KesPublicKey::size,
+            sig_bytes.begin() + ed25519::SIGNATURE_SIZE
+        );
+        std::copy_n(sigma.begin(), ed25519::SIGNATURE_SIZE, sig_bytes.begin());
+        return SumKesCompactSignature<Depth>(sig_bytes);
+    }  // signCompact
+
+    [[nodiscard]] auto signCompact(std::span<const uint8_t> msg
+    ) const -> SumKesCompactSignature<Depth>
+        requires KesDepthN0<Depth>
+    {
+        return SumKesPrivateKey<Depth>::sign_compact_from_buffer(
+            this->bytes(), msg, this->period_
+        );
+    }  // signCompact
+
+    /// @brief Sign the message with the private key.
+    /// @param msg A string type (string_view) message to sign.
+    /// @return The KES signature object.
+    [[nodiscard]] auto sign(std::string_view msg
+    ) const -> SumKesSignature<Depth>
     {
         const auto msg_bytes =
             std::span<const uint8_t>((const uint8_t*)msg.data(), msg.size());
         return this->sign(msg_bytes);
     }  // sign
+
+    /// @brief Sign the message with the private key and produce a compact
+    /// signature.
+    /// @param msg A string type (string_view) message to sign.
+    /// @return The KES compact signature object.
+    [[nodiscard]] auto signCompact(std::string_view msg
+    ) const -> SumKesCompactSignature<Depth>
+    {
+        const auto msg_bytes =
+            std::span<const uint8_t>((const uint8_t*)msg.data(), msg.size());
+        return this->signCompact(msg_bytes);
+    }  // signsignCompact
 
     // Make all template instantiations friend classes in order to access
     // private methods and data.
@@ -657,8 +829,8 @@ class SumKesPrivateKey
         -> void
         requires KesDepth0<Depth>
     {
-        (void)in_buffer; // unused input
-        (void)period; // unused input
+        (void)in_buffer;  // unused input
+        (void)period;     // unused input
         throw std::runtime_error(
             "The key cannot be furhter updated (the period has reached the "
             "maximum allowed)"
@@ -722,7 +894,7 @@ class SumKesPrivateKey
 
         auto sig = std::array<uint8_t, SumKesSignature<0>::size>();
         crypto_sign_detached(
-            sig.data(), NULL, msg.data(), msg.size(), sk.data()
+            sig.data(), nullptr, msg.data(), msg.size(), sk.data()
         );
         return SumKesSignature<Depth>(sig);
     }  // sign_from_buffer
@@ -764,6 +936,82 @@ class SumKesPrivateKey
 
         return SumKesSignature<Depth>(sig_bytes);
     }  // sign_from_buffer
+
+    static auto sign_compact_from_buffer(
+        std::span<const uint8_t> in_buffer,
+        std::span<const uint8_t> msg,
+        uint32_t period
+    ) -> SumKesCompactSignature<Depth>
+        requires KesDepth0<Depth>
+    {
+        (void)period;  // unused param
+        auto sk_copy = SecureByteArray<ed25519::KEY_SIZE>();
+        std::copy_n(in_buffer.begin(), ed25519::KEY_SIZE, sk_copy.begin());
+        const auto skey = ed25519::PrivateKey(sk_copy);
+        const auto pkey = skey.publicKey();
+        const auto sigma = skey.sign(msg);
+        auto sig_bytes = ByteArray<SumKesCompactSignature<0>::size>{};
+        std::copy_n(
+            pkey.bytes().begin(),
+            KesPublicKey::size,
+            sig_bytes.begin() + ed25519::SIGNATURE_SIZE
+        );
+        std::copy_n(sigma.begin(), sigma.size(), sig_bytes.begin());
+        return SumKesCompactSignature<Depth>(sig_bytes);
+    }  // sign_compact_from_buffer
+
+    static auto sign_compact_from_buffer(
+        std::span<const uint8_t> in_buffer,
+        std::span<const uint8_t> msg,
+        uint32_t period
+    ) -> SumKesCompactSignature<Depth>
+        requires KesDepthN0<Depth>
+    {
+        const auto t0 = KesDepth(Depth).half();
+        auto sig_bytes = ByteArray<SumKesCompactSignature<Depth>::size>{};
+        static constexpr auto pk_offset =
+            SumKesPrivateKey<Depth - 1>::size + KesSeed::size;
+
+        if (period < t0)
+        {
+            std::copy_n(
+                in_buffer.begin() + pk_offset + KesPublicKey::size,
+                KesPublicKey::size,
+                sig_bytes.begin() + SumKesCompactSignature<Depth - 1>::size
+            );
+            const auto sigma =
+                SumKesPrivateKey<Depth - 1>::sign_compact_from_buffer(
+                    in_buffer.first<SumKesPrivateKey<Depth - 1>::size>(),
+                    msg,
+                    period
+                );
+            std::copy_n(
+                sigma.bytes().begin(),
+                SumKesCompactSignature<Depth - 1>::size,
+                sig_bytes.begin()
+            );
+        }
+        else
+        {
+            std::copy_n(
+                in_buffer.begin() + pk_offset,
+                KesPublicKey::size,
+                sig_bytes.begin() + SumKesCompactSignature<Depth - 1>::size
+            );
+            const auto sigma =
+                SumKesPrivateKey<Depth - 1>::sign_compact_from_buffer(
+                    in_buffer.first<SumKesPrivateKey<Depth - 1>::size>(),
+                    msg,
+                    period - t0
+                );
+            std::copy_n(
+                sigma.bytes().begin(),
+                SumKesCompactSignature<Depth - 1>::size,
+                sig_bytes.begin()
+            );
+        }
+        return SumKesCompactSignature<Depth>(sig_bytes);
+    }  // sign_compact_from_buffer
 
     SecureByteArray<size + 4> prv_;
     uint32_t period_ = 0;
