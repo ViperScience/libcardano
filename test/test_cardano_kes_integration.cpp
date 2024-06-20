@@ -25,10 +25,8 @@
 #include <cardano/encodings.hpp>
 #include <cardano/kes.hpp>
 
-// // Local headers
+// Local test headers
 #include "test_utils.hpp"
-
-// using namespace cardano;
 
 TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
 {
