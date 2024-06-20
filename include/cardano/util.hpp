@@ -56,11 +56,12 @@ constexpr auto makeByteArray(std::span<const uint8_t> vec)
     return arr;
 }  // makeByteArray
 
+/// @brief Enum class to represent byte order.
 enum class Endianness
 {
     BigEndian,
     LittleEndian
-};
+};  // Endianness
 
 /// @brief Object for packing and unpacking bytes as integers.
 /// @tparam IntType The integer type to pack to or unpack from.
@@ -124,7 +125,7 @@ struct BytePacker
         }
         return value;
     }
-};
+};  // BytePacker
 
 }  // namespace cardano::util
 

@@ -22,8 +22,9 @@
 #define _CARDANO_STAKE_POOL_HPP_
 
 // Standard library headers
-#include <functional>
-// #include <ranges>
+#include <cstdint>
+#include <span>
+#include <string_view>
 
 // Third-party library headers
 #include <botan/hash.h>
@@ -37,19 +38,21 @@
 #include <cardano/vrf.hpp>
 #include <cardano/kes.hpp>
 
-/// @brief The root namespace for all Cardano functions and types.
-namespace cardano
-{
-
-/// @brief The namespace containing all Cardano Stake Pool types.
-namespace stake_pool
+/// @brief The namespace containing all Cardano Stake Pool objects.
+namespace cardano::stake_pool
 {
 
 /// @brief Size of a stake pool key in bytes.
-static constexpr uint32_t STAKE_POOL_KEY_SIZE = 32;
+inline constexpr uint32_t STAKE_POOL_KEY_SIZE = 32;
 
 /// @brief Size of a stake pool ID in bytes.
-static constexpr uint32_t STAKE_POOL_ID_SIZE = 28;
+inline constexpr uint32_t STAKE_POOL_ID_SIZE = 28;
+
+/// @brief Stake pool KES depth.
+inline constexpr size_t STAKE_POOL_KES_DEPTH = 6;
+
+/// @brief Stake pool KES signature size.
+inline constexpr size_t STAKE_POOL_KES_SIGNATURE_SIZE = 448;
 
 // Forward Declarations
 class ColdVerificationKey;
@@ -61,6 +64,8 @@ class KesVerificationKey;
 class KesSigningKey;
 class OperationalCertificateIssueCounter;
 class OperationalCertificateManager;
+
+using namespace cardano::ed25519;
 
 /// @brief A stake pool verification key (Ed25519 public key).
 class ColdVerificationKey
@@ -178,7 +183,7 @@ class ColdSigningKey
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // ColdSigningKey
 
 /// @brief A CIP-1853 stake pool signing key (extended Ed25519 signing key).
 class ExtendedColdSigningKey
@@ -278,7 +283,7 @@ class VrfVerificationKey : public VRFPublicKey
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // VrfVerificationKey
 
 /// @brief A VRF signing key used by stake pools to verify leadership selection.
 class VrfSigningKey : public VRFSecretKey
@@ -301,9 +306,10 @@ class VrfSigningKey : public VRFSecretKey
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // VrfSigningKey
 
-// Placeholder class for Op Cert dev
+/// @brief A KES verification key used by stake pools to verify block
+/// signatures.
 class KesVerificationKey : public KesPublicKey
 {
   public:
@@ -313,18 +319,42 @@ class KesVerificationKey : public KesPublicKey
     {
     }
 
+    /// @brief Verify a signature using the KES verification key.
+    /// @param period The KES key period.
+    /// @param msg A span of bytes (uint8_t) representing the original message.
+    /// @param sig A span of 448 bytes (uint8_t) representing the signature.
+    [[nodiscard]] auto verifySignature(
+        uint32_t period,
+        std::span<const uint8_t> msg,
+        std::span<const uint8_t, STAKE_POOL_KES_SIGNATURE_SIZE> sig
+    ) const -> bool;
+
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // KesVerificationKey
 
-class KesSigningKey : SumKesPrivateKey<6>
+/// @brief A KES signing key used by stake pools to sign blocks.
+class KesSigningKey : public SumKesPrivateKey<STAKE_POOL_KES_DEPTH>
 {
   public:
+    /// @brief Construct a signing key object from a span of key bytes.
+    /// @param pub A span of key  bytes that will be copied into the object.
+    explicit KesSigningKey(std::span<uint8_t> pub) : SumKesPrivateKey<STAKE_POOL_KES_DEPTH>(pub)
+    {
+    }
+
+    /// @brief Derive the corresponding verification (public) key.
+    /// @return The verification key object.
+    [[nodiscard]] auto verificationKey() const -> KesVerificationKey
+    {
+        return KesVerificationKey{this->publicKey().bytes()};
+    }
+
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // KesSigningKey
 
 /// @brief A node operational certificate issue counter.
 class OperationalCertificateIssueCounter
@@ -604,7 +634,7 @@ class RegistrationCertificateManager
     /// @brief Export the certifiate to a file in the text envelope format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // OperationalCertificateManager
 
 /// @brief An interface for managing stake pool retirement certificates.
 class DeregistrationCertificateManager
@@ -658,9 +688,8 @@ class DeregistrationCertificateManager
     /// @brief Export the certifiate to a file in the text envelope format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // DeregistrationCertificateManager
 
-}  // namespace stake_pool
-}  // namespace cardano
+}  // namespace cardano::stake_pool
 
 #endif  // _CARDANO_STAKE_POOL_HPP_

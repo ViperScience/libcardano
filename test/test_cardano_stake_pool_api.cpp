@@ -20,7 +20,6 @@
 
 // Standard library headers
 #include <fstream>
-#include <streambuf>
 #include <string>
 
 // Third-party library headers
@@ -33,8 +32,8 @@
 #include <cardano/address.hpp>
 #include <cardano/util.hpp>
 
-// temp
-#include "utils.hpp"
+// Local test headers
+#include "test_utils.hpp"
 
 using namespace cardano;
 using Catch::Matchers::RangeEquals;
@@ -261,7 +260,7 @@ TEST_CASE( "Verify stake pool CIP-1853 functionality.", "[stake_pool_cold_key]" 
 }
 
 TEST_CASE( "Verify stake pool VRF key functionality.", "[stake_pool_vrf_key]" )
-{    
+{
     SECTION( "VRF Test Vector" )
     {
         // Test vector from https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vrf-03#appendix-A.4
@@ -309,5 +308,65 @@ TEST_CASE( "Verify stake pool VRF key functionality.", "[stake_pool_vrf_key]" )
 
         REQUIRE_THAT( b2_vrf_seed, RangeEquals(b2_vrf_seed_test) );
         REQUIRE( vrf_vkey.verifyProof(b2_vrf_seed, b2_vrf_proof) );
+    }
+}
+
+constexpr auto KES_KEY_FILE_CONTENTS = R"({
+    "type": "KesVerificationKey_ed25519_kes_2^6",
+    "description": "KES Verification Key",
+    "cborHex": "582098484ea7d354adcd6838d10df2f2af3b9ac2ee45808135b899f4eeb03377fc3c"
+})";
+
+TEST_CASE( "Verify stake pool KES key functionality.", "[stake_pool_kes_key]" )
+{
+    SECTION( "KES Key Basics" )
+    {
+        constexpr auto dummy_msg = "cf2902f491c9e8e436ca4ad7769ba78c05e98e7b02f66f5127957f31db7aaf73";
+
+        auto skey_bytes = BASE16::decode("c7abd45fac4a731b95f156b968caef86d84e45d455e01ea69a9b0b12ffdeda0f6d759f3b0ef1bb636f1fbc4bf9d8e78ba1ea2e4d63e72cb22ee73d3f7e36ef9e879af6252598eaa6ba2910e9f84af52b836bcfe4315cf5f0a6c99fbb07839fe1bddbb4f92e004d5741b2d712e71dc451933cc865aca568a7dbc87e6df9d20f56f5c9ded14cf34c327f84e203120e7ec2f1261a66059788fb307b18be7a29e4bd1fca25c784e5d8ad1e5210686aa9d6f2b0ebc92efb244d9f2d98924ca7bd0641aaf844748a31f527ba7ea09bdf2c424f6461ec77ce8169154ecf2f2c44ee0eb25fd82b90caaf8ec222998e80830c4b86ed35c9acf95b07ece0331544208e126ac8d9b588e21792363e4af19e8b7bc767f2766b998241e008af9a03b938fe62fca985e92a2cb157031f7f616d98d1f8dee28ab9c9a17e70b0a1492ef83415dd16b8038915afe28b5ce088082deb15152138fa1242a9d4be46623d1860e4399a01d1650f2095b1bbd3043325ea98de2a847c967a61a4646483ddd1962d96d4c9d1519df0d594336947015478e081699917addb68a44514ae8d7a6d0742aa8584aa438d9cffb4dd8f64ae9f494216d440a5392750de288b9c27afed30d47572c4f04fb7ab5554c5754cc0beb5a2d399e709bf10c0689551a83d2d9aee8a899760df2c5712cdfbf928fa1c9bbc3828429d12f21a3bcdd19e16613819bfe490d8cd3c354a0602df11bdb14fb410d773de64293114c1db33014a9f3dc47e287949998bfd2a05bcaf0189606f625aa2a4cc7ed91220b0fda46a85f22ac906d42fe42a541f3b5b6abe5dd44eb13d79496a2f19ea01fe570631f9977e966fbc0dfcc599f5");
+        auto skey = stake_pool::KesSigningKey(skey_bytes);
+        auto vkey = skey.publicKey();
+
+        REQUIRE(skey.sign(dummy_msg).verify(0, vkey, dummy_msg));
+    }
+
+    SECTION( "KES Key File IO" )
+    {
+        const auto preprod_vkey = stake_pool::KesVerificationKey(
+            util::makeByteArray<32>(
+                BASE16::decode(
+                    "98484ea7d354adcd6838d10df2f2af3b9ac2ee45808135b899f4eeb03377fc3c"
+                )
+            )
+        );
+
+        preprod_vkey.saveToFile(KEY_FILE_PATH);
+        auto key_file = std::ifstream(KEY_FILE_PATH);
+        auto key_file_str = std::string(
+            (std::istreambuf_iterator<char>(key_file)),
+            std::istreambuf_iterator<char>()
+        );
+        key_file.close();
+
+        REQUIRE(key_file_str == KES_KEY_FILE_CONTENTS);
+    }
+
+    SECTION( "Pre-Prod Testnet" )
+    {
+        // Test with an actual stake-pool key. 
+        // Unfortunately, we don't yet have a good way to pull block CBOR and test the signature.
+
+        auto skey_bytes = BASE16::decode("c7abd45fac4a731b95f156b968caef86d84e45d455e01ea69a9b0b12ffdeda0f6d759f3b0ef1bb636f1fbc4bf9d8e78ba1ea2e4d63e72cb22ee73d3f7e36ef9e879af6252598eaa6ba2910e9f84af52b836bcfe4315cf5f0a6c99fbb07839fe1bddbb4f92e004d5741b2d712e71dc451933cc865aca568a7dbc87e6df9d20f56f5c9ded14cf34c327f84e203120e7ec2f1261a66059788fb307b18be7a29e4bd1fca25c784e5d8ad1e5210686aa9d6f2b0ebc92efb244d9f2d98924ca7bd0641aaf844748a31f527ba7ea09bdf2c424f6461ec77ce8169154ecf2f2c44ee0eb25fd82b90caaf8ec222998e80830c4b86ed35c9acf95b07ece0331544208e126ac8d9b588e21792363e4af19e8b7bc767f2766b998241e008af9a03b938fe62fca985e92a2cb157031f7f616d98d1f8dee28ab9c9a17e70b0a1492ef83415dd16b8038915afe28b5ce088082deb15152138fa1242a9d4be46623d1860e4399a01d1650f2095b1bbd3043325ea98de2a847c967a61a4646483ddd1962d96d4c9d1519df0d594336947015478e081699917addb68a44514ae8d7a6d0742aa8584aa438d9cffb4dd8f64ae9f494216d440a5392750de288b9c27afed30d47572c4f04fb7ab5554c5754cc0beb5a2d399e709bf10c0689551a83d2d9aee8a899760df2c5712cdfbf928fa1c9bbc3828429d12f21a3bcdd19e16613819bfe490d8cd3c354a0602df11bdb14fb410d773de64293114c1db33014a9f3dc47e287949998bfd2a05bcaf0189606f625aa2a4cc7ed91220b0fda46a85f22ac906d42fe42a541f3b5b6abe5dd44eb13d79496a2f19ea01fe570631f9977e966fbc0dfcc599f5");
+        auto preprod_skey = stake_pool::KesSigningKey(skey_bytes);
+
+        const auto preprod_vkey = stake_pool::KesVerificationKey(
+            util::makeByteArray<32>(
+                BASE16::decode(
+                    "98484ea7d354adcd6838d10df2f2af3b9ac2ee45808135b899f4eeb03377fc3c"
+                )
+            )
+        );
+
+        REQUIRE(preprod_skey.publicKey().bytes() == preprod_vkey.bytes());
     }
 }

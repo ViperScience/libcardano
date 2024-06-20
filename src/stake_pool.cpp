@@ -18,10 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <cardano/stake_pool.hpp>
 
 // Standard library headers
-#include <string>
+
 
 // Third-Party headers
 #include <botan/hash.h>
@@ -29,6 +28,7 @@
 
 // Libcardano headers
 #include <cardano/encodings.hpp>
+#include <cardano/stake_pool.hpp>
 #include <cardano/util.hpp>
 
 #include "utils.hpp"
@@ -38,7 +38,7 @@ using namespace cardano::stake_pool;
 
 static constexpr auto MIN_POOL_COST_LOVELACE = 170000000;
 
-auto ColdVerificationKey::saveToFile(std::string_view fpath) const -> void
+auto cardano::stake_pool::ColdVerificationKey::saveToFile(std::string_view fpath) const -> void
 {
     const auto key_bytes = this->bytes();
     const auto key_cbor_hex = BASE16::encode(
@@ -60,7 +60,7 @@ auto ColdVerificationKey::poolId() const
     const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
     blake2b->update(key_bytes.data(), key_bytes.size());
     const auto hashed = blake2b->final();
-    return utils::makeByteArray<STAKE_POOL_ID_SIZE>(hashed);
+    return util::makeByteArray<STAKE_POOL_ID_SIZE>(hashed);
 }  // ColdVerificationKey::poolId
 
 auto ColdSigningKey::saveToFile(std::string_view fpath) const -> void
@@ -105,9 +105,9 @@ auto ExtendedColdSigningKey::fromMnemonic(const cardano::Mnemonic& mn)
 {
     const auto root_key = bip32_ed25519::PrivateKey::fromMnemonic(mn);
     const auto pool_key = root_key.deriveChild(bip32_ed25519::HardenIndex(1853))
-                                  .deriveChild(bip32_ed25519::HardenIndex(1815))
-                                  .deriveChild(bip32_ed25519::HardenIndex(0))
-                                  .deriveChild(bip32_ed25519::HardenIndex(0));
+                              .deriveChild(bip32_ed25519::HardenIndex(1815))
+                              .deriveChild(bip32_ed25519::HardenIndex(0))
+                              .deriveChild(bip32_ed25519::HardenIndex(0));
     const auto pool_key_bytes = pool_key.xbytes();
     return ExtendedColdSigningKey(pool_key_bytes);
 }  // ExtendedColdSigningKey::fromMnemonic
@@ -160,7 +160,7 @@ auto opCertMessageToSign(cardano::shelley::OperationalCert cert)
 {
     auto be = utils::concatBytes(
         utils::concatBytes(
-            cert.hot_vkey, 
+            cert.hot_vkey,
             util::BytePacker<uint64_t>::pack(cert.sequence_number)
         ),
         util::BytePacker<uint64_t>::pack(cert.kes_period)
@@ -411,6 +411,16 @@ auto VrfSigningKey::saveToFile(std::string_view fpath) const -> void
     );
     utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // VrfSigningKey::saveToFile
+
+auto KesVerificationKey::verifySignature(
+    uint32_t period,
+    std::span<const uint8_t> msg,
+    std::span<const uint8_t, STAKE_POOL_KES_SIGNATURE_SIZE> sig
+) const -> bool
+{
+    const auto sigma = SumKesSignature<6>(sig);
+    return sigma.verify(period, *this, msg);
+}
 
 auto KesVerificationKey::saveToFile(std::string_view fpath) const -> void
 {
