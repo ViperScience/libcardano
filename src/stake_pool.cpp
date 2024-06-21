@@ -31,8 +31,6 @@
 #include <cardano/stake_pool.hpp>
 #include <cardano/util.hpp>
 
-#include "utils.hpp"
-
 using namespace cardano;
 using namespace cardano::stake_pool;
 
@@ -44,7 +42,7 @@ auto cardano::stake_pool::ColdVerificationKey::saveToFile(std::string_view fpath
     const auto key_cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
 }  // ColdVerificationKey::saveToFile
 
 auto ColdVerificationKey::asBech32() const -> std::string
@@ -69,7 +67,7 @@ auto ColdSigningKey::saveToFile(std::string_view fpath) const -> void
     const auto key_cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
 }  // ColdSigningKey::saveToFile
 
 auto ColdSigningKey::asBech32() const -> std::string
@@ -118,7 +116,7 @@ auto ExtendedColdSigningKey::saveToFile(std::string_view fpath) const -> void
     const auto key_cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
 }  // ExtendedColdSigningKey::saveToFile
 
 auto ExtendedColdSigningKey::asBech32() const -> std::string
@@ -152,14 +150,14 @@ auto OperationalCertificateIssueCounter::saveToFile(
     static constexpr auto desc_str_head = "Next certificate issue number: ";
     const auto desc_str = desc_str_head + std::to_string(this->count_);
     const auto counter_cbor_hex = BASE16::encode(this->serialize(vkey));
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, counter_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, counter_cbor_hex);
 }  // OperationalCertificateIssueCounter::saveToFile
 
 auto opCertMessageToSign(cardano::shelley::OperationalCert cert)
     -> std::vector<uint8_t>
 {
-    auto be = utils::concatBytes(
-        utils::concatBytes(
+    auto be = util::concatBytes(
+        util::concatBytes(
             cert.hot_vkey,
             util::BytePacker<uint64_t>::pack(cert.sequence_number)
         ),
@@ -265,7 +263,7 @@ auto OperationalCertificateManager::saveToFile(
 {
     static constexpr auto type_str = "NodeOperationalCertificate";
     const auto counter_cbor_hex = BASE16::encode(this->serialize(vkey));
-    utils::writeEnvelopeTextFile(fpath, type_str, "", counter_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, "", counter_cbor_hex);
 }  // OperationalCertificateManager::saveToFile
 
 RegistrationCertificateManager::RegistrationCertificateManager(
@@ -287,7 +285,7 @@ RegistrationCertificateManager::RegistrationCertificateManager(
         throw std::invalid_argument("cost must be above min pool cost.");
     }
 
-    auto [n, d] = utils::rationalApprox(margin, 4096);
+    auto [n, d] = util::rationalApprox(margin, 4096);
 
     this->cert_.pool_params.pool_operator = vkey.poolId();
     this->cert_.pool_params.vrf_keyhash = vrf_vkey.keyHash();
@@ -303,7 +301,7 @@ auto RegistrationCertificateManager::setMargin(double margin) -> void
     {
         throw std::invalid_argument("margin must be between 0 and 1");
     }
-    auto [n, d] = utils::rationalApprox(margin, 4096);
+    auto [n, d] = util::rationalApprox(margin, 4096);
     this->cert_.pool_params.margin = {(uint64_t)n, (uint64_t)d};
 }  // RegistrationCertificateManager::setMargin
 
@@ -369,7 +367,7 @@ auto RegistrationCertificateManager::saveToFile(std::string_view fpath) const
     static constexpr auto type_str = "NodeOperationalCertificate";
     static constexpr auto desc_str = "Stake Pool Registration Certificate";
     const auto cbor_hex = BASE16::encode(this->serialize());
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // RegistrationCertificateManager::saveToFile
 
 auto DeregistrationCertificateManager::saveToFile(std::string_view fpath) const
@@ -378,7 +376,7 @@ auto DeregistrationCertificateManager::saveToFile(std::string_view fpath) const
     static constexpr auto type_str = "DeregistrationCertificateManager";
     static constexpr auto desc_str = "Stake Pool Retirement Certificate";
     const auto cbor_hex = BASE16::encode(this->serialize());
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // DeregistrationCertificateManager::saveToFile
 
 auto VrfVerificationKey::keyHash() const -> std::array<uint8_t, 32>
@@ -398,7 +396,7 @@ auto VrfVerificationKey::saveToFile(std::string_view fpath) const -> void
     const auto cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // VrfVerificationKey::saveToFile
 
 auto VrfSigningKey::saveToFile(std::string_view fpath) const -> void
@@ -409,7 +407,7 @@ auto VrfSigningKey::saveToFile(std::string_view fpath) const -> void
     const auto cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // VrfSigningKey::saveToFile
 
 auto KesVerificationKey::verifySignature(
@@ -430,7 +428,7 @@ auto KesVerificationKey::saveToFile(std::string_view fpath) const -> void
     const auto cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // KesVerificationKey::saveToFile
 
 auto KesSigningKey::saveToFile(std::string_view fpath) const -> void
@@ -441,5 +439,5 @@ auto KesSigningKey::saveToFile(std::string_view fpath) const -> void
     const auto cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // KesVerificationKey::saveToFile

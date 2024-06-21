@@ -21,16 +21,10 @@
 // Standard Library Headers
 
 // Third-Party Library Headers
-#include <botan/auto_rng.h>
-#include <botan/hash.h>
-#include <botan/rng.h>
 #include <sodium.h>
 
 // Public Cardano Headers
 #include <cardano/ed25519.hpp>
-
-// Private Viper25519 code
-#include "utils.hpp"
 
 using namespace cardano;
 
@@ -80,6 +74,6 @@ auto ed25519::PrivateKey::sign(std::span<const uint8_t> msg
     crypto_sign_seed_keypair(pk.data(), sk.data(), this->prv_.data());
 
     auto sig = ByteArray<SIGNATURE_SIZE>();
-    crypto_sign_detached(sig.data(), NULL, msg.data(), msg.size(), sk.data());
+    crypto_sign_detached(sig.data(), nullptr, msg.data(), msg.size(), sk.data());
     return sig;
 }  // PrivateKey::sign

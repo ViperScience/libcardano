@@ -32,8 +32,6 @@
 #include <cardano/encodings.hpp>
 #include <cardano/util.hpp>
 
-#include "utils.hpp"
-
 using namespace cardano;
 
 namespace  // unnamed namespace
@@ -211,14 +209,14 @@ auto verify_checksum(std::string_view hrp, std::span<const uint8_t> values)
     // the case that appending a 0 to a valid list of values would result in a
     // new valid list. For that reason, Bech32 requires the resulting checksum
     // to be 1 instead.
-    const uint32_t check = polymod(utils::concatBytes(expand_hrp(hrp), values));
+    const uint32_t check = polymod(util::concatBytes(expand_hrp(hrp), values));
     return check == 1;
 }  // verify_checksum
 
 auto create_checksum(std::string_view hrp, std::span<const uint8_t> values)
     -> std::vector<uint8_t>
 {
-    std::vector<uint8_t> enc = utils::concatBytes(expand_hrp(hrp), values);
+    std::vector<uint8_t> enc = util::concatBytes(expand_hrp(hrp), values);
     enc.resize(enc.size() + 6);
     const uint32_t mod = polymod(enc) ^ 1;
     std::vector<uint8_t> ret;
@@ -282,7 +280,7 @@ auto BECH32::encode(std::string_view hrp, std::span<const uint8_t> values)
             );
     auto unpacked_values = convertbits(values, 8, 5, true);
     auto checksum = create_checksum(hrp, unpacked_values);
-    auto combined = utils::concatBytes(unpacked_values, checksum);
+    auto combined = util::concatBytes(unpacked_values, checksum);
     auto ret = std::string(hrp) + '1';
     ret.reserve(ret.size() + combined.size());
     for (const auto c : combined) ret += B32_CHARSET[c];

@@ -48,8 +48,8 @@ auto concatBytes(SizedRange1 const &r1, SizedRange2 const &r2)
 /// @brief Convert a span of bytes into a fixed size array.
 /// @return An array containing the elements from the input.
 template <std::size_t N>
-constexpr auto makeByteArray(std::span<const uint8_t> vec)
-    -> std::array<uint8_t, N>
+constexpr auto makeByteArray(std::span<const uint8_t> vec
+) -> std::array<uint8_t, N>
 {
     std::array<uint8_t, N> arr;
     std::ranges::copy(vec | std::views::take(N), arr.begin());
@@ -126,6 +126,30 @@ struct BytePacker
         return value;
     }
 };  // BytePacker
+
+/// @brief Write CBOR date to file in the envelope format used by cardano node.
+/// @param file_path Path to the generated key file.
+/// @param type A string key type specifier.
+/// @param description Description of the key (maybe empty).
+/// @param cbor_hex The CBOR key data in hex string format.
+auto writeEnvelopeTextFile(
+    const std::string_view file_path,
+    const std::string_view type,
+    const std::string_view description,
+    const std::string_view cbor_hex
+) -> void;
+
+/// @brief Approximate a floating point number as a rational number.
+/// @param f The floating point number to convert.
+/// @param md The maximum denominator.
+/// @return The numerator and denominator as a pair of integers.
+/// @note Note that machine floating point number has a finite resolution
+/// (10e-16 ish for 64 bit double), so specifying a "best match with minimal
+/// error" is often wrong, because one can always just retrieve the significand
+/// and return that divided by 2**52, which is in a sense accurate, but
+/// generally not very useful: 1.0/7.0 would be
+/// "2573485501354569/18014398509481984", for example.
+auto rationalApprox(double f, int64_t md) -> std::pair<int64_t, int64_t>;
 
 }  // namespace cardano::util
 

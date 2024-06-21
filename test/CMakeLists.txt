@@ -114,9 +114,6 @@ ADD_TEST("Cardano KES Integration" test_cardano_kes_integration)
 ################################################################################
 # Test Cardano Stake Pool API
 ################################################################################
-ADD_EXECUTABLE(test_cardano_stake_pool
-    test_cardano_stake_pool_api.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
-)
+ADD_EXECUTABLE(test_cardano_stake_pool test_cardano_stake_pool_api.cpp)
 target_link_libraries(test_cardano_stake_pool PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Stake Pool API" test_cardano_stake_pool)
