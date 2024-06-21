@@ -56,17 +56,17 @@ static void print_bytes(std::span<const uint8_t> data, size_t line_width = 16)
 /// @return The binary data in a std::vector.
 static auto load_bytes(std::string_view file_path) -> std::vector<uint8_t>
 {
-    std::ifstream stream(file_path, std::ios::in | std::ios::binary);
+    auto stream = std::ifstream(file_path.data(), std::ios::in | std::ios::binary);
     if (!stream)
     {
         throw std::runtime_error(
             "Failed to open file: " + std::string(file_path)
         );
     }
-    return std::vector<uint8_t>(
+    return {
         (std::istreambuf_iterator<char>(stream)),
         std::istreambuf_iterator<char>()
-    );
+    };
 }  // load_bytes
 
 }  // namespace cardano_test

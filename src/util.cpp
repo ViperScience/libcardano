@@ -18,10 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <cardano/util.hpp>
-
 // Standard Library Headers
+#include <cmath>
 #include <fstream>
+
+// Public libcardano Headers
+#include <cardano/util.hpp>
 
 auto cardano::util::writeEnvelopeTextFile(
     const std::string_view file_path,
