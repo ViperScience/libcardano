@@ -29,7 +29,11 @@ Leadership validation is acheived using the VRF hash via the process described i
 
 @subsection subsection-kes-keys KES Keys
 
-TODO
+Stake pool sign blocks they create with the "hot" key as opposed to the "cold" key, which remains offline. The cold key delegates its signing authority to the hot key via the operational certificate (discussed below). The hot keys used by the Cardano node are Key Evolving Signature (KES) keys based on Ed25519 keys. The KES idea behind KES is that the actual signing key rotates while the public or verifying key stays the same. The old keys become invalid after a period of time and in that way prevent someone from attempting to re-organize the chain should a pool’s hot keys become compromised.
+
+There are multiple constructs that may be used to implement a KES key. Cardano stake pools used the sum method outlined in “Composition and Efficiency Tradeoffs for Forward-Secure Digital Signatures” [link](https://eprint.iacr.org/2001/034). At a high level, a KES scheme may be described as a tree structure of public keys, at the end of each branch is a signing key. The signature can be verified with the top-level public key by combining the correct sets of public keys in the tree structure. In order to do this, KES signatures must also contain public keys so the signatures scale in size with the depth of the KES tree. The larger the tree depth, the more times the secret keys may be rotated without changing the top-level public key. Cardano stake pools utilize sum keys with depth six which allows for 2^6 - 1 = 63 rotations.
+
+Cardano block headers store the header body and the KES key signature. 
 
 @subsection subsection-certificates Operational Certificates
 
