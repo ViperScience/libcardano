@@ -34,6 +34,15 @@ A Docker build option is also provided.
 
     docker build -t libcardano:latest .
 
+### Building Examples
+
+The project contains example programs that may be compiled and executed.
+To include the examples during the build, set the `BUILD_LIBCARDANO_EXAMPLES` flag.
+An example is shown below.
+
+    cmake -B build/ -S . -DBUILD_LIBCARDANO_EXAMPLES=ON
+    cmake --build build/ --parallel 4
+
 ### Submodule Dependencies
 Libcardano relies on functionality from the following dependencies, which are included as git submodules. 
 
