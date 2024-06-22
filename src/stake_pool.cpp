@@ -437,7 +437,16 @@ auto KesSigningKey::saveToFile(std::string_view fpath) const -> void
     static constexpr auto desc_str = "KES Signing Key";
     const auto key_bytes = this->bytes();
     const auto cbor_hex = BASE16::encode(
-        cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
+        cppbor::Bstr({key_bytes.data(), this->size}).encode()
     );
     util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // KesVerificationKey::saveToFile
+
+auto KesSigningKey::generate() -> KesSigningKey
+{
+    constexpr auto key_size = SumKesPrivateKey<STAKE_POOL_KES_DEPTH>::size;
+    auto mut_key = SecureByteArray<key_size>();
+    const auto [s, p] = SumKesPrivateKey<STAKE_POOL_KES_DEPTH>::generate();
+    std::copy_n(s.bytes().begin(), key_size, mut_key.begin());
+    return KesSigningKey(mut_key);
+}  // KesSigningKey::generate

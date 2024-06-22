@@ -296,6 +296,13 @@ class VrfSigningKey : public VRFSecretKey
     {
     }
 
+    /// Factory method to create a new VRF signing key from a
+    /// cryptographically secure random number generator.
+    [[nodiscard]] static auto generate() -> VrfSigningKey
+    {
+        return VrfSigningKey(VRFSecretKey::generate().bytes());
+    }
+
     /// @brief Derive the corresponding verification (public) key.
     /// @return The verification key object.
     [[nodiscard]] auto verificationKey() const -> VrfVerificationKey
@@ -343,6 +350,11 @@ class KesSigningKey : public SumKesPrivateKey<STAKE_POOL_KES_DEPTH>
     explicit KesSigningKey(std::span<uint8_t> pub) : SumKesPrivateKey<STAKE_POOL_KES_DEPTH>(pub)
     {
     }
+
+    /// Factory method to create a new KES signing key from a
+    /// cryptographically secure random number generator.
+    /// @return A new KES signing key.
+    [[nodiscard]] static auto generate() -> KesSigningKey;
 
     /// @brief Derive the corresponding verification (public) key.
     /// @return The verification key object.

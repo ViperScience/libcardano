@@ -161,6 +161,16 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
 endif()
 
 ################################################################################
+# Examples
+################################################################################
+
+option(BUILD_LIBCARDANO_EXAMPLES "Build the project examples" OFF)
+
+if(BUILD_LIBCARDANO_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
+################################################################################
 # Install the Target
 ################################################################################
 set(PROJECT_NAME_TARGETS ${PROJECT_NAME}Targets)
