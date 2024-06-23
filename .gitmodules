@@ -1,9 +1,12 @@
-[submodule "libs/viper25519"]
-	path = libs/viper25519
-	url = https://gitlab.com/viper-staking/viper25519
 [submodule "libs/libcppbor"]
 	path = libs/libcppbor
 	url = https://gitlab.com/viperscience/libcppbor.git
 [submodule "libs/Catch2"]
 	path = libs/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "libs/cryptopp"]
+	path = libs/cryptopp
+	url = https://github.com/ViperScience/cryptopp.git
+[submodule "libs/cryptopp-cmake"]
+	path = libs/cryptopp-cmake
+	url = https://github.com/abdes/cryptopp-cmake.git

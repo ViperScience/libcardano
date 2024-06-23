@@ -18,10 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <cardano/stake_pool.hpp>
 
 // Standard library headers
-#include <string>
+
 
 // Third-Party headers
 #include <botan/hash.h>
@@ -29,21 +28,21 @@
 
 // Libcardano headers
 #include <cardano/encodings.hpp>
-
-#include "utils.hpp"
+#include <cardano/stake_pool.hpp>
+#include <cardano/util.hpp>
 
 using namespace cardano;
 using namespace cardano::stake_pool;
 
 static constexpr auto MIN_POOL_COST_LOVELACE = 170000000;
 
-auto ColdVerificationKey::saveToFile(std::string_view fpath) const -> void
+auto cardano::stake_pool::ColdVerificationKey::saveToFile(std::string_view fpath) const -> void
 {
     const auto key_bytes = this->bytes();
     const auto key_cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
 }  // ColdVerificationKey::saveToFile
 
 auto ColdVerificationKey::asBech32() const -> std::string
@@ -59,7 +58,7 @@ auto ColdVerificationKey::poolId() const
     const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
     blake2b->update(key_bytes.data(), key_bytes.size());
     const auto hashed = blake2b->final();
-    return utils::makeByteArray<STAKE_POOL_ID_SIZE>(hashed);
+    return util::makeByteArray<STAKE_POOL_ID_SIZE>(hashed);
 }  // ColdVerificationKey::poolId
 
 auto ColdSigningKey::saveToFile(std::string_view fpath) const -> void
@@ -68,7 +67,7 @@ auto ColdSigningKey::saveToFile(std::string_view fpath) const -> void
     const auto key_cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
 }  // ColdSigningKey::saveToFile
 
 auto ColdSigningKey::asBech32() const -> std::string
@@ -84,30 +83,30 @@ auto ColdSigningKey::poolId() -> std::array<uint8_t, STAKE_POOL_ID_SIZE>
 
 auto ColdSigningKey::extend() const -> ExtendedColdSigningKey
 {
-    const auto key_bytes = this->skey_.extend().bytes();
-    return ExtendedColdSigningKey(key_bytes);
+    const auto xsk = bip32_ed25519::PrivateKey::fromSeed(this->skey_.bytes());
+    return ExtendedColdSigningKey(xsk.xbytes());
 }  // ColdSigningKey::extend
 
-auto ExtendedColdSigningKey::fromRootKey(const BIP32PrivateKey& root)
+auto ExtendedColdSigningKey::fromRootKey(const bip32_ed25519::PrivateKey& root)
     -> ExtendedColdSigningKey
 {
-    const auto pool_key = root.deriveChild(HardenIndex(1853))
-                              .deriveChild(HardenIndex(1815))
-                              .deriveChild(HardenIndex(0))
-                              .deriveChild(HardenIndex(0));
-    const auto pool_key_bytes = pool_key.toBytes(false);
+    const auto pool_key = root.deriveChild(bip32_ed25519::HardenIndex(1853))
+                              .deriveChild(bip32_ed25519::HardenIndex(1815))
+                              .deriveChild(bip32_ed25519::HardenIndex(0))
+                              .deriveChild(bip32_ed25519::HardenIndex(0));
+    const auto pool_key_bytes = pool_key.xbytes();
     return ExtendedColdSigningKey(pool_key_bytes);
 }  // ExtendedColdSigningKey::fromRootKey
 
 auto ExtendedColdSigningKey::fromMnemonic(const cardano::Mnemonic& mn)
     -> ExtendedColdSigningKey
 {
-    const auto root_key = BIP32PrivateKey::fromMnemonic(mn);
-    const auto pool_key = root_key.deriveChild(HardenIndex(1853))
-                              .deriveChild(HardenIndex(1815))
-                              .deriveChild(HardenIndex(0))
-                              .deriveChild(HardenIndex(0));
-    const auto pool_key_bytes = pool_key.toBytes(false);
+    const auto root_key = bip32_ed25519::PrivateKey::fromMnemonic(mn);
+    const auto pool_key = root_key.deriveChild(bip32_ed25519::HardenIndex(1853))
+                              .deriveChild(bip32_ed25519::HardenIndex(1815))
+                              .deriveChild(bip32_ed25519::HardenIndex(0))
+                              .deriveChild(bip32_ed25519::HardenIndex(0));
+    const auto pool_key_bytes = pool_key.xbytes();
     return ExtendedColdSigningKey(pool_key_bytes);
 }  // ExtendedColdSigningKey::fromMnemonic
 
@@ -117,7 +116,7 @@ auto ExtendedColdSigningKey::saveToFile(std::string_view fpath) const -> void
     const auto key_cbor_hex = BASE16::encode(
         cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
     );
-    utils::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, kTypeStr, kDescStr, key_cbor_hex);
 }  // ExtendedColdSigningKey::saveToFile
 
 auto ExtendedColdSigningKey::asBech32() const -> std::string
@@ -151,17 +150,18 @@ auto OperationalCertificateIssueCounter::saveToFile(
     static constexpr auto desc_str_head = "Next certificate issue number: ";
     const auto desc_str = desc_str_head + std::to_string(this->count_);
     const auto counter_cbor_hex = BASE16::encode(this->serialize(vkey));
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, counter_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, counter_cbor_hex);
 }  // OperationalCertificateIssueCounter::saveToFile
 
 auto opCertMessageToSign(cardano::shelley::OperationalCert cert)
     -> std::vector<uint8_t>
 {
-    auto be = utils::concatBytes(
-        utils::concatBytes(
-            cert.hot_vkey, utils::U64TO8_BE(cert.sequence_number)
+    auto be = util::concatBytes(
+        util::concatBytes(
+            cert.hot_vkey,
+            util::BytePacker<uint64_t>::pack(cert.sequence_number)
         ),
-        utils::U64TO8_BE(cert.kes_period)
+        util::BytePacker<uint64_t>::pack(cert.kes_period)
     );
     return be;
 }
@@ -263,7 +263,7 @@ auto OperationalCertificateManager::saveToFile(
 {
     static constexpr auto type_str = "NodeOperationalCertificate";
     const auto counter_cbor_hex = BASE16::encode(this->serialize(vkey));
-    utils::writeEnvelopeTextFile(fpath, type_str, "", counter_cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, "", counter_cbor_hex);
 }  // OperationalCertificateManager::saveToFile
 
 RegistrationCertificateManager::RegistrationCertificateManager(
@@ -285,7 +285,7 @@ RegistrationCertificateManager::RegistrationCertificateManager(
         throw std::invalid_argument("cost must be above min pool cost.");
     }
 
-    auto [n, d] = utils::rationalApprox(margin, 4096);
+    auto [n, d] = util::rationalApprox(margin, 4096);
 
     this->cert_.pool_params.pool_operator = vkey.poolId();
     this->cert_.pool_params.vrf_keyhash = vrf_vkey.keyHash();
@@ -301,7 +301,7 @@ auto RegistrationCertificateManager::setMargin(double margin) -> void
     {
         throw std::invalid_argument("margin must be between 0 and 1");
     }
-    auto [n, d] = utils::rationalApprox(margin, 4096);
+    auto [n, d] = util::rationalApprox(margin, 4096);
     this->cert_.pool_params.margin = {(uint64_t)n, (uint64_t)d};
 }  // RegistrationCertificateManager::setMargin
 
@@ -309,7 +309,7 @@ auto RegistrationCertificateManager::addOwner(const RewardsAddress& stake_addr)
     -> void
 {
     auto byte_vec = stake_addr.toBytes();
-    auto arr = utils::makeByteArray<28>(byte_vec);
+    auto arr = util::makeByteArray<28>(byte_vec);
     this->cert_.pool_params.pool_owners.insert(arr);
 }  // RegistrationCertificateManager::addOwner
 
@@ -357,7 +357,7 @@ auto RegistrationCertificateManager::setMetadata(
 {
     this->cert_.pool_params.pool_metadata.reset();
     this->cert_.pool_params.pool_metadata.emplace(
-        metadata_url, utils::makeByteArray<32>(hash)
+        metadata_url, util::makeByteArray<32>(hash)
     );
 }  // RegistrationCertificateManager::setMetadata
 
@@ -367,7 +367,7 @@ auto RegistrationCertificateManager::saveToFile(std::string_view fpath) const
     static constexpr auto type_str = "NodeOperationalCertificate";
     static constexpr auto desc_str = "Stake Pool Registration Certificate";
     const auto cbor_hex = BASE16::encode(this->serialize());
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // RegistrationCertificateManager::saveToFile
 
 auto DeregistrationCertificateManager::saveToFile(std::string_view fpath) const
@@ -376,7 +376,7 @@ auto DeregistrationCertificateManager::saveToFile(std::string_view fpath) const
     static constexpr auto type_str = "DeregistrationCertificateManager";
     static constexpr auto desc_str = "Stake Pool Retirement Certificate";
     const auto cbor_hex = BASE16::encode(this->serialize());
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // DeregistrationCertificateManager::saveToFile
 
 auto VrfVerificationKey::keyHash() const -> std::array<uint8_t, 32>
@@ -385,21 +385,68 @@ auto VrfVerificationKey::keyHash() const -> std::array<uint8_t, 32>
     const auto blake2b = Botan::HashFunction::create("Blake2b(256)");
     blake2b->update(this->bytes().data(), this->bytes().size());
     const auto hashed = blake2b->final();
-    return utils::makeByteArray<32>(hashed);
+    return util::makeByteArray<32>(hashed);
 }  // VrfVerificationKey::hash
 
 auto VrfVerificationKey::saveToFile(std::string_view fpath) const -> void
 {
     static constexpr auto type_str = "VrfVerificationKey_PraosVRF";
     static constexpr auto desc_str = "VRF Verification Key";
-    const auto cbor_hex = BASE16::encode(this->bytes());
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    const auto key_bytes = this->bytes();
+    const auto cbor_hex = BASE16::encode(
+        cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
+    );
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // VrfVerificationKey::saveToFile
 
 auto VrfSigningKey::saveToFile(std::string_view fpath) const -> void
 {
     static constexpr auto type_str = "VrfSigningKey_PraosVRF";
     static constexpr auto desc_str = "VRF Signing Key";
-    const auto cbor_hex = BASE16::encode(this->bytes());
-    utils::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+    const auto key_bytes = this->bytes();
+    const auto cbor_hex = BASE16::encode(
+        cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
+    );
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
 }  // VrfSigningKey::saveToFile
+
+auto KesVerificationKey::verifySignature(
+    uint32_t period,
+    std::span<const uint8_t> msg,
+    std::span<const uint8_t, STAKE_POOL_KES_SIGNATURE_SIZE> sig
+) const -> bool
+{
+    const auto sigma = SumKesSignature<6>(sig);
+    return sigma.verify(period, *this, msg);
+}
+
+auto KesVerificationKey::saveToFile(std::string_view fpath) const -> void
+{
+    static constexpr auto type_str = "KesVerificationKey_ed25519_kes_2^6";
+    static constexpr auto desc_str = "KES Verification Key";
+    const auto key_bytes = this->bytes();
+    const auto cbor_hex = BASE16::encode(
+        cppbor::Bstr({key_bytes.data(), key_bytes.size()}).encode()
+    );
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+}  // KesVerificationKey::saveToFile
+
+auto KesSigningKey::saveToFile(std::string_view fpath) const -> void
+{
+    static constexpr auto type_str = "KesSigningKey_ed25519_kes_2^6";
+    static constexpr auto desc_str = "KES Signing Key";
+    const auto key_bytes = this->bytes();
+    const auto cbor_hex = BASE16::encode(
+        cppbor::Bstr({key_bytes.data(), this->size}).encode()
+    );
+    util::writeEnvelopeTextFile(fpath, type_str, desc_str, cbor_hex);
+}  // KesVerificationKey::saveToFile
+
+auto KesSigningKey::generate() -> KesSigningKey
+{
+    constexpr auto key_size = SumKesPrivateKey<STAKE_POOL_KES_DEPTH>::size;
+    auto mut_key = SecureByteArray<key_size>();
+    const auto [s, p] = SumKesPrivateKey<STAKE_POOL_KES_DEPTH>::generate();
+    std::copy_n(s.bytes().begin(), key_size, mut_key.begin());
+    return KesSigningKey(mut_key);
+}  // KesSigningKey::generate

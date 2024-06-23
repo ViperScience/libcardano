@@ -19,9 +19,9 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.25.1/cmake-3.
 
 # Build and install Botan 3
 WORKDIR /tmp
-RUN curl -LO https://botan.randombit.net/releases/Botan-3.1.1.tar.xz \
-  && tar --extract --file Botan-3.1.1.tar.xz \
-  && cd Botan-3.1.1 \
+RUN curl -LO https://botan.randombit.net/releases/Botan-3.4.0.tar.xz \
+  && tar --extract --file Botan-3.4.0.tar.xz \
+  && cd Botan-3.4.0 \
   && python3 ./configure.py \
   && make -j8 \
   && make install \
@@ -46,14 +46,14 @@ WORKDIR /opt
 # Debug build and test
 RUN cmake -S . -B cmake-build-debug/ -D CMAKE_BUILD_TYPE=Debug \
   && cmake --build cmake-build-debug/ --parallel 8 \
-  && ctest --test-dir cmake-build-debug/ --output-on-failure -T Test #-T Coverage
+  && ctest --test-dir cmake-build-debug/ --output-on-failure -T Test -T Coverage
 
 # # Release build, test, and install.
 # RUN cmake -S . -B cmake-build-release/ -D CMAKE_BUILD_TYPE=Release \
 #   && cmake --build cmake-build-release/ --parallel 8 \
 #   && ctest --test-dir cmake-build-release/ --output-on-failure -T Test \
 #   && cmake --install cmake-build-release/
-# 
+
 # # Run the libcardano cmake integration test
 # WORKDIR /opt/cmake/cmake_integration_test
 # RUN mkdir build && cd build \

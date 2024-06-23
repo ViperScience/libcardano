@@ -21,19 +21,21 @@
 // Standard library headers
 #include <algorithm>
 #include <charconv>
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
-#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 
-// Libcardano headers
+// Public Cardano Headers
 #include <cardano/encodings.hpp>
-
-#include "utils.hpp"
+#include <cardano/util.hpp>
 
 using namespace cardano;
+
+namespace  // unnamed namespace
+{
 
 auto bytes2hex(std::span<const uint8_t> bytes) -> std::string
 {
@@ -67,6 +69,8 @@ auto hex2bytes(std::string_view hex) -> std::vector<uint8_t>
     }
     return bytes;
 }  // hex2bytes
+
+}  // unnamed namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////// BASE16 ////////////////////////////////////
@@ -188,7 +192,7 @@ auto expand_hrp(std::string_view hrp) -> std::vector<uint8_t>
     ret.resize(hrp.size() * 2 + 1);
     for (size_t i = 0; i < hrp.size(); ++i)
     {
-        uint8_t c = hrp[i];
+        auto c = (uint8_t)hrp[i];
         ret[i] = c >> 5;
         ret[i + hrp.size() + 1] = c & 0x1f;
     }
@@ -205,14 +209,14 @@ auto verify_checksum(std::string_view hrp, std::span<const uint8_t> values)
     // the case that appending a 0 to a valid list of values would result in a
     // new valid list. For that reason, Bech32 requires the resulting checksum
     // to be 1 instead.
-    const uint32_t check = polymod(utils::concatBytes(expand_hrp(hrp), values));
+    const uint32_t check = polymod(util::concatBytes(expand_hrp(hrp), values));
     return check == 1;
 }  // verify_checksum
 
 auto create_checksum(std::string_view hrp, std::span<const uint8_t> values)
     -> std::vector<uint8_t>
 {
-    std::vector<uint8_t> enc = utils::concatBytes(expand_hrp(hrp), values);
+    std::vector<uint8_t> enc = util::concatBytes(expand_hrp(hrp), values);
     enc.resize(enc.size() + 6);
     const uint32_t mod = polymod(enc) ^ 1;
     std::vector<uint8_t> ret;
@@ -276,7 +280,7 @@ auto BECH32::encode(std::string_view hrp, std::span<const uint8_t> values)
             );
     auto unpacked_values = convertbits(values, 8, 5, true);
     auto checksum = create_checksum(hrp, unpacked_values);
-    auto combined = utils::concatBytes(unpacked_values, checksum);
+    auto combined = util::concatBytes(unpacked_values, checksum);
     auto ret = std::string(hrp) + '1';
     ret.reserve(ret.size() + combined.size());
     for (const auto c : combined) ret += B32_CHARSET[c];
@@ -306,17 +310,17 @@ auto BECH32::decode(std::string_view str)
     std::vector<uint8_t> values(bech32_str_size - 1 - pos);
     for (size_t i = 0; i < bech32_str_size - 1 - pos; ++i)
     {
-        unsigned char c = bech32_str[i + pos + 1];
-        int8_t rev = B32_CHARSET_REV[c];
+        auto c = (uint8_t)bech32_str[i + pos + 1];
+        auto rev = B32_CHARSET_REV[c];
         if (rev == -1)
         {
             throw std::invalid_argument("Invalid bech32 character found.");
         }
-        values[i] = rev;
+        values[i] = (uint8_t)rev;
     }
 
     // Save the HRP
-    auto hrp = std::string(bech32_str.begin(), bech32_str.begin() + pos);
+    auto hrp = std::string(bech32_str.begin(), bech32_str.begin() + (long)pos);
 
     // Verify the checksum of the data
     if (!verify_checksum(hrp, values))
@@ -369,12 +373,12 @@ auto BASE58::encode(std::span<const uint8_t> values) -> std::string
 {
     std::vector<uint8_t> digits((values.size() * 138 / 100) + 1);
     size_t digitslen = 1;
-    for (size_t i = 0; i < values.size(); i++)
+    for (auto carry_byte : values)
     {
-        uint32_t carry = static_cast<uint32_t>(values[i]);
+        auto carry = static_cast<uint32_t>(carry_byte);
         for (size_t j = 0; j < digitslen; j++)
         {
-            carry = carry + static_cast<uint32_t>(digits[j] << 8);
+            carry = carry + ((uint32_t)digits[j] << 8);
             digits[j] = static_cast<uint8_t>(carry % 58);
             carry /= 58;
         }
@@ -385,7 +389,7 @@ auto BASE58::encode(std::span<const uint8_t> values) -> std::string
     for (size_t i = 0; i < (values.size() - 1) && !values[i]; i++)
         result.push_back(B58_CHARSET[0]);
     for (size_t i = 0; i < digitslen; i++)
-        result.push_back(B58_CHARSET[digits[digitslen - 1 - i]]);
+        result.push_back((char)B58_CHARSET[digits[digitslen - 1 - i]]);
     return result;
 }  // BASE58::encode
 
@@ -393,15 +397,15 @@ auto BASE58::decode(std::string_view str) -> std::vector<uint8_t>
 {
     std::vector<uint8_t> result;
     result.push_back(0);
-    int res_len = 1;
-    size_t enc_len = str.length();
+    auto res_len = (size_t)1;
+    auto enc_len = str.length();
     for (size_t i = 0; i < enc_len; i++)
     {
         auto charset_index = static_cast<uint8_t>(str[i]);
-        unsigned int carry = (unsigned int)B58_CHARSET_REV[charset_index];
-        for (int j = 0; j < res_len; j++)
+        auto carry = (uint32_t)B58_CHARSET_REV[charset_index];
+        for (size_t j = 0; j < res_len; j++)
         {
-            carry += (unsigned int)(result[j]) * 58;
+            carry += (uint32_t)(result[j]) * 58;
             result[j] = (uint8_t)(carry & 0xff);
             carry >>= 8;
         }
@@ -419,7 +423,7 @@ auto BASE58::decode(std::string_view str) -> std::vector<uint8_t>
         result.push_back(0);
     }
 
-    for (int i = res_len - 1, z = (res_len >> 1) + (res_len & 1); i >= z; i--)
+    for (size_t i = res_len - 1, z = (res_len >> 1) + (res_len & 1); i >= z; i--)
     {
         uint8_t k = result[i];
         result[i] = result[res_len - i - 1];

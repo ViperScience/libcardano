@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Viper Science LLC
+// Copyright (c) 2024 Viper Science LLC
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,22 +18,39 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include "utils.hpp"
+#ifndef _CARDANO_SECMEM_HPP_
+#define _CARDANO_SECMEM_HPP_
 
-#include <fstream>
+#include <sys/mman.h>
 
-auto cardano::utils::writeEnvelopeTextFile(
-    const std::string_view file_path,
-    const std::string_view type,
-    const std::string_view description,
-    const std::string_view cbor_hex
-) -> void
+#include <algorithm>
+#include <array>
+
+namespace cardano
 {
-    std::ofstream out(std::string(file_path).c_str());
-    out << "{\n";
-    out << "    \"type\": \"" << type << "\",\n";
-    out << "    \"description\": \"" << description << "\",\n";
-    out << "    \"cborHex\": \"" << cbor_hex << "\"\n";
-    out << "}";
-    out.close();
-}  // write_key_file
+
+template <std::size_t Size>
+struct ByteArray : public std::array<uint8_t, Size>
+{
+};
+
+template <std::size_t Size>
+struct SecureByteArray : public std::array<uint8_t, Size>
+{
+    SecureByteArray()
+    {
+        mlock(std::array<uint8_t, Size>::data(), sizeof(uint8_t) * Size);
+    }
+
+    ~SecureByteArray()
+    {
+        char *bytes =
+            reinterpret_cast<char *>(std::array<uint8_t, Size>::data());
+        std::fill_n<volatile char *>(bytes, sizeof(uint8_t) * Size, 0);
+        munlock(bytes, sizeof(uint8_t) * Size);
+    }
+};  // SecureByteArray
+
+}  // namespace cardano
+
+#endif  // _CARDANO_SECMEM_HPP_

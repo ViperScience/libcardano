@@ -21,10 +21,8 @@
 #ifndef _CARDANO_ENCODINGS_HPP_
 #define _CARDANO_ENCODINGS_HPP_
 
-#include <memory>
 #include <span>
 #include <string_view>
-#include <tuple>
 #include <utility>
 #include <vector>
 

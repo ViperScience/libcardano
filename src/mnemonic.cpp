@@ -20,7 +20,6 @@
 
 // Standard Library Headers
 #include <cmath>
-#include <exception>
 #include <memory>
 #include <span>
 
@@ -221,7 +220,9 @@ auto Mnemonic::generate(size_t mnemonic_size, BIP39Language lang) -> Mnemonic
     auto words = std::vector<std::string_view>();
     for (auto i = 0u; i < mnemonic_size; i++)
     {
-        indexes[i] = carry_bits << (WORD_SIZE_BITS - n_carry_bits);
+        indexes[i] = static_cast<uint16_t>(
+            carry_bits << (WORD_SIZE_BITS - n_carry_bits)
+        );
         n_bits = n_carry_bits;
 
         while (n_bits < WORD_SIZE_BITS)
@@ -243,7 +244,7 @@ auto Mnemonic::generate(size_t mnemonic_size, BIP39Language lang) -> Mnemonic
         words.push_back(d[indexes[i]]);
     }
 
-    return Mnemonic(words, indexes);
+    return {words, indexes};
 }  // Mnemonic::generate
 
 auto Mnemonic::toEntropy() const -> std::tuple<std::vector<uint8_t>, uint8_t>
@@ -266,7 +267,8 @@ auto Mnemonic::toEntropy() const -> std::tuple<std::vector<uint8_t>, uint8_t>
 
         // Fist add any bits from the last index that were not packed into a
         // byte. These are the most significant bits.
-        entropy_byte_vector[ent_idx] = carry_bits << (8 - n_carry_bits);
+        entropy_byte_vector[ent_idx] = 
+            static_cast<uint8_t>(carry_bits << (8 - n_carry_bits));
 
         // Finish filling the entropy byte with bits from the current mnemonic
         // word index. This byte will always be full at this point so increment

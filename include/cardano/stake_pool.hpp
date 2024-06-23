@@ -22,34 +22,37 @@
 #define _CARDANO_STAKE_POOL_HPP_
 
 // Standard library headers
-#include <functional>
-// #include <ranges>
+#include <cstdint>
+#include <span>
+#include <string_view>
 
 // Third-party library headers
 #include <botan/hash.h>
 
-#include <viper25519/ed25519.hpp>
-#include <viper25519/vrf25519.hpp>
-
 // Public libcardano headers
 #include <cardano/address.hpp>
-#include <cardano/crypto.hpp>
+#include <cardano/bip32_ed25519.hpp>
+#include <cardano/ed25519.hpp>
 #include <cardano/encodings.hpp>
 #include <cardano/ledger.hpp>
+#include <cardano/vrf.hpp>
+#include <cardano/kes.hpp>
 
-/// @brief The root namespace for all Cardano functions and types.
-namespace cardano
-{
-
-/// @brief The namespace containing all Cardano Stake Pool types.
-namespace stake_pool
+/// @brief The namespace containing all Cardano Stake Pool objects.
+namespace cardano::stake_pool
 {
 
 /// @brief Size of a stake pool key in bytes.
-static constexpr uint32_t STAKE_POOL_KEY_SIZE = 32;
+inline constexpr uint32_t STAKE_POOL_KEY_SIZE = 32;
 
 /// @brief Size of a stake pool ID in bytes.
-static constexpr uint32_t STAKE_POOL_ID_SIZE = 28;
+inline constexpr uint32_t STAKE_POOL_ID_SIZE = 28;
+
+/// @brief Stake pool KES depth.
+inline constexpr size_t STAKE_POOL_KES_DEPTH = 6;
+
+/// @brief Stake pool KES signature size.
+inline constexpr size_t STAKE_POOL_KES_SIGNATURE_SIZE = 448;
 
 // Forward Declarations
 class ColdVerificationKey;
@@ -62,6 +65,8 @@ class KesSigningKey;
 class OperationalCertificateIssueCounter;
 class OperationalCertificateManager;
 
+using namespace cardano::ed25519;
+
 /// @brief A stake pool verification key (Ed25519 public key).
 class ColdVerificationKey
 {
@@ -69,7 +74,9 @@ class ColdVerificationKey
     ed25519::PublicKey vkey_;
 
   public:
-    explicit ColdVerificationKey(std::span<const uint8_t> key_bytes)
+    explicit ColdVerificationKey(
+        std::span<const uint8_t, ed25519::PUBLIC_KEY_SIZE> key_bytes
+    )
         : vkey_{key_bytes}
     {
     }
@@ -79,7 +86,7 @@ class ColdVerificationKey
 
     /// @brief Return the key as a byte vector.
     [[nodiscard]] constexpr auto bytes() const
-        -> const std::array<uint8_t, ed25519::ED25519_KEY_SIZE>&
+        -> const std::array<uint8_t, ed25519::PUBLIC_KEY_SIZE>&
     {
         return this->vkey_.bytes();
     }
@@ -89,7 +96,7 @@ class ColdVerificationKey
     /// @param sig A span of 64 bytes (uint8_t) representing the signature.
     [[nodiscard]] auto verifySignature(
         std::span<const uint8_t> msg,
-        std::span<const uint8_t> sig
+        std::span<const uint8_t, ed25519::SIGNATURE_SIZE> sig
     ) const -> bool
     {
         return this->vkey_.verifySignature(msg, sig);
@@ -123,7 +130,9 @@ class ColdSigningKey
     ed25519::PrivateKey skey_;
 
   public:
-    explicit ColdSigningKey(std::span<const uint8_t> key_bytes)
+        explicit ColdSigningKey(
+        std::span<const uint8_t, ed25519::KEY_SIZE> key_bytes
+    )
         : skey_{key_bytes}
     {
     }
@@ -141,7 +150,7 @@ class ColdSigningKey
     /// @brief Generate a message signature from the signing key.
     /// @param msg A span of bytes (uint8_t) representing the message to sign.
     [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
-        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
+        -> std::array<uint8_t, ed25519::SIGNATURE_SIZE>
     {
         return this->skey_.sign(msg);
     }
@@ -174,16 +183,18 @@ class ColdSigningKey
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // ColdSigningKey
 
 /// @brief A CIP-1853 stake pool signing key (extended Ed25519 signing key).
 class ExtendedColdSigningKey
 {
   private:
-    ed25519::ExtendedPrivateKey skey_;
+    bip32_ed25519::PrivateKey skey_;
 
   public:
-    explicit ExtendedColdSigningKey(std::span<const uint8_t> key_bytes)
+    explicit ExtendedColdSigningKey(
+        std::span<const uint8_t, bip32_ed25519::XKEY_SIZE> key_bytes
+    )
         : skey_{key_bytes}
     {
     }
@@ -193,7 +204,7 @@ class ExtendedColdSigningKey
     [[nodiscard]] static auto generate() -> ExtendedColdSigningKey
     {
         return ExtendedColdSigningKey(
-            ed25519::ExtendedPrivateKey::generate().bytes()
+            bip32_ed25519::PrivateKey::generate().xbytes()
         );
     }
 
@@ -201,8 +212,8 @@ class ExtendedColdSigningKey
     /// Derive the stake pool signing key from a root HD wallet key
     /// following the derivation outlined in CIP-1852 and CIP-1853.
     /// @param root The root signing key.
-    [[nodiscard]] static auto fromRootKey(const BIP32PrivateKey& root)
-        -> ExtendedColdSigningKey;
+    [[nodiscard]] static auto fromRootKey(const bip32_ed25519::PrivateKey& root
+    ) -> ExtendedColdSigningKey;
 
     /// @brief Derive the stake pool key from a seed phrase.
     /// Derive the stake pool signing key from a BIP-39 complient mnemonic seed
@@ -210,13 +221,13 @@ class ExtendedColdSigningKey
     /// CIP-1853.
     /// @param mn A valid mnemonic seed phrase.
     /// @return A valid stake pool signing key object.
-    [[nodiscard]] static auto fromMnemonic(const cardano::Mnemonic& mn)
-        -> ExtendedColdSigningKey;
+    [[nodiscard]] static auto fromMnemonic(const cardano::Mnemonic& mn
+    ) -> ExtendedColdSigningKey;
 
     // @brief Generate a message signature from the signing key.
     /// @param msg A span of bytes (uint8_t) representing the message to sign.
-    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
-        -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
+    [[nodiscard]] auto sign(std::span<const uint8_t> msg
+    ) const -> std::array<uint8_t, ed25519::SIGNATURE_SIZE>
     {
         return this->skey_.sign(msg);
     }
@@ -234,7 +245,7 @@ class ExtendedColdSigningKey
 
     /// @brief Return the key as a byte vector.
     [[nodiscard]] constexpr auto bytes() const
-        -> const ed25519::ExtKeyByteArray&
+        -> const bip32_ed25519::KeyByteArray&
     {
         return this->skey_.bytes();
     }
@@ -255,13 +266,13 @@ class ExtendedColdSigningKey
 
 /// @brief A VRF verification key used by stake pools to verify leadership
 /// selection.
-class VrfVerificationKey : public ed25519::VRFPublicKey
+class VrfVerificationKey : public VRFPublicKey
 {
   public:
     /// @brief Construct a new VrfVerificationKey object from a byte vector.
     /// @param key_bytes The byte vector containing the key.
-    explicit VrfVerificationKey(std::span<const uint8_t> key_bytes)
-        : ed25519::VRFPublicKey{key_bytes}
+    explicit VrfVerificationKey(std::span<const uint8_t, VRF_PUBLIC_KEY_SIZE> key_bytes)
+        : VRFPublicKey{key_bytes}
     {
     }
 
@@ -272,17 +283,24 @@ class VrfVerificationKey : public ed25519::VRFPublicKey
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // VrfVerificationKey
 
 /// @brief A VRF signing key used by stake pools to verify leadership selection.
-class VrfSigningKey : public ed25519::VRFSecretKey
+class VrfSigningKey : public VRFSecretKey
 {
   public:
     /// @brief Construct a new VrfSigningKey object from a byte vector.
     /// @param key_bytes The byte vector containing the key.
-    explicit VrfSigningKey(std::span<const uint8_t> key_bytes)
-        : ed25519::VRFSecretKey{key_bytes}
+    explicit VrfSigningKey(std::span<const uint8_t, VRF_SECRET_KEY_SIZE> key_bytes)
+        : VRFSecretKey{key_bytes}
     {
+    }
+
+    /// Factory method to create a new VRF signing key from a
+    /// cryptographically secure random number generator.
+    [[nodiscard]] static auto generate() -> VrfSigningKey
+    {
+        return VrfSigningKey(VRFSecretKey::generate().bytes());
     }
 
     /// @brief Derive the corresponding verification (public) key.
@@ -295,27 +313,60 @@ class VrfSigningKey : public ed25519::VRFSecretKey
     /// @brief Export the key to a file in the cardano node JSON format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // VrfSigningKey
 
-// Placeholder class for Op Cert dev
-class KesVerificationKey
+/// @brief A KES verification key used by stake pools to verify block
+/// signatures.
+class KesVerificationKey : public KesPublicKey
 {
-  private:
-    ed25519::PublicKey vkey_{BASE16::decode(
-        "b4f7f2d8506deebd885e41e9d510a5eb7cd4101275d1860fc243c869470b26e5"
-    )};
-
   public:
-    [[nodiscard]] auto bytes() const
-        -> const std::array<uint8_t, ed25519::ED25519_KEY_SIZE>&
+    /// @brief Construct a verification key object from a span of key bytes.
+    /// @param pub A span of 32 bytes that will be copied into the object.
+    explicit KesVerificationKey(std::span<const uint8_t, 32> pub) : KesPublicKey(pub)
     {
-        return this->vkey_.bytes();
     }
-};
 
-class KesSigningKey
+    /// @brief Verify a signature using the KES verification key.
+    /// @param period The KES key period.
+    /// @param msg A span of bytes (uint8_t) representing the original message.
+    /// @param sig A span of 448 bytes (uint8_t) representing the signature.
+    [[nodiscard]] auto verifySignature(
+        uint32_t period,
+        std::span<const uint8_t> msg,
+        std::span<const uint8_t, STAKE_POOL_KES_SIGNATURE_SIZE> sig
+    ) const -> bool;
+
+    /// @brief Export the key to a file in the cardano node JSON format.
+    /// @param fpath Path to the file to be (over)written.
+    auto saveToFile(std::string_view fpath) const -> void;
+};  // KesVerificationKey
+
+/// @brief A KES signing key used by stake pools to sign blocks.
+class KesSigningKey : public SumKesPrivateKey<STAKE_POOL_KES_DEPTH>
 {
-};
+  public:
+    /// @brief Construct a signing key object from a span of key bytes.
+    /// @param pub A span of key  bytes that will be copied into the object.
+    explicit KesSigningKey(std::span<uint8_t> pub) : SumKesPrivateKey<STAKE_POOL_KES_DEPTH>(pub)
+    {
+    }
+
+    /// Factory method to create a new KES signing key from a
+    /// cryptographically secure random number generator.
+    /// @return A new KES signing key.
+    [[nodiscard]] static auto generate() -> KesSigningKey;
+
+    /// @brief Derive the corresponding verification (public) key.
+    /// @return The verification key object.
+    [[nodiscard]] auto verificationKey() const -> KesVerificationKey
+    {
+        return KesVerificationKey{this->publicKey().bytes()};
+    }
+
+    /// @brief Export the key to a file in the cardano node JSON format.
+    /// @param fpath Path to the file to be (over)written.
+    auto saveToFile(std::string_view fpath) const -> void;
+};  // KesSigningKey
 
 /// @brief A node operational certificate issue counter.
 class OperationalCertificateIssueCounter
@@ -595,7 +646,7 @@ class RegistrationCertificateManager
     /// @brief Export the certifiate to a file in the text envelope format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // OperationalCertificateManager
 
 /// @brief An interface for managing stake pool retirement certificates.
 class DeregistrationCertificateManager
@@ -649,9 +700,8 @@ class DeregistrationCertificateManager
     /// @brief Export the certifiate to a file in the text envelope format.
     /// @param fpath Path to the file to be (over)written.
     auto saveToFile(std::string_view fpath) const -> void;
-};
+};  // DeregistrationCertificateManager
 
-}  // namespace stake_pool
-}  // namespace cardano
+}  // namespace cardano::stake_pool
 
 #endif  // _CARDANO_STAKE_POOL_HPP_

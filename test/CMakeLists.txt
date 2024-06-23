@@ -23,203 +23,97 @@
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-set(LIBCARDANO_LINK_LIBS
-    botan::botan
-    sodium::sodium
-    Threads::Threads
-    OpenSSL::SSL
-    cppbor::cppbor
-)
-
 set(TEST_LIBCARDANO_LIBS
     Catch2::Catch2WithMain
     OpenSSL::SSL
     Threads::Threads
-    botan::botan
+    Botan::Botan
+    cryptopp::cryptopp
     cppbor::cppbor
     sodium::sodium
+    cardano::cardano
 )
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../src
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${VIPER25519_INCLUDE}
 )
 
 ################################################################################
-# Test the encoding capabilites
+# Test the encoding APIs
 ################################################################################
-set(TEST_CARDANO_ENCODINGS_SOURCES
-    test_cardano_encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
-    ${LIBCPPBOR_SOURCES}
-)
-ADD_EXECUTABLE(test_cardano_encodings ${TEST_CARDANO_ENCODINGS_SOURCES})
-target_link_libraries(test_cardano_encodings PRIVATE
-    OpenSSL::SSL
-)
-ADD_TEST(cardano_encodings test_cardano_encodings)
+ADD_EXECUTABLE(test_cardano_encodings  test_cardano_encoding_apis.cpp)
+target_link_libraries(test_cardano_encodings PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Encoding APIs" test_cardano_encodings)
 
 ################################################################################
-# Test the key implementations
+# Test the Cardano Ed25519 API (libsodium wrapper)
 ################################################################################
-set(TEST_CARDANO_CRYPTO_SOURCES
-    test_cardano_crypto.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
-    ${CMAKE_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${VIPER25519_SOURCES}
-    ${LIBCPPBOR_SOURCES}
-)
-ADD_EXECUTABLE(test_cardano_crypto ${TEST_CARDANO_CRYPTO_SOURCES})
-target_link_libraries(test_cardano_crypto PRIVATE ${LIBCARDANO_LINK_LIBS})
-ADD_TEST(cardano_crypto test_cardano_crypto)
+ADD_EXECUTABLE(test_cardano_ed25519_api test_cardano_ed25519_api.cpp)
+target_link_libraries(test_cardano_ed25519_api PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Ed25519 API" test_cardano_ed25519_api)
 
 ################################################################################
-# Test the address implementations
+# Test the Cardano BIP32-Ed25519 API
 ################################################################################
-set(TEST_CARDANO_ADDRESS_SOURCES
-    test_cardano_address.cpp
-    ${CMAKE_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${VIPER25519_SOURCES}
-    ${LIBCPPBOR_SOURCES}
+ADD_EXECUTABLE(test_cardano_bip32_ed25519_api
+    test_cardano_bip32_ed25519_api.cpp
 )
-ADD_EXECUTABLE(test_cardano_address ${TEST_CARDANO_ADDRESS_SOURCES})
-target_link_libraries(test_cardano_address PRIVATE ${LIBCARDANO_LINK_LIBS})
-ADD_TEST(cardano_address test_cardano_address)
+target_link_libraries(test_cardano_bip32_ed25519_api PRIVATE 
+    ${TEST_LIBCARDANO_LIBS}
+)
+ADD_TEST("Cardano BIP32-Ed25519 API" test_cardano_bip32_ed25519_api)
 
 ################################################################################
-# Test the Byron era address implementations
+# Test the Cardano Address API
 ################################################################################
-set(TEST_CARDANO_BYRON_ADDRESS_SOURCES
-    test_cardano_byron_address.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
-    ${CMAKE_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${VIPER25519_SOURCES}
-    ${LIBCPPBOR_SOURCES}
-)
-ADD_EXECUTABLE(test_cardano_byron_address ${TEST_CARDANO_BYRON_ADDRESS_SOURCES})
-target_link_libraries(test_cardano_byron_address PRIVATE
-    ${LIBCARDANO_LINK_LIBS}
-)
-ADD_TEST(cardano_byron_address test_cardano_byron_address)
+ADD_EXECUTABLE(test_cardano_address test_cardano_address_api.cpp)
+target_link_libraries(test_cardano_address PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Address API" test_cardano_address)
 
 ################################################################################
-# Test the Mnemonic generation and root key derivation
+# Test the Cardano Mnemonic API
 ################################################################################
-set(TEST_CARDANO_MNEMONIC_SOURCES
-    test_cardano_mnemonic.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-)
-ADD_EXECUTABLE(test_cardano_mnemonic ${TEST_CARDANO_MNEMONIC_SOURCES})
-target_link_libraries(test_cardano_mnemonic PRIVATE
-    botan::botan
-    cppbor::cppbor
-    Threads::Threads
-    OpenSSL::SSL
-)
-ADD_TEST(cardano_mnemonic test_cardano_mnemonic)
-
-################################################################################
-# Test address derivation from the Mnemonic
-################################################################################
-set(TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES
-    test_cardano_mnemonic_to_address.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
-    ${CMAKE_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${VIPER25519_SOURCES}
-    ${LIBCPPBOR_SOURCES}
-)
-ADD_EXECUTABLE(test_cardano_mnemonic_to_address
-    ${TEST_CARDANO_MNEMONIC_TO_ADDRESS_SOURCES}
-)
-target_link_libraries(test_cardano_mnemonic_to_address PRIVATE
-    botan::botan
-    cppbor::cppbor
-    sodium::sodium
-    Threads::Threads
-    OpenSSL::SSL
-)
-ADD_TEST(cardano_mnemonic_to_address test_cardano_mnemonic_to_address)
-
-################################################################################
-# Test stake address derivation from the Mnemonic
-################################################################################
-set(TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES
-    test_cardano_mnemonic_to_stake_address.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
-    ${CMAKE_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${VIPER25519_SOURCES}
-    ${LIBCPPBOR_SOURCES}
-)
-ADD_EXECUTABLE(test_cardano_mnemonic_to_stake_address
-    ${TEST_CARDANO_MNEMONIC_TO_STAKE_ADDRESS_SOURCES}
-)
-target_link_libraries(test_cardano_mnemonic_to_stake_address PRIVATE
-    botan::botan
-    cppbor::cppbor
-    sodium::sodium
-    Threads::Threads
-    OpenSSL::SSL
-)
-ADD_TEST(cardano_mnemonic_to_stake_address
-    test_cardano_mnemonic_to_stake_address
-)
+ADD_EXECUTABLE(test_cardano_mnemonic test_cardano_mnemonic_api.cpp)
+target_link_libraries(test_cardano_mnemonic PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Mnemonic API" test_cardano_mnemonic)
 
 ################################################################################
 # Test Cardano ledger types and CBOR serialization.
 ################################################################################
-# ADD_EXECUTABLE(test_cardano_ledger
-#     test_cardano_ledger.cpp
-# )
-# target_link_libraries(test_cardano_ledger PRIVATE ${TEST_LIBCARDANO_LIBS})
-# ADD_TEST("CardanoLedger" test_cardano_ledger)
-
-################################################################################
-# Test stake pool code
-################################################################################
-set(TEST_CARDANO_STAKE_POOL_SOURCES
-    test_cardano_stake_pool.cpp
-    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${CMAKE_SOURCE_DIR}/src/ledger.cpp
-    ${CMAKE_SOURCE_DIR}/src/stake_pool.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
-    ${VIPER25519_SOURCES}
-    ${LIBCPPBOR_SOURCES}
-)
-ADD_EXECUTABLE(test_cardano_stake_pool
-    ${TEST_CARDANO_STAKE_POOL_SOURCES}
-)
-target_link_libraries(test_cardano_stake_pool PRIVATE ${TEST_LIBCARDANO_LIBS})
-ADD_TEST("CardanoStakePool" test_cardano_stake_pool)
 
 ################################################################################
 # Test Cardano transaction building, signing, and serializing to CBOR
 ################################################################################
-ADD_EXECUTABLE(test_cardano_transaction
-    test_cardano_transaction.cpp
-    ${CMAKE_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_SOURCE_DIR}/src/crypto.cpp
-    ${CMAKE_SOURCE_DIR}/src/encodings.cpp
-    ${CMAKE_SOURCE_DIR}/src/ledger.cpp
-    ${CMAKE_SOURCE_DIR}/src/mnemonic.cpp
-    ${CMAKE_SOURCE_DIR}/src/transaction.cpp
-    ${VIPER25519_SOURCES}
-    ${LIBCPPBOR_SOURCES}
-)
+ADD_EXECUTABLE(test_cardano_transaction test_cardano_transaction_api.cpp)
 target_link_libraries(test_cardano_transaction PRIVATE ${TEST_LIBCARDANO_LIBS})
-ADD_TEST("CardanoTransactions" test_cardano_transaction)
+ADD_TEST("Cardano Transaction API" test_cardano_transaction)
+
+################################################################################
+# Test the Cardano VRF API (libsodium wrapper)
+################################################################################
+ADD_EXECUTABLE(test_cardano_vrf_api test_cardano_vrf_api.cpp)
+target_link_libraries(test_cardano_vrf_api PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano VRF API" test_cardano_vrf_api)
+
+################################################################################
+# Test the Cardano KES API
+################################################################################
+ADD_EXECUTABLE(test_cardano_kes_api test_cardano_kes_api.cpp)
+target_link_libraries(test_cardano_kes_api PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano KES API" test_cardano_kes_api)
+
+################################################################################
+# Test the Cardano KES Implementation for Integration with the Haskell code
+################################################################################
+
+ADD_EXECUTABLE(test_cardano_kes_integration test_cardano_kes_integration.cpp)
+target_link_libraries(test_cardano_kes_integration PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano KES Integration" test_cardano_kes_integration)
+
+################################################################################
+# Test Cardano Stake Pool API
+################################################################################
+ADD_EXECUTABLE(test_cardano_stake_pool test_cardano_stake_pool_api.cpp)
+target_link_libraries(test_cardano_stake_pool PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Stake Pool API" test_cardano_stake_pool)

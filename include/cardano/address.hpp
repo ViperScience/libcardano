@@ -31,7 +31,7 @@
 // Third-party library headers
 
 // Public libcardano headers
-#include <cardano/crypto.hpp>
+#include <cardano/bip32_ed25519.hpp>
 
 /// @brief	The root namespace for all Cardano functions and types.
 namespace cardano
@@ -78,11 +78,11 @@ class BaseAddress
     /// @param stake_key The stake key.
     /// @return The created BaseAddress object.
     static auto
-    fromKeys(NetworkID nid, BIP32PublicKey pmt_key, BIP32PublicKey stake_key)
+    fromKeys(NetworkID nid, const bip32_ed25519::PublicKey& pmt_key, const bip32_ed25519::PublicKey& stake_key)
         -> BaseAddress;
 
     /// @brief Create a new BaseAddress object from a bech32 address.
-    static auto fromBech32(std::string addr) -> BaseAddress;
+    static auto fromBech32(const std::string_view addr) -> BaseAddress;
 
     /// @brief Return the address as a byte array.
     /// @param with_header Whether to include the header byte in the output.
@@ -98,7 +98,7 @@ class BaseAddress
     /// @brief Encode the address as a bech32 string.
     /// @param hrp The human-readable part of the bech32 string.
     /// @return The bech32 encoded address.
-    [[nodiscard]] auto toBech32(std::string hrp) const -> std::string;
+    [[nodiscard]] auto toBech32(const std::string_view hrp) const -> std::string;
 };  // BaseAddress
 
 /// @brief A Cardano enterprise address object.
@@ -125,14 +125,14 @@ class EnterpriseAddress
     /// @param nid The network ID enum.
     /// @param pub_key The public key.
     /// @return The created EnterpriseAddress object.
-    static auto fromKey(NetworkID nid, BIP32PublicKey pub_key)
+    static auto fromKey(NetworkID nid, const bip32_ed25519::PublicKey& pub_key)
         -> EnterpriseAddress;
 
     /// @brief Factory method to create an EnterpriseAddress object from a
     /// bech32 address.
     /// @param addr The bech32 address.
     /// @return The created EnterpriseAddress object.
-    static auto fromBech32(std::string addr) -> EnterpriseAddress;
+    static auto fromBech32(const std::string_view addr) -> EnterpriseAddress;
 
     /// @brief Return the address as a byte array.
     /// @param with_header Whether to include the header byte in the output.
@@ -148,7 +148,7 @@ class EnterpriseAddress
     /// @brief Encode the address as a bech32 string.
     /// @param hrp The human-readable part of the bech32 string.
     /// @return The bech32 encoded address.
-    [[nodiscard]] auto toBech32(std::string hrp) const -> std::string;
+    [[nodiscard]] auto toBech32(const std::string_view addr) const -> std::string;
 };  // EnterpriseAddress
 
 class PointerAddress
@@ -179,14 +179,14 @@ class RewardsAddress
     /// @param nid The network ID enum.
     /// @param stake_key The stake key.
     /// @return The created RewardsAddress object.
-    static auto fromKey(NetworkID nid, BIP32PublicKey stake_key)
+    static auto fromKey(NetworkID nid, const bip32_ed25519::PublicKey& stake_key)
         -> RewardsAddress;
 
     /// @brief Factory method to create a RewardsAddress object from a bech32
     /// address.
     /// @param addr The bech32 address.
     /// @return The created RewardsAddress object.
-    static auto fromBech32(std::string addr) -> RewardsAddress;
+    static auto fromBech32(const std::string_view addr) -> RewardsAddress;
 
     /// @brief Return the address as a byte array.
     /// @param with_header Whether to include the header byte in the output.
@@ -202,7 +202,7 @@ class RewardsAddress
     /// @brief Encode the address as a bech32 string.
     /// @param hrp The human-readable part of the bech32 string.
     /// @return The bech32 encoded address.
-    [[nodiscard]] auto toBech32(std::string hrp) const -> std::string;
+    [[nodiscard]] auto toBech32(const std::string_view hrp) const -> std::string;
 };  // RewardsAddress
 
 /// @brief A Cardano Byron era address object.
@@ -234,7 +234,7 @@ class ByronAddress
         /// and unencrypted path. The key is used to encrypt the address
         /// derivation path and the resulting ciphertext stored in the object.
         static auto fromKey(
-            BIP32PublicKey xpub,
+            const bip32_ed25519::PublicKey& xpub,
             std::span<const uint32_t> path,
             uint32_t magic = 0
         ) -> Attributes;
@@ -264,7 +264,7 @@ class ByronAddress
     /// @param network_magic The network magic (if not 0, then its a testnet).
     /// @return The created ByronAddress object.
     static auto fromRootKey(
-        BIP32PrivateKey xprv,
+        const bip32_ed25519::PrivateKey& xprv,
         std::span<const uint32_t> derivation_path,
         uint32_t network_magic = 0
     ) -> ByronAddress;

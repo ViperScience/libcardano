@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Viper Science LLC
+// Copyright (c) 2024 Viper Science LLC
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -19,26 +19,27 @@
 // THE SOFTWARE.
 
 // Standard Library Headers
-#include <numeric>
 #include <stdexcept>
-#include <vector>
 
 // Third-Party Library Headers
+#include <botan/auto_rng.h>
 #include <botan/hash.h>
 #include <botan/mac.h>
 #include <botan/pbkdf2.h>
 #include <botan/pwdhash.h>
+#include <botan/rng.h>
 #include <botan/stream_cipher.h>
+#include <botan/system_rng.h>
 #include <cppbor/cppbor.h>
+#include <cryptopp/donna.h>
 
 // Public libcardano headers
-#include <cardano/crypto.hpp>
-#include <cardano/encodings.hpp>
-
-// Private libcardano source code
-#include "utils.hpp"
+#include <cardano/bip32_ed25519.hpp>
+#include <cardano/util.hpp>
 
 using namespace cardano;
+using namespace cardano::bip32_ed25519;
+using namespace std::string_view_literals;
 
 namespace  // unnamed namespace
 {
@@ -128,7 +129,7 @@ auto hash_repeatedly(const std::vector<uint8_t>& key, size_t count)
 
     if (prv[31] & 0b00100000) return hash_repeatedly(key, count + 1);
 
-    return utils::concatBytes(prv, iR);
+    return util::concatBytes(prv, iR);
 }  // hash_repeatedly
 
 auto hash_seed(std::span<const uint8_t> seed) -> std::vector<uint8_t>
@@ -152,98 +153,67 @@ auto hash_seed(std::span<const uint8_t> seed) -> std::vector<uint8_t>
 static constexpr size_t NB_ITERATIONS = 15000;
 static constexpr size_t SYM_KEY_SIZE = 32;
 static constexpr size_t SYM_NONCE_SIZE = 8;
-#define SYM_BUF_SIZE (SYM_KEY_SIZE + SYM_NONCE_SIZE)
+static constexpr size_t SYM_BUF_SIZE = SYM_KEY_SIZE + SYM_NONCE_SIZE;
 
-auto BIP32PublicKey::fromBech32(std::string bech32_str) -> BIP32PublicKey
+PublicKey::PublicKey(std::span<const uint8_t, XPUBLIC_KEY_SIZE> pub)
 {
-    const auto [hrp1, data] = BECH32::decode(bech32_str);
-    auto pub = std::array<uint8_t, PUBLIC_KEY_SIZE>();
-    auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>();
-    std::copy_n(data.begin(), pub.size(), pub.begin());
-    std::copy_n(data.begin() + pub.size(), cc.size(), cc.begin());
-    return BIP32PublicKey(pub, cc);
-}  // BIP32PublicKey::fromBech32
+    std::copy_n(pub.begin(), PUBLIC_KEY_SIZE, this->pub_.begin());
+    std::copy_n(
+        pub.begin() + PUBLIC_KEY_SIZE, CHAIN_CODE_SIZE, this->cc_.begin()
+    );
+}  // PublicKey::PublicKey
 
-auto BIP32PublicKey::fromBase16(std::string_view xpub) -> BIP32PublicKey
+PublicKey::PublicKey(
+    std::span<const uint8_t, PUBLIC_KEY_SIZE> pub,
+    std::span<const uint8_t, CHAIN_CODE_SIZE> cc
+)
 {
-    if (xpub.size() != (PUBLIC_KEY_SIZE + CHAIN_CODE_SIZE) * 2)
-        throw std::invalid_argument("Invalid hex public key size.");
-    const auto bytes = BASE16::decode(xpub);
-    auto pub = std::array<uint8_t, PUBLIC_KEY_SIZE>();
-    auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>();
-    std::copy_n(bytes.begin(), pub.size(), pub.begin());
-    std::copy_n(bytes.begin() + pub.size(), cc.size(), cc.begin());
-    return BIP32PublicKey(pub, cc);
-}  // BIP32PublicKey::fromBase16
+    std::ranges::copy(
+        pub | std::views::take(PUBLIC_KEY_SIZE), this->pub_.begin()
+    );
+    std::ranges::copy(
+        cc | std::views::take(CHAIN_CODE_SIZE), this->cc_.begin()
+    );
+}  // PublicKey::PublicKey
 
-auto BIP32PublicKey::fromBase16(
-    const std::string& pub_hex,
-    const std::string& cc_hex
-) -> BIP32PublicKey
+auto PublicKey::xbytes() const -> ByteArray<XPUBLIC_KEY_SIZE>
 {
-    if (pub_hex.size() != PUBLIC_KEY_SIZE * 2)
-        throw std::invalid_argument("Invalid hex public key size.");
-    if (cc_hex.size() != CHAIN_CODE_SIZE * 2)
-        throw std::invalid_argument("Invalid hex chain code size.");
-    const auto bytes = BASE16::decode(pub_hex + cc_hex);
-    auto pub = std::array<uint8_t, PUBLIC_KEY_SIZE>();
-    auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>();
-    std::copy_n(bytes.begin(), pub.size(), pub.begin());
-    std::copy_n(bytes.begin() + pub.size(), cc.size(), cc.begin());
-    return BIP32PublicKey(pub, cc);
-}  // BIP32PublicKey::fromBase16
+    auto xkey_bytes = ByteArray<XPUBLIC_KEY_SIZE>();
+    std::copy_n(this->pub_.data(), PUBLIC_KEY_SIZE, xkey_bytes.begin());
+    std::copy_n(
+        this->cc_.data(), CHAIN_CODE_SIZE, xkey_bytes.begin() + PUBLIC_KEY_SIZE
+    );
+    return xkey_bytes;
+}  // PrivateKey::xbytes
 
-auto BIP32PublicKey::toBytes(bool with_cc) const -> std::vector<uint8_t>
+auto PublicKey::verifySignature(
+    std::span<const uint8_t> msg,
+    std::span<const uint8_t, SIGNATURE_SIZE> sig
+) const -> bool
 {
-    auto pub_bytes = this->pub_.bytes();
-    if (!with_cc)
-    {
-        std::vector<uint8_t> ret;
-        ret.reserve(pub_bytes.size());
-        ret.insert(ret.end(), begin(pub_bytes), end(pub_bytes));
-        return ret;
-    }
-    return utils::concatBytes(pub_bytes, this->cc_);
-}  // BIP32PublicKey::toBytes
+    return CryptoPP::Donna::ed25519_sign_open(
+               msg.data(), msg.size(), this->pub_.data(), sig.data()
+           ) == 0;
+}  // PublicKey::verifySignature
 
-auto BIP32PublicKey::toBech32(std::string_view hrp) const -> std::string
-{
-    const auto data = utils::concatBytes(this->pub_.bytes(), this->cc_);
-    return BECH32::encode(hrp, data);
-}  // BIP32PublicKey::toBech32
-
-auto BIP32PublicKey::toBase16() const -> std::string
-{
-    return BASE16::encode(this->toBytes(true));
-}  // ExtendedPublicKey::toBase16
-
-auto BIP32PublicKey::toCBOR(bool with_cc) const -> std::string
-{
-    auto cbor_bytes = cppbor::Bstr(this->toBytes(with_cc)).encode();
-    return BASE16::encode(cbor_bytes);  // return the bytes as a hex string
-}  // BIP32PublicKey::toCBOR
-
-auto BIP32PublicKey::deriveChild(
-    const uint32_t index,
-    const DerivationMode mode
-) const -> BIP32PublicKey
+auto PublicKey::deriveChild(const uint32_t index, const DerivationMode mode)
+    const -> PublicKey
 {
     if (index_is_hardened(index)) throw std::exception();
 
     auto idxBuf = serialize_index32(index, mode);
 
     /* calculate Z */
-    const auto pub_bytes_in = this->pub_.bytes();
     const auto mac = Botan::MessageAuthenticationCode::create("HMAC(SHA-512)");
     if (!mac) throw std::runtime_error("Unable to create HMAC object.");
     mac->set_key(this->cc_.data(), this->cc_.size());
     mac->update(TAG_DERIVE_Z_NORMAL);
-    mac->update(pub_bytes_in.data(), pub_bytes_in.size());
+    mac->update(this->pub_.data(), this->pub_.size());
     mac->update(idxBuf.data(), idxBuf.size());
     const auto z = mac->final();
 
     // calculate 8 * Zl
-    auto zl8 = std::array<uint8_t, ed25519::ED25519_EXTENDED_KEY_SIZE>{};
+    auto zl8 = ByteArray<64>{};
     // This effectively zero pads to 64 bytes as needed for the extended secret
     // key constructor.
     switch (mode)
@@ -272,13 +242,17 @@ auto BIP32PublicKey::deriveChild(
             break;
         }
     }
-    auto prv_zl8 = ed25519::ExtendedPrivateKey(zl8);
-    auto pub_new = prv_zl8.publicKey().pointAdd(this->pub_);
+
+    auto pub_new = ByteArray<32>();
+    CryptoPP::Donna::bip32_ed25519_publickey(pub_new.data(), zl8.data());
+    CryptoPP::Donna::bip32_ed25519_point_add(
+        pub_new.data(), this->pub_.data(), pub_new.data()
+    );
 
     // calculate the new chain code
     mac->set_key(this->cc_.data(), this->cc_.size());
     mac->update(TAG_DERIVE_CC_NORMAL);
-    mac->update(pub_bytes_in.data(), pub_bytes_in.size());
+    mac->update(this->pub_.data(), this->pub_.size());
     mac->update(idxBuf.data(), idxBuf.size());
     const auto hmac_out = mac->final();
 
@@ -286,46 +260,43 @@ auto BIP32PublicKey::deriveChild(
     auto cc_new = std::array<uint8_t, 32>();
     std::copy_n(hmac_out.begin() + 32, 32, cc_new.begin());
 
-    return BIP32PublicKey(pub_new.bytes(), cc_new);
-}  // BIP32PublicKey::deriveChild
+    return PublicKey(pub_new, cc_new);
+}  // PublicKey::deriveChild
 
-auto BIP32PrivateKey::fromBytes(std::span<const uint8_t> xpriv)
-    -> BIP32PrivateKey
+PrivateKey::PrivateKey(std::span<const uint8_t, XKEY_SIZE> prv)
 {
-    if (xpriv.size() != ENCRYPTED_KEY_SIZE + CHAIN_CODE_SIZE)
-        throw std::invalid_argument("Invalid extended private key size.");
-    auto skey = ed25519::ExtendedPrivateKey({xpriv.data(), ENCRYPTED_KEY_SIZE});
-    auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>();
-    std::copy(xpriv.begin() + ENCRYPTED_KEY_SIZE, xpriv.end(), cc.begin());
-    return BIP32PrivateKey(skey.bytes(), cc);
-}  // BIP32PrivateKey::fromBytes
+    std::ranges::move(prv | std::views::take(KEY_SIZE), this->prv_.begin());
+    std::copy_n(prv.begin() + KEY_SIZE, CHAIN_CODE_SIZE, this->cc_.begin());
+}  // PrivateKey::PrivateKey
 
-auto BIP32PrivateKey::fromBech32(std::string_view bech32_str) -> BIP32PrivateKey
+PrivateKey::PrivateKey(
+    std::span<const uint8_t, KEY_SIZE> prv,
+    std::span<const uint8_t, CHAIN_CODE_SIZE> cc
+)
 {
-    const auto [hrp1, data] = cardano::BECH32::decode(bech32_str);
-    auto skey = std::array<uint8_t, ENCRYPTED_KEY_SIZE>();
-    auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>();
-    std::copy_n(data.begin(), ENCRYPTED_KEY_SIZE, skey.begin());
-    std::copy_n(data.begin() + ENCRYPTED_KEY_SIZE, CHAIN_CODE_SIZE, cc.begin());
-    return BIP32PrivateKey(skey, cc);
-}  // BIP32PrivateKey::fromBech32
+    std::ranges::move(prv | std::views::take(KEY_SIZE), this->prv_.begin());
+    std::ranges::move(
+        cc | std::views::take(CHAIN_CODE_SIZE), this->cc_.begin()
+    );
+}  // PublicKey::PublicKey
 
-auto BIP32PrivateKey::fromMnemonicByron(const cardano::Mnemonic& mn)
-    -> BIP32PrivateKey
+auto PrivateKey::generate() -> PrivateKey
 {
-    const auto hashed_seed = hash_seed(mn.toSeed());
-    return BIP32PrivateKey::fromBytes(hash_repeatedly(hashed_seed, 1));
-}  // BIP32PrivateKey::fromMnemonicByron
+    // Use the Botan random number generator for generating the entropy.
+    std::unique_ptr<Botan::RandomNumberGenerator> rng;
+#if defined(BOTAN_HAS_SYSTEM_RNG)
+    rng.reset(new Botan::System_RNG);
+#else
+    rng.reset(new Botan::AutoSeeded_RNG);
+#endif
 
-auto BIP32PrivateKey::fromMnemonic(
-    const cardano::Mnemonic& mn,
-    std::string_view passphrase
-) -> BIP32PrivateKey
-{
+    auto seed = SecureByteArray<SEED_SIZE>();
+    rng->randomize(seed.data(), SEED_SIZE);
+
     auto mac = Botan::MessageAuthenticationCode::create("HMAC(SHA-512)");
     const auto pbkdf2 = std::make_unique<Botan::PBKDF2>(*mac.release(), 4096);
-    const auto seed = mn.toSeed();
-    auto key = std::vector<uint8_t>(96);
+    static constexpr auto passphrase = ""sv;
+    auto key = SecureByteArray<XKEY_SIZE>();
     pbkdf2->derive_key(
         key.data(),
         key.size(),
@@ -335,60 +306,96 @@ auto BIP32PrivateKey::fromMnemonic(
         seed.size()
     );
     tweak_bits_icarus(key);
-    return BIP32PrivateKey::fromBytes(key);
-};  // BIP32PrivateKey::fromMnemonic
 
-auto BIP32PrivateKey::fromMnemonic(const cardano::Mnemonic& mn)
-    -> BIP32PrivateKey
+    return PrivateKey(key);
+}  // PrivateKey::generate
+
+auto PrivateKey::fromSeed(std::span<const uint8_t, SEED_SIZE> seed) -> PrivateKey
 {
-    return BIP32PrivateKey::fromMnemonic(mn, "");
-};  // BIP32PrivateKey::fromMnemonic
+    auto key = SecureByteArray<KEY_SIZE>();
+    CryptoPP::Donna::bip32_ed25519_extend(key.data(), seed.data());
 
-auto BIP32PrivateKey::toBytes(bool with_cc) const -> std::vector<uint8_t>
+    // Calculate the chain code
+    auto cc = ByteArray<CHAIN_CODE_SIZE>();
+    const auto hasher = Botan::HashFunction::create_or_throw("SHA-256");
+    hasher->update(1);
+    hasher->update(seed);
+    hasher->final(cc);
+
+    return PrivateKey(key, cc);
+} //  PrivateKey::fromSeed
+
+auto PrivateKey::fromMnemonic(
+    const cardano::Mnemonic& mn,
+    std::string_view passphrase
+) -> PrivateKey
 {
-    auto prv_bytes = this->prv_.bytes();
-    if (!with_cc)
-    {
-        return std::vector<uint8_t>(prv_bytes.begin(), prv_bytes.end());
-    }
-    return utils::concatBytes(prv_bytes, this->cc_);
-}  // BIP32PrivateKey::toBytes
+    auto mac = Botan::MessageAuthenticationCode::create("HMAC(SHA-512)");
+    const auto pbkdf2 = std::make_unique<Botan::PBKDF2>(*mac.release(), 4096);
+    const auto seed = mn.toSeed();
+    auto key = ByteArray<XKEY_SIZE>();
+    pbkdf2->derive_key(
+        key.data(),
+        key.size(),
+        passphrase.data(),
+        passphrase.size(),
+        seed.data(),
+        seed.size()
+    );
+    tweak_bits_icarus(key);
+    return PrivateKey(std::span<uint8_t, XKEY_SIZE>(key).first<XKEY_SIZE>());
+}
 
-auto BIP32PrivateKey::toBech32(std::string_view hrp) const -> std::string
+auto PrivateKey::fromMnemonic(const Mnemonic& mn) -> PrivateKey
 {
-    return BECH32::encode(hrp, this->toBytes(true));
-}  // BIP32PrivateKey::toBech32
+    return PrivateKey::fromMnemonic(mn, "");
+}
 
-auto BIP32PrivateKey::toBase16() const -> std::string
+auto PrivateKey::fromMnemonicByron(const Mnemonic& mn) -> PrivateKey
 {
-    return BASE16::encode(this->toBytes(true));
-}  // ExtendedPublicKey::toBase16
+    const auto hashed_seed = hash_seed(mn.toSeed());
+    auto key = hash_repeatedly(hashed_seed, 1);
+    return PrivateKey(std::span<uint8_t, XKEY_SIZE>(key).first<XKEY_SIZE>());
+}
 
-auto BIP32PrivateKey::toCBOR(bool with_cc) const -> std::string
+auto PrivateKey::xbytes() const -> SecureByteArray<XKEY_SIZE>
 {
-    return BASE16::encode(cppbor::Bstr(this->toBytes(with_cc)).encode());
-}  // BIP32PrivateKey::toCBOR
+    auto xkey_bytes = SecureByteArray<XKEY_SIZE>();
+    std::copy_n(this->prv_.data(), KEY_SIZE, xkey_bytes.begin());
+    std::copy_n(
+        this->cc_.data(), CHAIN_CODE_SIZE, xkey_bytes.begin() + KEY_SIZE
+    );
+    return xkey_bytes;
+}  // PrivateKey::xbytes
 
-auto BIP32PrivateKey::toExtendedCBOR() const -> std::string
+auto PrivateKey::publicKey() const -> PublicKey
 {
-    auto pubkey = this->toPublic().toBytes();  // <- includes the chain code
-    auto bytes = utils::concatBytes(this->prv_.bytes(), pubkey);
-    return BASE16::encode(cppbor::Bstr(bytes).encode());
-}  // BIP32PrivateKey::toExtendedCBOR
+    auto pkey_bytes = ByteArray<PUBLIC_KEY_SIZE>();
+    CryptoPP::Donna::bip32_ed25519_publickey(
+        pkey_bytes.data(), this->prv_.data()
+    );
+    return PublicKey(pkey_bytes, this->cc_);
+}  // PrivateKey::publicKey
 
-auto BIP32PrivateKey::toPublic() const -> BIP32PublicKey
+auto PrivateKey::sign(std::span<const uint8_t> msg
+) const -> ByteArray<SIGNATURE_SIZE>
 {
-    return {this->prv_.publicKey().bytes(), this->cc_};
-}  // BIP32PrivateKey::toPublic
+    auto sig = ByteArray<SIGNATURE_SIZE>();
+    CryptoPP::Donna::bip32_ed25519_sign(
+        msg.data(),
+        msg.size(),
+        this->prv_.data(),
+        this->publicKey().bytes().data(),
+        sig.data()
+    );
+    return sig;
+}
 
-auto BIP32PrivateKey::deriveChild(
-    const uint32_t index,
-    const DerivationMode mode
-) const -> BIP32PrivateKey
+auto PrivateKey::deriveChild(const uint32_t index, const DerivationMode mode)
+    const -> PrivateKey
 {
-    const auto pkey_bytes = this->prv_.publicKey().bytes();
-    const auto skey_bytes = this->prv_.bytes();
-
+    const auto pkey_bytes = this->publicKey().bytes();
+    const auto skey_bytes = this->prv_;
     const auto idxBuf = serialize_index32(index, mode);
 
     // calculate Z
@@ -410,8 +417,8 @@ auto BIP32PrivateKey::deriveChild(
 
     // Fill the key array
     // Kr = Zr + parent(K)r
-    auto res_key = std::array<uint8_t, ENCRYPTED_KEY_SIZE>();
-    auto zl8 = std::array<uint8_t, ed25519::ED25519_EXTENDED_KEY_SIZE>{};
+    auto res_key = ByteArray<64>{};
+    auto zl8 = ByteArray<64>{};
     switch (mode)
     {
         case DerivationMode::V1:
@@ -425,9 +432,9 @@ auto BIP32PrivateKey::deriveChild(
             }
 
             // Kl = 8*Zl + parent(K)l
-            auto prv_zl8 = ed25519::ExtendedPrivateKey(zl8);
-            auto lbytes = prv_zl8.scalerAddLowerBytes(this->prv_);
-            std::copy_n(lbytes.begin(), 32, res_key.begin());
+            CryptoPP::Donna::bip32_ed25519_scalar_add(
+                zl8.data(), this->prv_.data(), res_key.data()
+            );
 
             // Fill in the right-most bytes
             for (auto i = 0UL; i < 32; i++)
@@ -493,19 +500,11 @@ auto BIP32PrivateKey::deriveChild(
     std::copy_n(hmac_out.begin() + 32, CHAIN_CODE_SIZE, cc.begin());
 
     return {res_key, cc};
-}  // BIP32PrivateKey::deriveChild
+}  // PrivateKey::deriveChild
 
-auto BIP32PrivateKey::sign(std::span<const uint8_t> msg) const
-    -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
+auto PrivateKey::encrypt(std::string_view password) const -> EncryptedPrivateKey
 {
-    return this->prv_.sign(msg);
-}  // BIP32PrivateKey::sign
-
-auto BIP32PrivateKey::encrypt(std::string_view password)
-    -> BIP32PrivateKeyEncrypted
-{
-    if (password.empty())
-        return BIP32PrivateKeyEncrypted(this->prv_.bytes(), this->cc_);
+    if (password.empty()) return EncryptedPrivateKey(this->prv_, this->cc_);
 
     // Stretch the password
     static constexpr uint8_t salt[] = "encrypted wallet salt";
@@ -522,58 +521,41 @@ auto BIP32PrivateKey::encrypt(std::string_view password)
     );
 
     // Encrypt the key with the strecthed password
-    const auto prv_bytes = this->prv_.bytes();
-    auto enc_prv_bytes = std::array<uint8_t, ENCRYPTED_KEY_SIZE>{};
+    auto enc_prv_bytes = std::array<uint8_t, KEY_SIZE>{};
     auto cipher = Botan::StreamCipher::create("ChaCha(20)");
     cipher->set_key(
         {stretched_password.begin(), stretched_password.begin() + SYM_KEY_SIZE}
     );
     cipher->set_iv(stretched_password.data() + SYM_KEY_SIZE, SYM_NONCE_SIZE);
-    cipher->cipher(prv_bytes.data(), enc_prv_bytes.data(), ENCRYPTED_KEY_SIZE);
+    cipher->cipher(this->prv_.data(), enc_prv_bytes.data(), KEY_SIZE);
 
-    return BIP32PrivateKeyEncrypted(enc_prv_bytes, this->cc_);
-}  // BIP32PrivateKey::encrypt
+    return EncryptedPrivateKey(enc_prv_bytes, this->cc_);
+}  // PrivateKey::encrypt
 
-BIP32PrivateKeyEncrypted::BIP32PrivateKeyEncrypted(
-    const std::string& prv,
-    const std::string& cc
+EncryptedPrivateKey::EncryptedPrivateKey(
+    std::span<const uint8_t, XKEY_SIZE> encxkey
 )
 {
-    if (prv.size() != this->xprv_.size() * 2)
-        throw std::invalid_argument("Invalid hex public key size.");
-    if (cc.size() != this->cc_.size() * 2)
-        throw std::invalid_argument("Invalid hex chain code size.");
-    const auto bytes = BASE16::decode(prv + cc);
-    std::copy_n(bytes.begin(), ENCRYPTED_KEY_SIZE, this->xprv_.begin());
-    std::copy_n(
-        bytes.begin() + ENCRYPTED_KEY_SIZE, CHAIN_CODE_SIZE, this->cc_.begin()
+    std::copy_n(encxkey.begin(), KEY_SIZE, this->prv_.begin());
+    std::copy_n(encxkey.begin() + KEY_SIZE, CHAIN_CODE_SIZE, this->cc_.begin());
+}  // EncryptedPrivateKey::EncryptedPrivateKey
+
+EncryptedPrivateKey::EncryptedPrivateKey(
+    std::span<const uint8_t, KEY_SIZE> prv,
+    std::span<const uint8_t, CHAIN_CODE_SIZE> cc
+)
+{
+    std::ranges::copy(prv | std::views::take(KEY_SIZE), this->prv_.begin());
+    std::ranges::copy(
+        cc | std::views::take(CHAIN_CODE_SIZE), this->cc_.begin()
     );
-}  // BIP32PrivateKeyEncrypted::ExtendedPublicKey
+}  // EncryptedPrivateKey::EncryptedPrivateKey
 
-auto BIP32PrivateKeyEncrypted::deriveChild(
-    const uint32_t index,
-    std::string_view password,
-    const DerivationMode derivation_mode
-) const -> BIP32PrivateKeyEncrypted
-{
-    const auto decrypted = this->decrypt(password);
-    auto child = decrypted.deriveChild(index, derivation_mode);
-    return child.encrypt(password);
-}  // BIP32PrivateKeyEncrypted::deriveChild
-
-auto BIP32PrivateKeyEncrypted::toPublic(std::string_view password) const
-    -> BIP32PublicKey
-{
-    const auto decrypted = this->decrypt(password);
-    return decrypted.toPublic();
-}  // BIP32PrivateKeyEncrypted::toPublic
-
-auto BIP32PrivateKeyEncrypted::decrypt(std::string_view password) const
-    -> BIP32PrivateKey
+auto EncryptedPrivateKey::decrypt(std::string_view password) -> PrivateKey
 {
     // This is the password encryption used in Daedalus.
     auto cc = std::array<uint8_t, CHAIN_CODE_SIZE>(this->cc_);
-    auto prv = std::array<uint8_t, ENCRYPTED_KEY_SIZE>(this->xprv_);
+    auto prv = std::array<uint8_t, KEY_SIZE>(this->prv_);
     if (!password.empty())
     {
         static constexpr uint8_t salt[] = "encrypted wallet salt";
@@ -594,28 +576,4 @@ auto BIP32PrivateKeyEncrypted::decrypt(std::string_view password) const
         cipher->cipher(prv.data(), prv.data(), prv.size());
     }
     return {prv, cc};
-}  // BIP32PrivateKeyEncrypted::decrypt
-
-auto BIP32PrivateKeyEncrypted::toBase16() const -> std::string
-{
-    const auto bytes = utils::concatBytes(this->xprv_, this->cc_);
-    return BASE16::encode(bytes);
-}  // BIP32PrivateKeyEncrypted::toBase16
-
-auto BIP32PrivateKeyEncrypted::toExtendedCBOR(std::string_view password) const
-    -> std::string
-{
-    auto pubkey =
-        this->toPublic(password).toBytes();  // <- includes the chain code
-    auto bytes = utils::concatBytes(this->xprv_, pubkey);
-    return BASE16::encode(cppbor::Bstr(bytes).encode());
-}  // BIP32PrivateKeyEncrypted::toExtendedCBOR
-
-auto BIP32PrivateKeyEncrypted::sign(
-    std::string_view password,
-    std::span<const uint8_t> msg
-) const -> std::array<uint8_t, ed25519::ED25519_SIGNATURE_SIZE>
-{
-    auto unenc_key = this->decrypt(password);
-    return unenc_key.sign(msg);
-}  // BIP32PrivateKeyEncrypted::sign
+}  // EncryptedPrivateKey::decrypt

@@ -55,7 +55,7 @@ endif()
 # Add 3rd party libraries that should be installed on the system
 set(sodium_USE_STATIC_LIBS ON)
 find_package(Sodium REQUIRED)
-find_package(Botan REQUIRED)
+find_package(Botan 3.4.0 REQUIRED)
 
 # Add the submodules
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs)
@@ -67,13 +67,16 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs)
 # Specify the libcardano source files (including submodules)
 set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/address.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/crypto.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/bip32_ed25519.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ed25519.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/encodings.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/kes.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ledger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/stake_pool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/transaction.cpp
-    ${VIPER25519_SOURCES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/util.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vrf.cpp
     ${LIBCPPBOR_SOURCES}
 )
 
@@ -92,8 +95,6 @@ include(GNUInstallDirs)
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${VIPER25519_INCLUDE}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -107,16 +108,20 @@ target_include_directories(${PROJECT_NAME}
 ################################################################################
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    COMPILE_WARNING_AS_ERROR ON
+    # COMPILE_WARNING_AS_ERROR ON
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
 )
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)
-else()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang|GNU")
     target_compile_options(${PROJECT_NAME} PRIVATE
         -Wall -Wextra -Wpedantic  -Wshadow -Wconversion
+        "$<$<CONFIG:DEBUG>:-g;-O0;--coverage>"
+    )
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        "$<$<CONFIG:DEBUG>:--coverage>"
     )
 endif()
 
@@ -127,7 +132,8 @@ endif()
 # Specify libraries for linking
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        botan::botan
+        Botan::Botan
+        cryptopp::cryptopp
         sodium::sodium
         Threads::Threads
         OpenSSL::SSL
@@ -145,10 +151,23 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif()
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(libs/Catch2)
-    
+
     # Individual tests may be found in the `tests`subdirectory of the
     # repository.
     add_subdirectory(test)
+
+    # Copy data files for integration tests
+    file(COPY test/data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/test)
+endif()
+
+################################################################################
+# Examples
+################################################################################
+
+option(BUILD_LIBCARDANO_EXAMPLES "Build the project examples" OFF)
+
+if(BUILD_LIBCARDANO_EXAMPLES)
+    add_subdirectory(examples)
 endif()
 
 ################################################################################
@@ -169,24 +188,17 @@ install(TARGETS ${PROJECT_NAME} cppbor
 set(CARDANO_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/cardano.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/address.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/bip32_ed25519.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/bip39_dictionary.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/crypto.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ed25519.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/encodings.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/kes.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/mnemonic.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/util.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/vrf.hpp
 )
 install(FILES ${CARDANO_HEADERS} 
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cardano
-)
-
-# We also need to install the Viper25519 headers since they are used in the 
-# cardano/crypto.hpp header.
-set(VIPER25519_HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/libs/viper25519/include/viper25519/ed25519.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/libs/viper25519/include/viper25519/curve25519.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/libs/viper25519/include/viper25519/secmem.hpp
-)
-install(FILES ${VIPER25519_HEADERS} 
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/viper25519
 )
 
 ################################################################################

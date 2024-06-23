@@ -26,9 +26,6 @@
 #include <cppbor/cppbor.h>
 #include <cppbor/cppbor_parse.h>
 
-// Private libcardano source
-#include "utils.hpp"
-
 using namespace cardano;
 
 auto shelley::TransactionWitnessSet::serializer() const -> cppbor::Map
