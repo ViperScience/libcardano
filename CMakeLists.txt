@@ -77,7 +77,6 @@ set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/transaction.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/util.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vrf.cpp
-    ${LIBCPPBOR_SOURCES}
 )
 
 # Add the library to build but do not specify STATIC vs. SHARED. A shared 
@@ -150,8 +149,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
 endif()
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
-    add_subdirectory(libs/Catch2)
-
     # Individual tests may be found in the `tests`subdirectory of the
     # repository.
     add_subdirectory(test)
