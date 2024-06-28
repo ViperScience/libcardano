@@ -35,12 +35,7 @@ endif()
 ########################################################################
 # Additional packages
 ########################################################################
-
-# Include a thread library for linking that is specific to the platform.
-find_package(Threads REQUIRED)
-
-# Include OpenSSL for the Botan library
-find_package(OpenSSL REQUIRED)
+include(FetchContent)
 
 # Add the local cmake directory to the path for custom search files
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -52,10 +47,40 @@ else()
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
 endif()
 
-# Add 3rd party libraries that should be installed on the system
+# Include a thread library for linking that is specific to the platform.
+find_package(Threads REQUIRED)
+
+# Include OpenSSL for the Botan library
+find_package(OpenSSL REQUIRED)
+
+# Include the Cardano fork of libsodium. Requires installation.
 set(sodium_USE_STATIC_LIBS ON)
 find_package(Sodium REQUIRED)
+
+# Include the Botan library for cryptographic functions.
+# Must be installed on the system.
 find_package(Botan 3.4.0 REQUIRED)
+
+# Include the Viper fork of crypto++.
+# Use cryptopp_cmake to integrate crypto++ with the cmake build system.
+
+FetchContent_Declare(
+  cryptopp
+  GIT_REPOSITORY https://github.com/ViperScience/cryptopp.git
+  GIT_TAG        ed614691c3f33a152a223ab8d2630dcc17d58020
+)
+FetchContent_MakeAvailable(cryptopp)
+
+set(CRYPTOPP_SOURCES ${cryptopp_SOURCE_DIR})
+set(CRYPTOPP_USE_MASTER_BRANCH 1)
+set(CRYPTOPP_BUILD_TESTING OFF)
+
+FetchContent_Declare(
+  cryptopp_cmake
+  GIT_REPOSITORY https://github.com/abdes/cryptopp-cmake.git
+  GIT_TAG        CRYPTOPP_8_9_0
+)
+FetchContent_MakeAvailable(cryptopp_cmake)
 
 # Add the submodules
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs)
@@ -92,8 +117,6 @@ add_library(cardano::cardano ALIAS ${PROJECT_NAME})
 include(GNUInstallDirs)
 
 target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>

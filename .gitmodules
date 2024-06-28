@@ -1,9 +1,3 @@
 [submodule "libs/libcppbor"]
 	path = libs/libcppbor
 	url = https://gitlab.com/viperscience/libcppbor.git
-[submodule "libs/cryptopp"]
-	path = libs/cryptopp
-	url = https://github.com/ViperScience/cryptopp.git
-[submodule "libs/cryptopp-cmake"]
-	path = libs/cryptopp-cmake
-	url = https://github.com/abdes/cryptopp-cmake.git

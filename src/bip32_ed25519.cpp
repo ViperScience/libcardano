@@ -31,7 +31,7 @@
 #include <botan/stream_cipher.h>
 #include <botan/system_rng.h>
 #include <cppbor/cppbor.h>
-#include <cryptopp/donna.h>
+#include <donna.h>
 
 // Public libcardano headers
 #include <cardano/bip32_ed25519.hpp>
