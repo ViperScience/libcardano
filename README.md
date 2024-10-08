@@ -46,14 +46,14 @@ An example is shown below.
 ### Submodule Dependencies
 Libcardano relies on functionality from the following dependencies, which are included as git submodules. 
 
-* [Crypto++](https://github.com/ViperScience/cryptopp): Crypto++ is a free C++ class library of cryptographic schemes. The Viper Science fork adds public API methods to support VIP32-Ed25519 style keys used for Cardano wallets.
+* [Crypto++](https://github.com/ViperScience/cryptopp): Crypto++ is a free C++ class library of cryptographic schemes. The Viper Science fork adds public API methods to support BIP32-Ed25519 style keys used for Cardano wallets.
 * [Cryptopp-CMake](https://github.com/abdes/cryptopp-cmake): A modern CMake build project for Crypto++. Used by libcardano to pull in the Viper Science fork of Crypto++.
 * [Libcppbor](https://gitlab.com/viperscience/libcppbor): A modern C++ CBOR parser and generator. This library was originally part of the Android source code but was forked by Viper Science team in order to add a CMake build system and further enhancements for integration with libcardano.
 
 ### External Dependencies
 Libcardano links with the following external dependencies. See the respective project documentation for instation instructions.
 
-* [Botan-3](https://botan.randombit.net/): Crypto and TLS for Modern C++. Botan is used to provide a significant portion of cryptographic tooling in libcardano such as randome number generation, hashing of all kinds, encryption/decryption. etc. 
+* [Botan-3](https://botan.randombit.net/): Crypto and TLS for Modern C++. Botan is used to provide a significant portion of cryptographic tooling in libcardano such as random number generation, hashing of all kinds, encryption/decryption. etc. 
 * [libsodium](https://github.com/IntersectMBO/libsodium): A modern, portable, easy to use crypto library. The Cardano fork of libsodium provides implementations of the VRF keys used in the protocol. The basic Ed25519 functions are also used in libcardano.
 
 The provided Docker file demonstrates how to build and install the required dependencies and Cmake find scripts are also provided.
