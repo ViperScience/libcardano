@@ -21,6 +21,7 @@
 #ifndef _CARDANO_ENCODINGS_HPP_
 #define _CARDANO_ENCODINGS_HPP_
 
+#include <cstdint>
 #include <span>
 #include <string_view>
 #include <utility>
