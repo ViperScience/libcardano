@@ -95,10 +95,9 @@ class BaseAddress
     /// @return The base16 encoded address.
     [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
 
-    /// @brief Encode the address as a bech32 string.
-    /// @param hrp The human-readable part of the bech32 string.
+    /// @brief Encode the address as a CIP-0005 compliant bech32 string.
     /// @return The bech32 encoded address.
-    [[nodiscard]] auto toBech32(const std::string_view hrp) const -> std::string;
+    [[nodiscard]] auto toBech32() const -> std::string;
 };  // BaseAddress
 
 /// @brief A Cardano enterprise address object.
@@ -145,10 +144,9 @@ class EnterpriseAddress
     /// @return The base16 encoded address.
     [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
 
-    /// @brief Encode the address as a bech32 string.
-    /// @param hrp The human-readable part of the bech32 string.
+    /// @brief Encode the address as a CIP-0005 compliant bech32 string.
     /// @return The bech32 encoded address.
-    [[nodiscard]] auto toBech32(const std::string_view addr) const -> std::string;
+    [[nodiscard]] auto toBech32() const -> std::string;
 };  // EnterpriseAddress
 
 class PointerAddress
@@ -199,10 +197,9 @@ class RewardsAddress
     /// @return The base16 encoded address.
     [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
 
-    /// @brief Encode the address as a bech32 string.
-    /// @param hrp The human-readable part of the bech32 string.
+    /// @brief Encode the address as a CIP-0005 compliant bech32 string.
     /// @return The bech32 encoded address.
-    [[nodiscard]] auto toBech32(const std::string_view hrp) const -> std::string;
+    [[nodiscard]] auto toBech32() const -> std::string;
 };  // RewardsAddress
 
 /// @brief A Cardano Byron era address object.

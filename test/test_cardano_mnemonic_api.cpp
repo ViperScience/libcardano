@@ -128,11 +128,11 @@ TEST_CASE("testCardanoEd25519API")
 
         // Derive the enterprise address
         auto pmt_addr = cardano::EnterpriseAddress::fromKey(cardano::NetworkID::testnet, addr_xvk);
-        REQUIRE(pmt_addr.toBech32("addr_test") == payment_addr_bech32);
+        REQUIRE(pmt_addr.toBech32() == payment_addr_bech32);
 
         // Derive the base address
         auto addr = cardano::BaseAddress::fromKeys(cardano::NetworkID::testnet, addr_xvk, stake_xvk);
-        REQUIRE(addr.toBech32("addr_test") == base_addr_bech32);
+        REQUIRE(addr.toBech32() == base_addr_bech32);
     }
 
     SECTION("testMnemonicToStakeAddress")
@@ -158,6 +158,6 @@ TEST_CASE("testCardanoEd25519API")
 
         // Derive the stake address
         auto stake_addr = cardano::RewardsAddress::fromKey(cardano::NetworkID::testnet, stake_xvk);
-        REQUIRE(stake_addr.toBech32("stake_test") == stake_addr_bech32);
+        REQUIRE(stake_addr.toBech32() == stake_addr_bech32);
     }
 }

@@ -125,11 +125,11 @@ auto BaseAddress::toBase16(bool include_header_byte) const -> std::string
     return BASE16::encode(this->toBytes(include_header_byte));
 }  // BaseAddress::toBase16
 
-auto BaseAddress::toBech32(const std::string_view hrp) const -> std::string
+auto BaseAddress::toBech32() const -> std::string
 {
-    auto bytes = util::concatBytes(this->pmt_key_hash_, this->stk_key_hash_);
-    bytes.insert(bytes.begin(), this->header_byte_);
-    return BECH32::encode(hrp, bytes);
+    if ((this->header_byte_ & 0b00001111) == NETWORK_TAG_MAINNET)
+        return BECH32::encode("addr", this->toBytes(true));
+    return BECH32::encode("addr_test", this->toBytes(true));
 }  // BaseAddress::toBech32
 
 EnterpriseAddress::EnterpriseAddress(
@@ -195,9 +195,11 @@ auto EnterpriseAddress::toBase16(bool include_header_byte) const -> std::string
     return BASE16::encode(this->toBytes(include_header_byte));
 }  // EnterpriseAddress::toBase16
 
-auto EnterpriseAddress::toBech32(const std::string_view hrp) const -> std::string
+auto EnterpriseAddress::toBech32() const -> std::string
 {
-    return BECH32::encode(hrp, this->toBytes(true));
+    if ((this->header_byte_ & 0b00001111) == NETWORK_TAG_MAINNET)
+        return BECH32::encode("addr", this->toBytes(true));
+    return BECH32::encode("addr_test", this->toBytes(true));
 }  // EnterpriseAddress::toBech32
 
 RewardsAddress::RewardsAddress(
@@ -263,9 +265,11 @@ auto RewardsAddress::toBase16(bool include_header_byte) const -> std::string
     return BASE16::encode(this->toBytes(include_header_byte));
 }  // RewardsAddress::toBase16
 
-auto RewardsAddress::toBech32(const std::string_view hrp) const -> std::string
+auto RewardsAddress::toBech32() const -> std::string
 {
-    return BECH32::encode(hrp, this->toBytes(true));
+    if ((this->header_byte_ & 0b00001111) == NETWORK_TAG_MAINNET)
+        return BECH32::encode("stake", this->toBytes(true));
+    return BECH32::encode("stake_test", this->toBytes(true));
 }  // RewardsAddress::toBech32
 
 ////////////////////////////////////////////////////////////////////////////////

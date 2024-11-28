@@ -52,16 +52,16 @@ TEST_CASE("testCardanoEd25519API")
         auto stake_xvk = acct_xvk.deriveChild(2).deriveChild(0);
 
         auto addr = cardano::BaseAddress::fromKeys(cardano::NetworkID::testnet, addr_xvk, stake_xvk);
-        REQUIRE(addr.toBech32("addr_test") == base_addr_bech32);
-        REQUIRE(cardano::BaseAddress::fromBech32(base_addr_bech32).toBech32("addr_test") == base_addr_bech32);
+        REQUIRE(addr.toBech32() == base_addr_bech32);
+        REQUIRE(cardano::BaseAddress::fromBech32(base_addr_bech32).toBech32() == base_addr_bech32);
     
         auto pmt_addr = cardano::EnterpriseAddress::fromKey(cardano::NetworkID::testnet, addr_xvk);
-        REQUIRE(pmt_addr.toBech32("addr_test") == payment_addr_bech32);
-        REQUIRE(cardano::EnterpriseAddress::fromBech32(payment_addr_bech32).toBech32("addr_test") == payment_addr_bech32);
+        REQUIRE(pmt_addr.toBech32() == payment_addr_bech32);
+        REQUIRE(cardano::EnterpriseAddress::fromBech32(payment_addr_bech32).toBech32() == payment_addr_bech32);
 
         auto stake_addr = cardano::RewardsAddress::fromKey(cardano::NetworkID::testnet, stake_xvk);
-        REQUIRE(stake_addr.toBech32("stake_test") == stake_addr_bech32 );
-        REQUIRE(cardano::RewardsAddress::fromBech32(stake_addr_bech32).toBech32("stake_test") == stake_addr_bech32);
+        REQUIRE(stake_addr.toBech32() == stake_addr_bech32 );
+        REQUIRE(cardano::RewardsAddress::fromBech32(stake_addr_bech32).toBech32() == stake_addr_bech32);
 
         REQUIRE(stake_addr.toBase16() == std::string("f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
         REQUIRE(stake_addr.toBase16(true) == std::string("e0f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
