@@ -136,10 +136,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX /RTC1)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang|GNU")
     target_compile_options(${PROJECT_NAME} PRIVATE
-        -Wall -Wextra -Wpedantic  -Wshadow -Wconversion
+        -Wall -Wextra -Wpedantic  -Wshadow -Wconversion -ftrivial-auto-var-init=pattern
         "$<$<CONFIG:DEBUG>:-g;-O0;--coverage>"
     )
     target_link_libraries(${PROJECT_NAME} PRIVATE
