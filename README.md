@@ -63,6 +63,26 @@ Libcardano uses Catch2 for structuring unit tests.
 
 * [Catch2](https://github.com/catchorg/Catch2): A unit testing framework for C++.
 
+## Including
+
+### CMake via FetchContent
+
+    FetchContent_Declare(
+      libcardano
+      GIT_REPOSITORY https://gitlab.com/viperscience/libcardano.git
+      GIT_TAG 3e6748857439797d53e31d0ba613be82e650ae40
+    )
+    FetchContent_MakeAvailable(libcardano)
+
+This makes the target `cardano::cardano` available for linking.
+
+### CMake via find\_package
+After building andinstalling the library.
+
+    find_package(Cardano)
+
+This makes the target `cardano::cardano` available for linking.
+
 ## Features
 
 - Simple API exposing Cardano functionality and data types
