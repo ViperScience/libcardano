@@ -59,9 +59,10 @@ class BabbageTransactionBuilder
     babbage::Transaction tx_;
 
   public:
+    /// @brief Construct a transaction builder object.
     BabbageTransactionBuilder() : tx_{babbage::Transaction{}} {};
 
-    /// @brief Construct a transaction builder object from a Shelley era
+    /// @brief Construct a transaction builder object from a Babbage era
     /// transaction structure.
     /// @param tx The transaction structure.
     explicit BabbageTransactionBuilder(babbage::Transaction tx)
@@ -69,11 +70,14 @@ class BabbageTransactionBuilder
     {
     }
 
-    /// @brief Static method to create a transaction from CBOR data.
-    ///
+    /// @brief Static method to populate a transaction buider from CBOR data.
+    /// @param cbor_bytes Transaction CBOR data as a span of bytes.
+    /// @return A new transaction builder.
     [[nodiscard]] static auto fromCBOR(std::span<const uint8_t> cbor_bytes)
         -> BabbageTransactionBuilder;
 
+    /// @brief Get the Era of the transaction builder.
+    /// @return Era enum.
     [[nodiscard]] auto getEra() const -> Era { return era_; }
 
     /// @brief Add an input to the transaction.
@@ -83,11 +87,42 @@ class BabbageTransactionBuilder
     auto addInput(std::span<const uint8_t> id, uint64_t index)
         -> BabbageTransactionBuilder&;
 
-    auto addOutput(const BaseAddress& addr, uint64_t amount)
-        -> BabbageTransactionBuilder&;
+    /// @brief Add an output transaction.
+    /// @param addr A base address object.
+    /// @param amount The amount of the output in lovelaces.
+    /// @param prebabbage Use prebabbage CBOR structure (default: false).
+    /// @return A reference to the transaction builder.
+    auto addOutput(
+        const BaseAddress& addr,
+        uint64_t amount,
+        bool prebabbage = false
+    ) -> BabbageTransactionBuilder&;
 
-    auto addOutput(const EnterpriseAddress& addr, uint64_t amount)
-        -> BabbageTransactionBuilder&;
+    /// @brief Add an output transaction.
+    /// @param addr An enterprise address object.
+    /// @param amount The amount of the output in lovelaces.
+    /// @param prebabbage Use prebabbage CBOR structure (default: false).
+    /// @return A reference to the transaction builder.
+    auto addOutput(
+        const EnterpriseAddress& addr,
+        uint64_t amount,
+        bool prebabbage = false
+    ) -> BabbageTransactionBuilder&;
+
+    /// @brief Add a rewards withdrawal to the transaction.
+    /// @param addr A rewards address object.
+    /// @param amount The amount to withdraw in lovelaces.
+    /// @return A reference to the transaction builder.
+    auto addWithdrawal(
+        const RewardsAddress& addr,
+        uint64_t amount
+    ) -> BabbageTransactionBuilder&;      
+
+    auto addMint(
+        const std::array<uint8_t, 32>& policy_id,
+        std::vector<std::span<const uint8_t>> asset_names,
+        std::vector<size_t> asset_counts
+    ) -> BabbageTransactionBuilder&;
 
     /// @brief Set the transaction fee.
     /// @param fee The transaction fee in lovelaces.
@@ -98,12 +133,6 @@ class BabbageTransactionBuilder
     /// @param ttl The transaction time to live in slots.
     /// @return A reference to the transaction builder.
     auto setTtl(size_t ttl) -> BabbageTransactionBuilder&;
-
-    auto addMint(
-        const std::array<uint8_t, 32>& policy_id,
-        std::vector<std::span<const uint8_t>> asset_names,
-        std::vector<size_t> asset_counts
-    ) -> BabbageTransactionBuilder&;
 
     /// @brief Sign the transaction and add the signature to the witness set.
     /// @param skey The signing key.

@@ -198,6 +198,14 @@ auto shelley::TransactionBody::serializer() const -> cppbor::Map
 
     if (withdrawals)
     {
+        auto withdrawals_map = cppbor::Map{};
+        for (auto const& w : *withdrawals) {
+            withdrawals_map.add(
+                cppbor::Bstr{{std::get<Bytes>(w).data(), std::get<Bytes>(w).size()}},
+                cppbor::Uint(std::get<Coin>(w))
+            );
+        }
+        tx_body.add(5, std::move(withdrawals_map));
     }
 
     if (update)
@@ -229,17 +237,20 @@ auto shelley::Transaction::serializer() const -> cppbor::Array
 
 auto alonzo::TransactionOutput::serializer() const -> cppbor::Array
 {
-    auto tx_output = cppbor::Array(
-        cppbor::Bstr{{address.data(), address.size()}}, cppbor::Uint(amount)
-    );
+    auto tx_output = cppbor::Array();
+    tx_output.add(cppbor::Bstr{{address.data(), address.size()}});
+    tx_output.add(cppbor::Uint(amount));
     if (datum_hash)
     {
-        tx_output.add(
-            cppbor::Bstr{{datum_hash.value().data(), datum_hash.value().size()}}
-        );
+        tx_output.add(cppbor::Bstr{{datum_hash->data(), datum_hash->size()}});
     }
     return tx_output;
-};  // babbage::LegacyTransactionOutput::serializer
+}  // babbage::LegacyTransactionOutput::serializer
+
+auto babbage::ScriptRef::serializer() const -> cppbor::SemanticTag
+{
+    return cppbor::SemanticTag(24, cppbor::Bstr{script_cbor});
+}  // babbage::ScriptRef::serializer
 
 auto babbage::PostAlonzoTransactionOutput::serializer() const -> cppbor::Map
 {
@@ -250,7 +261,7 @@ auto babbage::PostAlonzoTransactionOutput::serializer() const -> cppbor::Map
     // if (datum_option) {}
     // if (script_ref) {}
     return tx_output;
-};  // babbage::PostAlonzoTransactionOutput::serializer
+}  // babbage::PostAlonzoTransactionOutput::serializer
 
 auto babbage::TransactionBody::serializer() const -> cppbor::Map
 {
@@ -295,11 +306,19 @@ auto babbage::TransactionBody::serializer() const -> cppbor::Map
     //         // }
     //         // transaction_body.add(4, std::move(certificates_array));
     //     }
-    //
-    //     if (withdrawals)
-    //     {
-    //     }
-    //
+
+    if (withdrawals)
+    {
+        auto withdrawals_map = cppbor::Map{};
+        for (auto const& w : *withdrawals) {
+            withdrawals_map.add(
+                cppbor::Bstr{{std::get<Bytes>(w).data(), std::get<Bytes>(w).size()}},
+                cppbor::Uint(std::get<Coin>(w))
+            );
+        }
+        tx_body.add(5, std::move(withdrawals_map));
+    }
+
     //     if (update)
     //     {
     //     }

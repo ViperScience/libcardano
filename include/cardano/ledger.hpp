@@ -1767,6 +1767,16 @@ using ScriptDataHash = alonzo::ScriptDataHash;
 ///
 using PreBabbageTransactionOutput = alonzo::TransactionOutput;
 
+// datum_option = [ 0, $hash32 // 1, data ]
+
+// script_ref = #6.24(bytes .cbor script)
+struct ScriptRef : public TagSerializable
+{
+    Bytes script_cbor{};
+
+    [[nodiscard]] cppbor::SemanticTag serializer() const final;
+};
+
 /// @brief PostAlonzoTransactionOutput
 ///
 /// CDDL:
@@ -1790,7 +1800,7 @@ struct PostAlonzoTransactionOutput : public MapSerializable
     // std::optional<DatumOption> datum_option{};
 
     /// @brief The script reference (optional)
-    // std::optional<ScriptRef> script_ref{};
+    std::optional<ScriptRef> script_ref{};
 
     /// @brief Create a transaction output CBOR object for serialization.
     /// @return CBOR array object.
@@ -1857,7 +1867,7 @@ struct TransactionBody : public MapSerializable
     Coin fee{};
     std::optional<Uint> ttl{};
     // std::optional<std::vector<cert_types>> certificates;
-    // std::optional<Withdrawals> withdrawals;
+    std::optional<Withdrawals> withdrawals;
     // std::optional<Update> update;
     // std::optional<MetadataHash> metadata_hash;
     // std::optional<AuxiliaryDataHash> auxiliary_data_hash;
@@ -1904,9 +1914,6 @@ struct TransactionWitnessSet : public MapSerializable
     /// @return CBOR map object.
     [[nodiscard]] cppbor::Map serializer() const final;
 };
-
-// // datum_option = [ 0, $hash32 // 1, data ]
-// // script_ref = #6.24(bytes .cbor script)
 
 // transaction_metadatum =
 //     { * transaction_metadatum => transaction_metadatum }

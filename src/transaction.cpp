@@ -53,31 +53,57 @@ auto BabbageTransactionBuilder::addInput(
 
 auto BabbageTransactionBuilder::addOutput(
     const BaseAddress& addr,
-    uint64_t amount
+    uint64_t amount,
+    bool prebabbage
 ) -> BabbageTransactionBuilder&
 {
-    auto output = babbage::PostAlonzoTransactionOutput();
-    output.address = addr.toBytes(true);
-    output.amount = amount;
-
-    this->tx_.transaction_body.transaction_outputs.push_back(output);
-
+    if (prebabbage) {
+        auto output = babbage::PreBabbageTransactionOutput{};
+        output.address = addr.toBytes(true);
+        output.amount = amount;
+        this->tx_.transaction_body.transaction_outputs.push_back(output);
+    } else {
+        auto output = babbage::PostAlonzoTransactionOutput{};
+        output.address = addr.toBytes(true);
+        output.amount = amount;
+        this->tx_.transaction_body.transaction_outputs.push_back(output);
+    }
     return *this;
 }  // BabbageTransactionBuilder::addOutput
 
 auto BabbageTransactionBuilder::addOutput(
     const EnterpriseAddress& addr,
-    uint64_t amount
+    uint64_t amount,
+    bool prebabbage
 ) -> BabbageTransactionBuilder&
 {
-    auto output = babbage::PostAlonzoTransactionOutput();
-    output.address = addr.toBytes(true);
-    output.amount = amount;
-
-    this->tx_.transaction_body.transaction_outputs.push_back(output);
-
+    if (prebabbage) {
+        auto output = babbage::PreBabbageTransactionOutput{};
+        output.address = addr.toBytes(true);
+        output.amount = amount;
+        this->tx_.transaction_body.transaction_outputs.push_back(output);
+    } else {
+        auto output = babbage::PostAlonzoTransactionOutput{};
+        output.address = addr.toBytes(true);
+        output.amount = amount;
+        this->tx_.transaction_body.transaction_outputs.push_back(output);
+    }
     return *this;
 }  // BabbageTransactionBuilder::addOutput
+
+auto BabbageTransactionBuilder::addWithdrawal(
+    const RewardsAddress& addr,
+    uint64_t amount
+) -> BabbageTransactionBuilder& {
+    if (!this->tx_.transaction_body.withdrawals.has_value()) {
+        this->tx_.transaction_body.withdrawals = babbage::Withdrawals();
+    }
+    this->tx_.transaction_body.withdrawals.value().emplace_back(
+        addr.toBytes(true),
+        amount
+    );
+    return *this;
+}  // BabbageTransactionBuilder::addWithdrawal
 
 auto BabbageTransactionBuilder::setTtl(size_t ttl) -> BabbageTransactionBuilder&
 {
