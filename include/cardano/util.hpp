@@ -23,6 +23,7 @@
 
 // Standard Library Headers
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <ranges>
 #include <span>
@@ -32,6 +33,22 @@
 /// @brief Utility namespace
 namespace cardano::util
 {
+
+/// @brief Convert Lovelaces to ADA.
+/// @param lovelaces The value in lovelaces (integer).
+/// @return The equivalent value in ADA (double).
+constexpr auto love2ada(int64_t lovelaces) -> double
+{
+    return static_cast<double>(lovelaces) / 1000000.0;
+}
+
+/// @brief Convert ADA Lovelaces.
+/// @param ada The value in ADA (double).
+/// @return The value in lovelaces (integer).
+constexpr auto ada2love(double ada) -> int64_t
+{
+    return static_cast<int64_t>(trunc(1000000 * ada));
+}
 
 /// @brief Concatenate two byte ranges.
 /// @return A vector containing the elements of both ranges.
