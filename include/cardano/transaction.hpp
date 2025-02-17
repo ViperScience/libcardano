@@ -154,6 +154,11 @@ class BabbageTransactionBuilder
     /// @brief Serialize the transaction to a CBOR byte vector.
     /// @return The serialized transaction bytes.
     [[nodiscard]] auto serialize() const -> std::vector<uint8_t>;
+
+    /// @brief Return a constant reference to the transaction object.
+    [[nodiscard]] const babbage::Transaction& getTransaction() const {
+        return this->tx_;
+    }
 };
 
 using TransactionBuilder = BabbageTransactionBuilder;
