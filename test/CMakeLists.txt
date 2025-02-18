@@ -20,14 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-Include(FetchContent)
-
+# Use Catch2 as the unit testing framework
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
   GIT_TAG        v3.6.0
 )
-
 FetchContent_MakeAvailable(Catch2)
 
 set(CMAKE_CXX_STANDARD 20)
