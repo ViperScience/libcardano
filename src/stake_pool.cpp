@@ -292,7 +292,7 @@ RegistrationCertificateManager::RegistrationCertificateManager(
     this->cert_.pool_params.pledge = pledge_lovelace;
     this->cert_.pool_params.cost = cost_lovelace;
     this->cert_.pool_params.margin = {(uint64_t)n, (uint64_t)d};
-    this->cert_.pool_params.reward_account = reward_account.toBytes(true);
+    this->cert_.pool_params.reward_account = reward_account.toBytes();
 }  // RegistrationCertificateManager::RegistrationCertificateManager
 
 auto RegistrationCertificateManager::setMargin(double margin) -> void
@@ -308,7 +308,7 @@ auto RegistrationCertificateManager::setMargin(double margin) -> void
 auto RegistrationCertificateManager::addOwner(const RewardsAddress& stake_addr)
     -> void
 {
-    auto byte_vec = stake_addr.toBytes();
+    auto byte_vec = stake_addr.toBytesRaw();
     auto arr = util::makeByteArray<28>(byte_vec);
     this->cert_.pool_params.pool_owners.insert(arr);
 }  // RegistrationCertificateManager::addOwner

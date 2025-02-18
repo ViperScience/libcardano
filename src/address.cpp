@@ -56,6 +56,25 @@ constexpr uint8_t STAKE_ADDR_STAKEKEYHASH = 0b1110;
 
 }  // unnamed namespace
 
+auto ChainPointer::toBytes() const -> std::vector<uint8_t>
+{
+    auto point = std::array<uint64_t, 3>{
+        this->certificate_index_,
+        this->transaction_index_,
+        this->slot_number_
+    };
+    auto output = std::vector<uint8_t>{};
+    for (auto v : point) {
+        output.insert(output.begin(), v & 0x7F);
+        v >>= 7;
+        while (v > 0) {
+            output.insert(output.begin(), 0x80 | (v & 0x7F));
+            v >>= 7;
+        }
+    }
+    return output;
+}  // ChainPointer::toBytes
+
 BaseAddress::BaseAddress(
     NetworkID nid,
     std::array<uint8_t, KEY_HASH_LENGTH> pmt_key_hash,
@@ -112,24 +131,24 @@ auto BaseAddress::fromBech32(const std::string_view addr_bech32) -> BaseAddress
     return addr;
 }  // BaseAddress::fromBech32
 
-auto BaseAddress::toBytes(bool include_header_byte
-) const -> std::vector<uint8_t>
+auto BaseAddress::toBytes() const -> std::vector<uint8_t>
 {
     auto bytes = util::concatBytes(this->pmt_key_hash_, this->stk_key_hash_);
-    if (include_header_byte) bytes.insert(bytes.begin(), this->header_byte_);
+    bytes.insert(bytes.begin(), this->header_byte_);
     return bytes;
 }  // BaseAddress::toBytes
 
-auto BaseAddress::toBase16(bool include_header_byte) const -> std::string
+auto BaseAddress::toBytesRaw() const -> std::vector<uint8_t>
 {
-    return BASE16::encode(this->toBytes(include_header_byte));
-}  // BaseAddress::toBase16
+    auto bytes = util::concatBytes(this->pmt_key_hash_, this->stk_key_hash_);
+    return bytes;
+}  // BaseAddress::toBytesRaw
 
 auto BaseAddress::toBech32() const -> std::string
 {
     if ((this->header_byte_ & 0b00001111) == NETWORK_TAG_MAINNET)
-        return BECH32::encode("addr", this->toBytes(true));
-    return BECH32::encode("addr_test", this->toBytes(true));
+        return BECH32::encode("addr", this->toBytes());
+    return BECH32::encode("addr_test", this->toBytes());
 }  // BaseAddress::toBech32
 
 EnterpriseAddress::EnterpriseAddress(
@@ -175,31 +194,26 @@ auto EnterpriseAddress::fromBech32(const std::string_view addr_bech32) -> Enterp
     return addr;
 }  // EnterpriseAddress::fromBech32
 
-auto EnterpriseAddress::toBytes(bool include_header_byte
-) const -> std::vector<uint8_t>
+auto EnterpriseAddress::toBytes() const -> std::vector<uint8_t>
 {
-    auto offset = (size_t)include_header_byte;
-    auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH + offset);
-    if (include_header_byte)
-    {
-        bytes[0] = this->header_byte_;
-    }
-    std::copy_n(
-        this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + (long)offset
-    );
+    auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH + 1);
+    bytes[0] = this->header_byte_;
+    std::copy_n(this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + 1);
     return bytes;
 }  // EnterpriseAddress::toBytes
 
-auto EnterpriseAddress::toBase16(bool include_header_byte) const -> std::string
+auto EnterpriseAddress::toBytesRaw() const -> std::vector<uint8_t>
 {
-    return BASE16::encode(this->toBytes(include_header_byte));
-}  // EnterpriseAddress::toBase16
+    auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH);
+    std::copy_n(this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin());
+    return bytes;
+}  // EnterpriseAddress::toBytesRaw
 
 auto EnterpriseAddress::toBech32() const -> std::string
 {
     if ((this->header_byte_ & 0b00001111) == NETWORK_TAG_MAINNET)
-        return BECH32::encode("addr", this->toBytes(true));
-    return BECH32::encode("addr_test", this->toBytes(true));
+        return BECH32::encode("addr", this->toBytes());
+    return BECH32::encode("addr_test", this->toBytes());
 }  // EnterpriseAddress::toBech32
 
 RewardsAddress::RewardsAddress(
@@ -245,31 +259,26 @@ auto RewardsAddress::fromBech32(const std::string_view addr_bech32) -> RewardsAd
     return addr;
 }  // RewardsAddress::fromBech32
 
-auto RewardsAddress::toBytes(bool include_header_byte
-) const -> std::vector<uint8_t>
+auto RewardsAddress::toBytes() const -> std::vector<uint8_t>
 {
-    auto offset = (size_t)include_header_byte;
-    auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH + offset);
-    if (include_header_byte)
-    {
-        bytes[0] = this->header_byte_;
-    }
-    std::copy_n(
-        this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + (int)offset
-    );
+    auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH + 1);
+    bytes[0] = this->header_byte_;
+    std::copy_n(this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin() + 1);
     return bytes;
 }  // RewardsAddress::toBytes
 
-auto RewardsAddress::toBase16(bool include_header_byte) const -> std::string
+auto RewardsAddress::toBytesRaw() const -> std::vector<uint8_t>
 {
-    return BASE16::encode(this->toBytes(include_header_byte));
-}  // RewardsAddress::toBase16
+    auto bytes = std::vector<uint8_t>(KEY_HASH_LENGTH);
+    std::copy_n(this->key_hash_.begin(), KEY_HASH_LENGTH, bytes.begin());
+    return bytes;
+}  // RewardsAddress::toBytesRaw
 
 auto RewardsAddress::toBech32() const -> std::string
 {
     if ((this->header_byte_ & 0b00001111) == NETWORK_TAG_MAINNET)
-        return BECH32::encode("stake", this->toBytes(true));
-    return BECH32::encode("stake_test", this->toBytes(true));
+        return BECH32::encode("stake", this->toBytes());
+    return BECH32::encode("stake_test", this->toBytes());
 }  // RewardsAddress::toBech32
 
 ////////////////////////////////////////////////////////////////////////////////

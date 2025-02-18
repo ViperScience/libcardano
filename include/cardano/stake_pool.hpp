@@ -594,7 +594,7 @@ class RegistrationCertificateManager
     /// @param reward_account The pool reward account address.
     auto setRewardAccount(const RewardsAddress& reward_account) -> void
     {
-        this->cert_.pool_params.reward_account = reward_account.toBytes(true);
+        this->cert_.pool_params.reward_account = reward_account.toBytes();
     }
 
     /// @brief Add a stake pool owner to the certificate.

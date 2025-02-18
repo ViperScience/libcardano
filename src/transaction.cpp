@@ -59,12 +59,12 @@ auto BabbageTransactionBuilder::addOutput(
 {
     if (prebabbage) {
         auto output = babbage::PreBabbageTransactionOutput{};
-        output.address = addr.toBytes(true);
+        output.address = addr.toBytes();
         output.amount = amount;
         this->tx_.transaction_body.transaction_outputs.push_back(output);
     } else {
         auto output = babbage::PostAlonzoTransactionOutput{};
-        output.address = addr.toBytes(true);
+        output.address = addr.toBytes();
         output.amount = amount;
         this->tx_.transaction_body.transaction_outputs.push_back(output);
     }
@@ -79,12 +79,12 @@ auto BabbageTransactionBuilder::addOutput(
 {
     if (prebabbage) {
         auto output = babbage::PreBabbageTransactionOutput{};
-        output.address = addr.toBytes(true);
+        output.address = addr.toBytes();
         output.amount = amount;
         this->tx_.transaction_body.transaction_outputs.push_back(output);
     } else {
         auto output = babbage::PostAlonzoTransactionOutput{};
-        output.address = addr.toBytes(true);
+        output.address = addr.toBytes();
         output.amount = amount;
         this->tx_.transaction_body.transaction_outputs.push_back(output);
     }
@@ -99,7 +99,7 @@ auto BabbageTransactionBuilder::addWithdrawal(
         this->tx_.transaction_body.withdrawals = babbage::Withdrawals();
     }
     this->tx_.transaction_body.withdrawals.value().emplace_back(
-        addr.toBytes(true),
+        addr.toBytes(),
         amount
     );
     return *this;

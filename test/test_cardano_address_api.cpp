@@ -51,24 +51,32 @@ TEST_CASE("testCardanoEd25519API")
         auto addr_xvk = acct_xvk.deriveChild(0).deriveChild(0);
         auto stake_xvk = acct_xvk.deriveChild(2).deriveChild(0);
 
-        auto addr = cardano::BaseAddress::fromKeys(cardano::NetworkID::testnet, addr_xvk, stake_xvk);
+        auto addr = BaseAddress::fromKeys(NetworkID::testnet, addr_xvk, stake_xvk);
         REQUIRE(addr.toBech32() == base_addr_bech32);
-        REQUIRE(cardano::BaseAddress::fromBech32(base_addr_bech32).toBech32() == base_addr_bech32);
+        REQUIRE(BaseAddress::fromBech32(base_addr_bech32).toBech32() == base_addr_bech32);
     
-        auto pmt_addr = cardano::EnterpriseAddress::fromKey(cardano::NetworkID::testnet, addr_xvk);
+        auto pmt_addr = EnterpriseAddress::fromKey(NetworkID::testnet, addr_xvk);
         REQUIRE(pmt_addr.toBech32() == payment_addr_bech32);
-        REQUIRE(cardano::EnterpriseAddress::fromBech32(payment_addr_bech32).toBech32() == payment_addr_bech32);
+        REQUIRE(EnterpriseAddress::fromBech32(payment_addr_bech32).toBech32() == payment_addr_bech32);
 
-        auto stake_addr = cardano::RewardsAddress::fromKey(cardano::NetworkID::testnet, stake_xvk);
+        auto stake_addr = RewardsAddress::fromKey(NetworkID::testnet, stake_xvk);
         REQUIRE(stake_addr.toBech32() == stake_addr_bech32 );
-        REQUIRE(cardano::RewardsAddress::fromBech32(stake_addr_bech32).toBech32() == stake_addr_bech32);
+        REQUIRE(RewardsAddress::fromBech32(stake_addr_bech32).toBech32() == stake_addr_bech32);
 
-        REQUIRE(stake_addr.toBase16() == std::string("f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
-        REQUIRE(stake_addr.toBase16(true) == std::string("e0f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
-        REQUIRE(pmt_addr.toBase16() == std::string("54947bcf6b760319bcec250ec225fd1ce63baface47e34b44b73e4f9"));
-        REQUIRE(pmt_addr.toBase16(true) == std::string("6054947bcf6b760319bcec250ec225fd1ce63baface47e34b44b73e4f9"));
-        REQUIRE(addr.toBase16() == std::string("54947bcf6b760319bcec250ec225fd1ce63baface47e34b44b73e4f9f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
-        REQUIRE(addr.toBase16(true) == std::string("0054947bcf6b760319bcec250ec225fd1ce63baface47e34b44b73e4f9f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
+        REQUIRE(BASE16::encode(stake_addr.toBytesRaw()) == std::string("f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
+        REQUIRE(BASE16::encode(stake_addr.toBytes()) == std::string("e0f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
+        REQUIRE(BASE16::encode(pmt_addr.toBytesRaw()) == std::string("54947bcf6b760319bcec250ec225fd1ce63baface47e34b44b73e4f9"));
+        REQUIRE(BASE16::encode(pmt_addr.toBytes()) == std::string("6054947bcf6b760319bcec250ec225fd1ce63baface47e34b44b73e4f9"));
+        REQUIRE(BASE16::encode(addr.toBytesRaw()) == std::string("54947bcf6b760319bcec250ec225fd1ce63baface47e34b44b73e4f9f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
+        REQUIRE(BASE16::encode(addr.toBytes()) == std::string("0054947bcf6b760319bcec250ec225fd1ce63baface47e34b44b73e4f9f6d2f2ef387333e15aea9333e9d908e57a2b513ec6d762884f70ae2a"));
+    }
+
+    SECTION("testChainPointerEncoding")
+    {
+        auto p1 = ChainPointer(1, 2, 3);
+        REQUIRE(p1.toBytes() == std::vector<uint8_t>{1, 2, 3});
+        auto p2 = ChainPointer(123456789, 2, 3);
+        REQUIRE(p2.toBytes() == std::vector<uint8_t>{0xba, 0xef, 0x9a, 0x15, 0x02, 0x03});
     }
 
     SECTION("testBasicByronAddresses")
@@ -82,8 +90,8 @@ TEST_CASE("testCardanoEd25519API")
             0xDD, 0x8F, 0x74, 0x27, 0x4B, 0x73, 0x34, 0x52, 0xDD, 0xEA, 0xB9, 0xA6, 0x2A, 0x39, 0x77,
             0x46, 0xBE, 0x3C, 0x42, 0xCC, 0xDD, 0xA0, 0x00, 0x1A, 0x90, 0x26, 0xDA, 0x5B
         };
-        auto yoroi_addr_from_str = cardano::ByronAddress::fromBase58(yoroi_base58);
-        auto yoroi_addr_from_cbor = cardano::ByronAddress::fromCBOR(yoroi_cbor);
+        auto yoroi_addr_from_str = ByronAddress::fromBase58(yoroi_base58);
+        auto yoroi_addr_from_cbor = ByronAddress::fromCBOR(yoroi_cbor);
         REQUIRE(yoroi_addr_from_str.toBase58() == yoroi_base58);
         REQUIRE(yoroi_addr_from_cbor.toBase58() == yoroi_base58);
 
@@ -96,8 +104,8 @@ TEST_CASE("testCardanoEd25519API")
             0x99, 0xD0, 0xC3, 0x91, 0xF2, 0xBA, 0x89, 0xCB, 0x69, 0x77, 0x02, 0x45, 0x1A, 0x41, 0x70,
             0xCB, 0x17, 0x00, 0x1A, 0x69, 0x79, 0x12, 0x6C
         };
-        auto addr_from_str = cardano::ByronAddress::fromBase58(addr_base58);
-        auto addr_from_cbor = cardano::ByronAddress::fromCBOR(addr_cbor);
+        auto addr_from_str = ByronAddress::fromBase58(addr_base58);
+        auto addr_from_cbor = ByronAddress::fromCBOR(addr_cbor);
         REQUIRE(addr_from_str.toBase58() == addr_base58);
         REQUIRE(addr_from_cbor.toBase58() == addr_base58);
     }
@@ -120,11 +128,11 @@ TEST_CASE("testCardanoEd25519API")
         auto root_xprv = root_xprv_enc.decrypt(R"(B1CD6Vv9$%@W5Vo%iR5$pv01)");
         REQUIRE(BASE16::encode(root_xprv.publicKey().xbytes()) == root_pub_base16 + root_cc_base16);
 
-        auto addr_0H0H_from_str = cardano::ByronAddress::fromBase58(addr_0H0H_base58);
-        auto addr_0H869280224H_from_str = cardano::ByronAddress::fromBase58(addr_0H869280224H_base58);
-        auto addr_0H2071358278H_from_str = cardano::ByronAddress::fromBase58(addr_0H2071358278H_base58);
-        auto addr_0H2075417326H_from_str = cardano::ByronAddress::fromBase58(addr_0H2075417326H_base58);
-        auto addr_0H492230898H_from_str = cardano::ByronAddress::fromBase58(addr_0H492230898H_base58);
+        auto addr_0H0H_from_str = ByronAddress::fromBase58(addr_0H0H_base58);
+        auto addr_0H869280224H_from_str = ByronAddress::fromBase58(addr_0H869280224H_base58);
+        auto addr_0H2071358278H_from_str = ByronAddress::fromBase58(addr_0H2071358278H_base58);
+        auto addr_0H2075417326H_from_str = ByronAddress::fromBase58(addr_0H2075417326H_base58);
+        auto addr_0H492230898H_from_str = ByronAddress::fromBase58(addr_0H492230898H_base58);
 
         REQUIRE(addr_0H0H_from_str.toBase58() == addr_0H0H_base58);
         REQUIRE(addr_0H869280224H_from_str.toBase58() == addr_0H869280224H_base58);
@@ -138,11 +146,11 @@ TEST_CASE("testCardanoEd25519API")
         auto derivation_path_0H2075417326H = std::vector<uint32_t>{bip32_ed25519::HardenIndex(0), bip32_ed25519::HardenIndex(2075417326)};
         auto derivation_path_0H492230898H = std::vector<uint32_t>{bip32_ed25519::HardenIndex(0), bip32_ed25519::HardenIndex(492230898)};
 
-        auto addr_0H0H_from_key = cardano::ByronAddress::fromRootKey(root_xprv, derivation_path_0H0H);
-        auto addr_0H869280224H_from_key = cardano::ByronAddress::fromRootKey(root_xprv, derivation_path_0H869280224H);
-        auto addr_0H2071358278H_from_key = cardano::ByronAddress::fromRootKey(root_xprv, derivation_path_0H2071358278H);
-        auto addr_0H2075417326H_from_key = cardano::ByronAddress::fromRootKey(root_xprv, derivation_path_0H2075417326H);
-        auto addr_0H492230898H_from_key = cardano::ByronAddress::fromRootKey(root_xprv, derivation_path_0H492230898H);
+        auto addr_0H0H_from_key = ByronAddress::fromRootKey(root_xprv, derivation_path_0H0H);
+        auto addr_0H869280224H_from_key = ByronAddress::fromRootKey(root_xprv, derivation_path_0H869280224H);
+        auto addr_0H2071358278H_from_key = ByronAddress::fromRootKey(root_xprv, derivation_path_0H2071358278H);
+        auto addr_0H2075417326H_from_key = ByronAddress::fromRootKey(root_xprv, derivation_path_0H2075417326H);
+        auto addr_0H492230898H_from_key = ByronAddress::fromRootKey(root_xprv, derivation_path_0H492230898H);
 
         REQUIRE(addr_0H0H_from_key.toBase58() == addr_0H0H_base58);
         REQUIRE(addr_0H869280224H_from_key.toBase58() == addr_0H869280224H_base58);

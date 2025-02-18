@@ -47,8 +47,53 @@ enum class NetworkID
     testnet
 };
 
+/// @brief A Cardano chain pointer object.
+class ChainPointer {
+    private:
+      uint64_t slot_number_;
+      uint64_t transaction_index_;
+      uint64_t certificate_index_;
+  
+      // Make the default constructor private to prevent use outside of static
+      // factory methods.
+      ChainPointer() = default;
+  
+    public:
+      ChainPointer(
+          uint64_t slot_number,
+          uint64_t transaction_index,
+          uint64_t certificate_index
+      )
+          : slot_number_{slot_number},
+            transaction_index_{transaction_index},
+            certificate_index_{certificate_index}
+      {
+      }
+  
+      /// @brief Return the chain pointer as a vector of bytes.
+      /// @return The address as a byte vector.
+      [[nodiscard]] auto toBytes() const -> std::vector<uint8_t>;
+
+};  // ChainPointer
+
+/// @brief Interface class for all Shelley era addresses.
+class IShelleyAddress {
+  public:
+    /// @brief Return the address as a byte array including the header byte.
+    /// @return The address as a byte array.
+    [[nodiscard]] virtual auto toBytes() const -> std::vector<uint8_t> = 0;
+
+    /// @brief Return the address as a byte array without the header byte.
+    /// @return The address as a byte array.
+    [[nodiscard]] virtual auto toBytesRaw() const -> std::vector<uint8_t> = 0;
+
+    /// @brief Encode the address as a CIP-0005 compliant bech32 string.
+    /// @return The bech32 encoded address.
+    [[nodiscard]] virtual auto toBech32() const -> std::string = 0;
+};
+
 /// @brief A Cardano base address object.
-class BaseAddress
+class BaseAddress : public IShelleyAddress
 {
   private:
     uint8_t header_byte_ = 0;
@@ -77,31 +122,30 @@ class BaseAddress
     /// @param pmt_key The payment key.
     /// @param stake_key The stake key.
     /// @return The created BaseAddress object.
-    static auto
-    fromKeys(NetworkID nid, const bip32_ed25519::PublicKey& pmt_key, const bip32_ed25519::PublicKey& stake_key)
-        -> BaseAddress;
+    static auto fromKeys(
+        NetworkID nid,
+        const bip32_ed25519::PublicKey& pmt_key,
+        const bip32_ed25519::PublicKey& stake_key
+    ) -> BaseAddress;
 
     /// @brief Create a new BaseAddress object from a bech32 address.
     static auto fromBech32(const std::string_view addr) -> BaseAddress;
 
-    /// @brief Return the address as a byte array.
-    /// @param with_header Whether to include the header byte in the output.
+    /// @brief Return the address as a byte array including the header byte.
     /// @return The address as a byte array.
-    [[nodiscard]] auto toBytes(bool with_header = false) const
-        -> std::vector<uint8_t>;
+    [[nodiscard]] auto toBytes() const -> std::vector<uint8_t> final;
 
-    /// @brief Encode the address as a base16 string.
-    /// @param with_header Whether to include the header byte in the output.
-    /// @return The base16 encoded address.
-    [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
+    /// @brief Return the address as a byte array without the header byte.
+    /// @return The address as a byte array.
+    [[nodiscard]] auto toBytesRaw() const -> std::vector<uint8_t> final;
 
     /// @brief Encode the address as a CIP-0005 compliant bech32 string.
     /// @return The bech32 encoded address.
-    [[nodiscard]] auto toBech32() const -> std::string;
+    [[nodiscard]] auto toBech32() const -> std::string final;
 };  // BaseAddress
 
 /// @brief A Cardano enterprise address object.
-class EnterpriseAddress
+class EnterpriseAddress : public IShelleyAddress
 {
   private:
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
@@ -133,28 +177,21 @@ class EnterpriseAddress
     /// @return The created EnterpriseAddress object.
     static auto fromBech32(const std::string_view addr) -> EnterpriseAddress;
 
-    /// @brief Return the address as a byte array.
-    /// @param with_header Whether to include the header byte in the output.
+    /// @brief Return the address as a byte array including the header byte.
     /// @return The address as a byte array.
-    [[nodiscard]] auto toBytes(bool with_header = false) const
-        -> std::vector<uint8_t>;
+    [[nodiscard]] auto toBytes() const -> std::vector<uint8_t> final;
 
-    /// @brief Encode the address as a base16 string.
-    /// @param with_header Whether to include the header byte in the output.
-    /// @return The base16 encoded address.
-    [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
+    /// @brief Return the address as a byte array without the header byte.
+    /// @return The address as a byte array.
+    [[nodiscard]] auto toBytesRaw() const -> std::vector<uint8_t> final;
 
     /// @brief Encode the address as a CIP-0005 compliant bech32 string.
     /// @return The bech32 encoded address.
-    [[nodiscard]] auto toBech32() const -> std::string;
+    [[nodiscard]] auto toBech32() const -> std::string final;
 };  // EnterpriseAddress
 
-class PointerAddress
-{
-};
-
 /// @brief A Cardano rewards address object.
-class RewardsAddress
+class RewardsAddress : public IShelleyAddress
 {
   private:
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash_{};
@@ -177,8 +214,10 @@ class RewardsAddress
     /// @param nid The network ID enum.
     /// @param stake_key The stake key.
     /// @return The created RewardsAddress object.
-    static auto fromKey(NetworkID nid, const bip32_ed25519::PublicKey& stake_key)
-        -> RewardsAddress;
+    static auto fromKey(
+        NetworkID nid,
+        const bip32_ed25519::PublicKey& stake_key
+    ) -> RewardsAddress;
 
     /// @brief Factory method to create a RewardsAddress object from a bech32
     /// address.
@@ -186,20 +225,17 @@ class RewardsAddress
     /// @return The created RewardsAddress object.
     static auto fromBech32(const std::string_view addr) -> RewardsAddress;
 
-    /// @brief Return the address as a byte array.
-    /// @param with_header Whether to include the header byte in the output.
+    /// @brief Return the address as a byte array including the header byte.
     /// @return The address as a byte array.
-    [[nodiscard]] auto toBytes(bool with_header = false) const
-        -> std::vector<uint8_t>;
+    [[nodiscard]] auto toBytes() const -> std::vector<uint8_t> final;
 
-    /// @brief Encode the address as a base16 string.
-    /// @param with_header Whether to include the header byte in the output.
-    /// @return The base16 encoded address.
-    [[nodiscard]] auto toBase16(bool with_header = false) const -> std::string;
+    /// @brief Return the address as a byte array without the header byte.
+    /// @return The address as a byte array.
+    [[nodiscard]] auto toBytesRaw() const -> std::vector<uint8_t> final;
 
     /// @brief Encode the address as a CIP-0005 compliant bech32 string.
     /// @return The bech32 encoded address.
-    [[nodiscard]] auto toBech32() const -> std::string;
+    [[nodiscard]] auto toBech32() const -> std::string final;
 };  // RewardsAddress
 
 /// @brief A Cardano Byron era address object.
