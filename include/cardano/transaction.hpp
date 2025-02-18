@@ -147,6 +147,9 @@ class BabbageTransactionBuilder
     /// @return A reference to the transaction builder.
     auto sign(const bip32_ed25519::PrivateKey& skey) -> BabbageTransactionBuilder&;
 
+    /// @brief Remove all witnesses from the transaction witness set.
+    auto clearWitnessSet() -> void;
+
     /// @brief Compute the transaction ID.
     /// @note The transaction ID is the hash (Blake2b256) of the transaction
     /// body CBOR. This ID is what is signed by the signing keys to signify
@@ -180,7 +183,7 @@ class BabbageTransactionBuilder
     }
 
     /// @brief Return a constant reference to the transaction object.
-    [[nodiscard]] const babbage::Transaction& getTransaction() const {
+    [[nodiscard]] const auto& getTransaction() const {
         return this->tx_;
     }
 };

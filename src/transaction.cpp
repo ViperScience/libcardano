@@ -42,6 +42,7 @@ auto BabbageTransactionBuilder::addInput(
 ) -> BabbageTransactionBuilder&
 {
     if (id.size() < 32) throw std::invalid_argument("Not a valid input ID.");
+    this->clearWitnessSet();
 
     auto input = babbage::TransactionInput();
     std::copy_n(id.begin(), 32, input.transaction_id.begin());
@@ -57,6 +58,7 @@ auto BabbageTransactionBuilder::addOutput(
     bool prebabbage
 ) -> BabbageTransactionBuilder&
 {
+    this->clearWitnessSet();
     if (prebabbage) {
         auto output = babbage::PreBabbageTransactionOutput{};
         output.address = addr.toBytes();
@@ -77,6 +79,7 @@ auto BabbageTransactionBuilder::addOutput(
     bool prebabbage
 ) -> BabbageTransactionBuilder&
 {
+    this->clearWitnessSet();
     if (prebabbage) {
         auto output = babbage::PreBabbageTransactionOutput{};
         output.address = addr.toBytes();
@@ -95,6 +98,7 @@ auto BabbageTransactionBuilder::addWithdrawal(
     const RewardsAddress& addr,
     uint64_t amount
 ) -> BabbageTransactionBuilder& {
+    this->clearWitnessSet();
     if (!this->tx_.transaction_body.withdrawals.has_value()) {
         this->tx_.transaction_body.withdrawals = babbage::Withdrawals();
     }
@@ -107,12 +111,14 @@ auto BabbageTransactionBuilder::addWithdrawal(
 
 auto BabbageTransactionBuilder::setTtl(size_t ttl) -> BabbageTransactionBuilder&
 {
+    this->clearWitnessSet();
     this->tx_.transaction_body.ttl = ttl;
     return *this;
 }  // BabbageTransactionBuilder::setTtl
 
 auto BabbageTransactionBuilder::setFee(size_t fee) -> BabbageTransactionBuilder&
 {
+    this->clearWitnessSet();
     this->tx_.transaction_body.fee = fee;
     return *this;
 }  // BabbageTransactionBuilder::setTtl
@@ -158,6 +164,14 @@ auto BabbageTransactionBuilder::sign(const bip32_ed25519::PrivateKey& skey)
 
     return *this;
 }  // BabbageTransactionBuilder::sign
+
+auto BabbageTransactionBuilder::clearWitnessSet() -> void
+{
+    if (!this->tx_.transaction_witness_set.vkeywitnesses.empty())
+    {
+        this->tx_.transaction_witness_set.vkeywitnesses.clear();
+    }
+}
 
 auto BabbageTransactionBuilder::serialize() const -> std::vector<uint8_t>
 {
