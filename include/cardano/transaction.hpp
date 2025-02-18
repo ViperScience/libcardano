@@ -52,11 +52,19 @@ enum class Era
 //     shelley::Transaction tx_;
 // };
 
+/// @brief Build Babbage era Cardano transactions.
 class BabbageTransactionBuilder
 {
   private:
+    // Set the era to that matching the version of the class.
     const Era era_ = Era::Babbage;
+
+    // The transaction object that will be serialized to CBOR.
     babbage::Transaction tx_;
+
+    // Optionally set the address to use for change when auto-balancing the
+    // transaction.
+    std::vector<uint8_t> change_addr_;
 
   public:
     /// @brief Construct a transaction builder object.
@@ -154,6 +162,22 @@ class BabbageTransactionBuilder
     /// @brief Serialize the transaction to a CBOR byte vector.
     /// @return The serialized transaction bytes.
     [[nodiscard]] auto serialize() const -> std::vector<uint8_t>;
+
+    /// @brief Set the transaction change address for balancing.
+    /// @param addr An enterprise address object.
+    /// @return A reference to the transaction builder.
+    auto setChangeAddress(const EnterpriseAddress& addr) -> BabbageTransactionBuilder& {
+        this->change_addr_ = addr.toBytes();
+        return *this;
+    }
+
+    /// @brief Set the transaction change address for balancing.
+    /// @param addr An enterprise address object.
+    /// @return A reference to the transaction builder.
+    auto setChangeAddress(const BaseAddress& addr) -> BabbageTransactionBuilder& {
+        this->change_addr_ = addr.toBytes();
+        return *this;
+    }
 
     /// @brief Return a constant reference to the transaction object.
     [[nodiscard]] const babbage::Transaction& getTransaction() const {
