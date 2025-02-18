@@ -142,6 +142,17 @@ auto BabbageTransactionBuilder::sign(const bip32_ed25519::PrivateKey& skey)
     // Put the public key in a constant size array.
     const auto key = util::makeByteArray<32>(skey.publicKey().bytes());
 
+    // Before updating the transaction witness set, remove any duplicate
+    // signatures.
+    for (auto it = this->tx_.transaction_witness_set.vkeywitnesses.begin();
+        it != this->tx_.transaction_witness_set.vkeywitnesses.end();) {
+        if (std::get<0>(*it) == key) {
+            it = this->tx_.transaction_witness_set.vkeywitnesses.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
     // Add the witness to the transaction witness set.
     this->tx_.transaction_witness_set.vkeywitnesses.push_back({key, witness});
 
