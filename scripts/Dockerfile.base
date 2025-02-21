@@ -1,0 +1,78 @@
+# Copyright (c) 2025 Viper Science LLC
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+FROM python:3.11.9-slim-bookworm
+
+RUN apt-get update && apt-get install -y \
+  build-essential \
+  curl \
+  git \
+  libssl-dev \
+  libtool \
+  texlive-full \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install the newer version of CMake
+WORKDIR /tmp
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.29.6/cmake-3.29.6-linux-x86_64.tar.gz \
+  && tar --extract --file cmake-3.29.6-linux-x86_64.tar.gz \
+  && mv cmake-3.29.6-linux-x86_64/bin/* /usr/local/bin \
+  && mv cmake-3.29.6-linux-x86_64/share/cmake-3.29 /usr/local/share/ \
+  && rm -rf cmake*
+
+# Build and install Botan 3
+WORKDIR /tmp
+RUN curl -LO https://botan.randombit.net/releases/Botan-3.4.0.tar.xz \
+  && tar --extract --file Botan-3.4.0.tar.xz \
+  && cd Botan-3.4.0 \
+  && python3 ./configure.py \
+  && make -j8 \
+  && make install \
+  && cd .. && rm -rf Botan*
+
+# Install the Cardano fork of libsodium
+WORKDIR /tmp
+RUN git clone https://github.com/input-output-hk/libsodium \
+  && cd libsodium \
+  && git checkout dbb48cc \
+  && ./autogen.sh \
+  && ./configure \
+  && make -j8 \
+  && make install \
+  && cd .. && rm -rf libsodium
+RUN export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" \
+  && export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+
+  # Install Doxygen
+WORKDIR /tmp
+RUN curl -LO https://www.doxygen.nl/files/doxygen-1.11.0.linux.bin.tar.gz \
+  && tar --extract --file doxygen-1.11.0.linux.bin.tar.gz \
+  && mv doxygen-1.11.0/bin/doxygen /usr/local/bin
+
+# Install Poxy for building the docs
+RUN python3 -m pip install poxy
+
+# Install the codecov upload tool
+RUN curl -Os https://cli.codecov.io/latest/linux/codecov \
+ && chmod +x codecov \
+ && mv codecov /usr/local/bin
+
+CMD ["/bin/bash"]

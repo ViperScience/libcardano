@@ -18,15 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-FROM registry.gitlab.com/viperscience/libcardano:base
-
-COPY . /opt
-WORKDIR /opt
-
-# Release build, test, and install.
-RUN cmake -S . -B cmake-build-release/ -D CMAKE_BUILD_TYPE=Release -D BUILD_LIBCARDANO_EXAMPLES=ON \
-  && cmake --build cmake-build-release/ --parallel 8 \
-  && ctest --test-dir cmake-build-release/ --output-on-failure -T Test \
-  && cmake --install cmake-build-release/
-
-CMD ["/bin/bash"]
+# This script builds and pushes the base Docker image that is used to build the
+# project. The base container sets up the tooling and dependencies required by
+# the project. Using the base container saves CI/CD run time since the CI/CD
+# now only builds the project.
+#
+# This script needs to be run in the same directory as the Dockerfile.base file.
+#
+docker login registry.gitlab.com
+docker build \
+  -f Dockerfile.base \
+  -t registry.gitlab.com/viperscience/libcardano:base .
+docker push registry.gitlab.com/viperscience/libcardano:base

@@ -18,15 +18,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-FROM registry.gitlab.com/viperscience/libcardano:base
-
-COPY . /opt
-WORKDIR /opt
-
-# Release build, test, and install.
-RUN cmake -S . -B cmake-build-release/ -D CMAKE_BUILD_TYPE=Release -D BUILD_LIBCARDANO_EXAMPLES=ON \
-  && cmake --build cmake-build-release/ --parallel 8 \
-  && ctest --test-dir cmake-build-release/ --output-on-failure -T Test \
-  && cmake --install cmake-build-release/
-
-CMD ["/bin/bash"]
+# Run this script from the project root.
+docker build -t registry.gitlab.com/viperscience/libcardano .
