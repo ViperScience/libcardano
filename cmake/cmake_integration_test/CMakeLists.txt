@@ -15,7 +15,7 @@ else()
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
 endif()
 
-find_package(Cardano REQUIRED)
+find_package(cardano REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Botan REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -27,8 +27,8 @@ endif()
 add_executable(${PROJECT_NAME} test_cardano_cmake.cpp)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
-    Cardano::Cardano
-    botan::botan
+    cardano::cardano
+    Botan::Botan
     Threads::Threads
     OpenSSL::SSL
 )
