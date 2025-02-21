@@ -21,7 +21,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 # set the project name, language,  and version
-project(Cardano 
+project(cardano 
     DESCRIPTION "A modern C++ development kit for the Cardano blockchain."
     VERSION 1.0.0
     LANGUAGES C CXX
@@ -61,6 +61,14 @@ find_package(Sodium REQUIRED)
 # Must be installed on the system.
 find_package(Botan 3.4.0 REQUIRED)
 
+# Use the Viper Science fork of libcppbor for CBOR functionality
+FetchContent_Declare(
+  libcppbor
+  GIT_REPOSITORY https://gitlab.com/viperscience/libcppbor.git
+  GIT_TAG        bddc539f6fa6b38205029d58d6a707a7efbf5740
+)
+FetchContent_MakeAvailable(libcppbor)
+
 # Include the Viper fork of crypto++.
 # Use cryptopp_cmake to integrate crypto++ with the cmake build system.
 
@@ -81,9 +89,6 @@ FetchContent_Declare(
   GIT_TAG        CRYPTOPP_8_9_0
 )
 FetchContent_MakeAvailable(cryptopp_cmake)
-
-# Add the submodules
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs)
 
 ################################################################################
 # Define the Library Target
@@ -155,12 +160,11 @@ endif()
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Botan::Botan
+        cppbor::cppbor
         cryptopp::cryptopp
         sodium::sodium
         Threads::Threads
         OpenSSL::SSL
-    PUBLIC
-        cppbor # Must use the actual target and not an alias
 )
 
 ################################################################################
@@ -196,12 +200,12 @@ endif()
 set(PROJECT_NAME_TARGETS ${PROJECT_NAME}Targets)
 
 # Install the library file.
-install(TARGETS ${PROJECT_NAME} cppbor
+install(TARGETS ${PROJECT_NAME}
         EXPORT ${PROJECT_NAME_TARGETS}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cardano
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
 )
 
 # Install the header files. Use lowercase for the directory name.
@@ -213,19 +217,24 @@ set(CARDANO_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ed25519.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/encodings.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/kes.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ledger.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/mnemonic.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/secmem.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/serialization.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/stake_pool.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/transaction.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/util.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/vrf.hpp
 )
 install(FILES ${CARDANO_HEADERS} 
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cardano
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
 )
 
-################################################################################
-# Install the CMake Target files
-################################################################################
+# ################################################################################
+# # Install the CMake Target files
+# ################################################################################
 
-# Install the CMake files required in order to use `find_package(Cardano)`
+# Install the CMake files required in order to use `find_package(cardano)`
 install(EXPORT ${PROJECT_NAME_TARGETS}
         FILE ${PROJECT_NAME_TARGETS}.cmake
         NAMESPACE ${PROJECT_NAME}::
@@ -235,17 +244,17 @@ install(EXPORT ${PROJECT_NAME_TARGETS}
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/CardanoConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
 write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/CardanoConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion
 )
 
 install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/CardanoConfig.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/CardanoConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )

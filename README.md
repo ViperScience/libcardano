@@ -82,17 +82,13 @@ An example is shown below.
     cmake -B build/ -S . -DBUILD_LIBCARDANO_EXAMPLES=ON
     cmake --build build/ --parallel 4
 
-### Submodule Dependencies
-Libcardano relies on functionality from the following dependencies, which are included as git submodules. 
-
-* [Libcppbor](https://gitlab.com/viperscience/libcppbor): A modern C++ CBOR parser and generator. This library was originally part of the Android source code but was forked by Viper Science team in order to add a CMake build system and further enhancements for integration with libcardano.
-
 ### CMake FetchContent Dependencies
 CMake FetchContent is used to add functionality from the following external dependencies. 
 
 * [Crypto++](https://github.com/ViperScience/cryptopp): Crypto++ is a free C++ class library of cryptographic schemes. The Viper Science fork adds public API methods to support BIP32-Ed25519 style keys used for Cardano wallets.
 * [Cryptopp-CMake](https://github.com/abdes/cryptopp-cmake): A modern CMake build project for Crypto++. Used by libcardano to pull in the Viper Science fork of Crypto++.
 * [Catch2](https://github.com/catchorg/Catch2): A unit testing framework for C++. Libcardano uses Catch2 for structuring unit tests, it is not included the library.
+* [Libcppbor](https://gitlab.com/viperscience/libcppbor): A modern C++ CBOR parser and generator. This library was originally part of the Android source code but was forked by Viper Science team in order to add a CMake build system and further enhancements for integration with libcardano.
 
 ### External Dependencies
 Libcardano links with the following external dependencies. See the respective project documentation for installation instructions.

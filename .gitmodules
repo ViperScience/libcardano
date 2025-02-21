@@ -1,3 +1,0 @@
-[submodule "libs/libcppbor"]
-	path = libs/libcppbor
-	url = https://gitlab.com/viperscience/libcppbor.git
