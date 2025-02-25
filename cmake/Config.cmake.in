@@ -5,6 +5,7 @@ find_dependency(Botan)
 find_dependency(Threads)
 find_dependency(cryptopp)
 find_dependency(cppbor)
+find_dependency(nlohmann_json)
 # Note: Some of the find_dependency calls above may need the custom Find files
 # included in the libCardano repository.
 

@@ -32,6 +32,9 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+# Determine if this is the top-level project
+set(CARDANO_IS_TOP_LEVEL ${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+
 ########################################################################
 # Additional packages
 ########################################################################
@@ -68,6 +71,16 @@ FetchContent_Declare(
   GIT_TAG        bddc539f6fa6b38205029d58d6a707a7efbf5740
 )
 FetchContent_MakeAvailable(libcppbor)
+
+# Use the nlohmann/json library for JSON serialization/deserialization.
+FetchContent_Declare(
+    json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+)
+if(CARDANO_IS_TOP_LEVEL)
+    set(JSON_Install ON)
+endif()
+FetchContent_MakeAvailable(json)
 
 # Include the Viper fork of crypto++.
 # Use cryptopp_cmake to integrate crypto++ with the cmake build system.
@@ -160,28 +173,31 @@ endif()
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Botan::Botan
-        cppbor::cppbor
         cryptopp::cryptopp
         sodium::sodium
         Threads::Threads
         OpenSSL::SSL
+    PUBLIC
+        cppbor::cppbor
+        nlohmann_json::nlohmann_json
 )
 
 ################################################################################
 # Tests
 ################################################################################
 
-# Enable testing only if this is the top level project.
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+# Enable testing only if this is the top level project or if explicitly set.
+option(ENABLE_CARDANO_TESTS "Enable cardano project tests" OFF)
+if(CARDANO_IS_TOP_LEVEL OR ENABLE_CARDANO_TESTS)
     include(CTest)
-endif()
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
-    # Individual tests may be found in the `tests`subdirectory of the
-    # repository.
-    add_subdirectory(test)
-
-    # Copy data files for integration tests
-    file(COPY test/data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/test)
+    if(BUILD_TESTING)
+        # Individual tests may be found in the `tests`subdirectory of the
+        # repository.
+        add_subdirectory(test)
+        
+        # Copy data files for integration tests
+        file(COPY test/data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/test)
+    endif()
 endif()
 
 ################################################################################
@@ -195,66 +211,68 @@ if(BUILD_LIBCARDANO_EXAMPLES)
 endif()
 
 ################################################################################
-# Install the Target
+# Install the Target (if top-level project)
 ################################################################################
-set(PROJECT_NAME_TARGETS ${PROJECT_NAME}Targets)
 
-# Install the library file.
-install(TARGETS ${PROJECT_NAME}
-        EXPORT ${PROJECT_NAME_TARGETS}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
-)
+option(ENABLE_CARDANO_INSTALL "Install the cardano library and headers" OFF)
+if(CARDANO_IS_TOP_LEVEL OR ENABLE_CARDANO_INSTALL)
 
-# Install the header files. Use lowercase for the directory name.
-set(CARDANO_HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/cardano.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/address.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/bip32_ed25519.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/bip39_dictionary.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ed25519.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/encodings.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/kes.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ledger.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/mnemonic.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/secmem.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/serialization.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/stake_pool.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/transaction.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/util.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/vrf.hpp
-)
-install(FILES ${CARDANO_HEADERS} 
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
-)
+    set(PROJECT_NAME_TARGETS ${PROJECT_NAME}Targets)
 
-# ################################################################################
-# # Install the CMake Target files
-# ################################################################################
+    # Install the library file.
+    install(TARGETS ${PROJECT_NAME}
+            EXPORT ${PROJECT_NAME_TARGETS}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+    )
 
-# Install the CMake files required in order to use `find_package(cardano)`
-install(EXPORT ${PROJECT_NAME_TARGETS}
-        FILE ${PROJECT_NAME_TARGETS}.cmake
-        NAMESPACE ${PROJECT_NAME}::
+    # Install the header files. Use lowercase for the directory name.
+    set(CARDANO_HEADERS
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/cardano.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/address.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/bip32_ed25519.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/bip39_dictionary.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ed25519.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/encodings.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/kes.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ledger.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/mnemonic.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/secmem.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/serialization.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/stake_pool.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/transaction.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/util.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/vrf.hpp
+    )
+    install(FILES ${CARDANO_HEADERS} 
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+    )
+
+    # Install the CMake files required in order to use `find_package(cardano)`
+    install(EXPORT ${PROJECT_NAME_TARGETS}
+            FILE ${PROJECT_NAME_TARGETS}.cmake
+            NAMESPACE ${PROJECT_NAME}::
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+    )
+
+    include(CMakePackageConfigHelpers)
+
+    configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+    )
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+    )
+
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
-)
+    )
 
-include(CMakePackageConfigHelpers)
-
-configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
-)
-write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
-)
-
-install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
-)
+endif()
