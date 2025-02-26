@@ -26,6 +26,7 @@
 #include <cardano/bip32_ed25519.hpp>
 #include <cardano/ed25519.hpp>
 #include <cardano/encodings.hpp>
+#include <cardano/genesis.hpp>
 #include <cardano/kes.hpp>
 #include <cardano/ledger.hpp>
 #include <cardano/mnemonic.hpp>

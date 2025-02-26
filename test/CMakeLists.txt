@@ -131,3 +131,10 @@ ADD_TEST("Cardano Stake Pool API" test_cardano_stake_pool)
 ADD_EXECUTABLE(test_cardano_util test_cardano_util_api.cpp)
 target_link_libraries(test_cardano_util PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Utilities API" test_cardano_util)
+
+################################################################################
+# Test Cardano Genesis API
+################################################################################
+ADD_EXECUTABLE(test_cardano_genesis test_cardano_genesis_api.cpp)
+target_link_libraries(test_cardano_genesis PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Genesis API" test_cardano_genesis)

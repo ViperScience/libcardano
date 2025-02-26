@@ -110,12 +110,16 @@ FetchContent_MakeAvailable(cryptopp_cmake)
 # Specify the libcardano source files (including submodules)
 set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/address.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/alonzo/genesis.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/bip32_ed25519.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/byron/genesis.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/conway/genesis.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ed25519.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/kes.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ledger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mnemonic.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/shelley/genesis.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/stake_pool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/transaction.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/util.cpp
@@ -236,6 +240,7 @@ if(CARDANO_IS_TOP_LEVEL OR ENABLE_CARDANO_INSTALL)
         ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/bip39_dictionary.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ed25519.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/encodings.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/genesis.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/kes.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/ledger.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/mnemonic.hpp
