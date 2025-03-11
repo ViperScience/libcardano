@@ -22,13 +22,15 @@
 #define _CARDANO_UTIL_HPP_
 
 // Standard Library Headers
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <ranges>
 #include <span>
-#include <type_traits>
 #include <vector>
+
+// Third-party library headers
+#include <botan/auto_rng.h>
+#include <botan/rng.h>
+#include <botan/system_rng.h>
 
 /// @brief Utility namespace
 namespace cardano::util
@@ -72,6 +74,21 @@ constexpr auto makeByteArray(std::span<const uint8_t> vec
     std::ranges::copy(vec | std::views::take(N), arr.begin());
     return arr;
 }  // makeByteArray
+
+/// @brief Generate a fixed size array filled with random bytes.
+/// @return An array of uint8_t containing random values.
+template <std::size_t N>
+auto makeRandomByteArray() -> std::array<uint8_t, N> {
+    std::unique_ptr<Botan::RandomNumberGenerator> rng;
+#if defined(BOTAN_HAS_SYSTEM_RNG)
+    rng.reset(new Botan::System_RNG);
+#else
+    rng.reset(new Botan::AutoSeeded_RNG);
+#endif
+    auto ent = std::array<uint8_t, N>();
+    rng->randomize(ent.data(), N);
+    return ent;
+}  // makeRandomByteArray
 
 /// @brief Enum class to represent byte order.
 enum class Endianness

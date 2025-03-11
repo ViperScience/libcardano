@@ -29,6 +29,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <source_location>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -410,7 +411,7 @@ using TransactionMetadata =
 //   , chain_code : bytes .size 32
 //   , attributes : bytes
 //   ]
-struct BootstrapWitness
+struct BootstrapWitness  //  : public ArraySerializable
 {
     Vkey public_key;
     Signature signature;
@@ -418,59 +419,76 @@ struct BootstrapWitness
     Bytes attributes;
 };
 
-/// multisig_script =
-///   [ multisig_pubkey
-///   // multisig_all
-///   // multisig_any
-///   // multisig_n_of_k
-///   ]
-struct MultisigScript
+/// @brief A multi-signature script transaction witness.
+///
+/// CDDL description:
+///
+///     multisig_script =
+///       [ multisig_pubkey
+///       // multisig_all
+///       // multisig_any
+///       // multisig_n_of_k
+///       ]
+///
+///     multisig_pubkey = (0, addr_keyhash)
+///     multisig_all = (1, [ * multisig_script ])
+///     multisig_any = (2, [ * multisig_script ])
+///     multisig_n_of_k = (3, n: uint, [ * multisig_script ])
+///
+struct MultisigScript : public ArraySerializable
 {
-    enum Type
+    struct MultisigPubkey
     {
-        multisig_pubkey = 0,
-        multisig_all = 1,
-        multisig_any = 2,
-        multisig_n_of_k = 3,
+        static constexpr auto TypeTag() -> Uint { return 0; }
+        AddrKeyHash addr_keyhash;
     };
 
-    const MultisigScript::Type type;
+    struct MultisigAll
+    {
+        static constexpr auto TypeTag() -> Uint { return 1; }
+        std::vector<MultisigScript> scripts;
+    };
 
-    // serialization method should be virtual
-};
+    struct MultisigAny
+    {
+        static constexpr auto TypeTag() -> Uint { return 2; }
+        std::vector<MultisigScript> scripts;
+    };
 
-/// multisig_pubkey = (0, addr_keyhash)
-struct MultisigPubkey : public MultisigScript
-{
-    MultisigPubkey() : MultisigScript{MultisigScript::Type::multisig_pubkey} {}
-    std::vector<std::unique_ptr<AddrKeyHash>> addr_keyhashes;
-};
+    struct MultisigNofK
+    {
+        static constexpr auto TypeTag() -> Uint { return 3; }
+        Uint n;
+        std::vector<MultisigScript> scripts;
+    };
 
-/// multisig_all = (1, [ * multisig_script ])
-struct MultisigAll : public MultisigScript
-{
-    MultisigAll() : MultisigScript{MultisigScript::Type::multisig_all} {}
-    std::vector<std::unique_ptr<MultisigScript>> scripts;
-};
+    std::variant<
+        std::monostate,
+        std::shared_ptr<MultisigPubkey>,
+        std::shared_ptr<MultisigAll>,
+        std::shared_ptr<MultisigAny>,
+        std::shared_ptr<MultisigNofK>>
+        script;
 
-/// multisig_any = (2, [ * multisig_script ])
-struct MultisigAny : public MultisigScript
-{
-    MultisigAny() : MultisigScript{MultisigScript::Type::multisig_any} {}
-    std::vector<std::unique_ptr<MultisigScript>> scripts;
-};
+    MultisigScript() = default;
+    MultisigScript(std::shared_ptr<MultisigPubkey> s) : script{std::move(s)} {}
+    MultisigScript(std::shared_ptr<MultisigAll> s) : script{std::move(s)} {}
+    MultisigScript(std::shared_ptr<MultisigAny> s) : script{std::move(s)} {}
+    MultisigScript(std::shared_ptr<MultisigNofK> s) : script{std::move(s)} {}
 
-/// multisig_n_of_k = (3, n: uint, [ * multisig_script ])
-struct MultisigNofK : public MultisigScript
-{
-    MultisigNofK() : MultisigScript{MultisigScript::Type::multisig_n_of_k} {}
-    Uint n;
-    std::vector<std::unique_ptr<MultisigScript>> scripts;
+    /// @brief Populate a CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] auto serializer() const -> cppbor::Array final;
+
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    auto deserializer(const cppbor::Array& data) -> void final;
 };
 
 /// @brief Verification key witness
 /// vkeywitness = [ $vkey, $signature ]
-using VkeyWitness = std::tuple<Vkey, Signature>;
+using VkeyWitness =
+    std::tuple<Vkey, Signature>;  // TODO - make serializable struct
 
 /// @brief Represent the protocol version.
 /// The CDDL description is:
@@ -508,7 +526,7 @@ struct ProtocolVersion
 //   , ? 14: [protocol_version] ; protocol version
 //   , ? 15: coin               ; min utxo value
 //   }
-struct ProtocolParamUpdate
+struct ProtocolParamUpdate  // : public MapSerializable
 {
     std::optional<Uint> minfee_a;
     std::optional<Uint> minfee_b;
@@ -534,7 +552,7 @@ struct ProtocolParamUpdate
 ///         { * genesishash => protocol_param_update }
 ///
 using ProposedProtocolParameterUpdate =
-    std::vector<std::tuple<GenesisHash, ProtocolParamUpdate>>;
+    std::map<GenesisHash, ProtocolParamUpdate>;
 
 /// @brief An update proposal.
 ///
@@ -542,13 +560,13 @@ using ProposedProtocolParameterUpdate =
 ///              , epoch
 ///              ]
 ///
-using Update = std::tuple<ProposedProtocolParameterUpdate, Epoch>;
+using Update = std::pair<ProposedProtocolParameterUpdate, Epoch>;
 
 /// @brief Represent reward account withdrawals.
 ///
 ///     withdrawals = { * reward_account => coin }
 ///
-using Withdrawals = std::vector<std::tuple<RewardAccount, Coin>>;
+using Withdrawals = std::map<RewardAccount, Coin>;
 
 // CDDL: pool_metadata = [url, pool_metadata_hash]
 struct PoolMetadata : public ArraySerializable
@@ -556,21 +574,21 @@ struct PoolMetadata : public ArraySerializable
     Url url{};
     PoolMetadataHash hash{};
 
-    // PoolMetadata() = default;
     PoolMetadata(std::string_view _url, PoolMetadataHash _hash)
         : url{_url}, hash{_hash}
     {
     }
 
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        return cppbor::Array{
-            cppbor::Tstr(url), cppbor::Bstr{{hash.data(), hash.size()}}
-        };
-    }  // serializer
+    /// @brief Populate a CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] auto serializer() const -> cppbor::Array final;
+
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    auto deserializer(const cppbor::Array& data) -> void final;
 };
 
-/// @brief A stake pool relay registration (base type).
+/// @brief A stake pool relay registration.
 ///
 /// CDDL description:
 ///
@@ -580,135 +598,77 @@ struct PoolMetadata : public ArraySerializable
 ///       // multi_host_name
 ///       ]
 ///
+///     single_host_addr = ( 0
+///                        , port / null
+///                        , ipv4 / null
+///                        , ipv6 / null
+///                        )
+///
+///     single_host_name = ( 1
+///                        , port / null
+///                        , dns_name ; An A or AAAA DNS record
+///                        )
+///
+///     multi_host_name = ( 2
+///                        , dns_name ; A SRV DNS record
+///                        )
+///
 struct Relay : public ArraySerializable
 {
-    /// @brief The relay type.
-    enum Type
+    /// @brief Pool relay registration specified by host IP address and port.
+    struct SingleHostAddr
     {
-        single_host_addr = 0,
-        single_host_name = 1,
-        multi_host_name = 2
-    };  // Type
+        /// @brief The relay type CBOR tag.
+        static constexpr auto TypeTag() -> Uint { return 0; }
 
-    /// @brief Constant relay type (must be set on construction).
-    const Relay::Type type;
+        std::optional<IPV4> ipv4{};
+        std::optional<IPV6> ipv6{};
+        std::optional<Port> port{};
+    };
 
-    /// @brief Construct a new Certificate object with a type.
-    /// @param t Type enum for the certificate (cannot be changed).
-    [[nodiscard]] Relay(Relay::Type relayType) : type{relayType} {}
+    /// @brief Pool relay registration specified by DNS name and port.
+    struct SingleHostName
+    {
+        /// @brief The relay type CBOR tag.
+        static constexpr auto TypeTag() -> Uint { return 1; }
+
+        DnsName dns_name{};
+        std::optional<Port> port{};
+    };
+
+    /// @brief Pool relay(s) registration specified by DNS name.
+    struct MultiHostName
+    {
+        /// @brief The relay type CBOR tag.
+        static constexpr auto TypeTag() -> Uint { return 2; }
+
+        DnsName dns_name;
+    };
+
+    std::variant<
+        std::monostate,  // Empty variant
+        SingleHostAddr,
+        SingleHostName,
+        MultiHostName>
+        relay;
+
+    Relay() = default;
+    explicit Relay(SingleHostAddr r) : relay{std::move(r)} {}
+    explicit Relay(SingleHostName r) : relay{std::move(r)} {}
+    explicit Relay(MultiHostName r) : relay{std::move(r)} {}
+
+    /// @brief Populate a CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] auto serializer() const -> cppbor::Array final;
+
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    auto deserializer(const cppbor::Array& data) -> void final;
 };  // Relay
 
-// single_host_addr = ( 0
-//                    , port / null
-//                    , ipv4 / null
-//                    , ipv6 / null
-//                    )
-struct SingleHostAddr : public Relay
-{
-    std::optional<IPV4> ipv4{};
-    std::optional<IPV6> ipv6{};
-    std::optional<Port> port{};
-
-    SingleHostAddr() : Relay{Relay::Type::single_host_addr} {}
-    SingleHostAddr(Bytes4 ip) : Relay{Relay::Type::single_host_addr}, ipv4{ip}
-    {
-    }
-    SingleHostAddr(Bytes16 ip) : Relay{Relay::Type::single_host_addr}, ipv6{ip}
-    {
-    }
-    SingleHostAddr(Bytes4 ip, size_t p)
-        : Relay{Relay::Type::single_host_addr}, ipv4{ip}, port{p}
-    {
-    }
-    SingleHostAddr(Bytes16 ip, size_t p)
-        : Relay{Relay::Type::single_host_addr}, ipv6{ip}, port{p}
-    {
-    }
-
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        auto cbor_serializer = cppbor::Array{cppbor::Uint(type)};
-        if (port.has_value())
-        {
-            cbor_serializer.add(cppbor::Uint(port.value()));
-        }
-        else
-        {
-            cbor_serializer.add(cppbor::Null());
-        }
-        if (ipv4.has_value())
-        {
-            cbor_serializer.add(
-                cppbor::Bstr({ipv4.value().data(), ipv4.value().size()})
-            );
-            cbor_serializer.add(cppbor::Null());
-        }
-        else if (ipv6.has_value())
-        {
-            cbor_serializer.add(cppbor::Null());
-            cbor_serializer.add(
-                cppbor::Bstr({ipv6.value().data(), ipv4.value().size()})
-            );
-        }
-        return cbor_serializer;
-    }  // serializer
-};
-
-// single_host_name = ( 1
-//                    , port / null
-//                    , dns_name ; An A or AAAA DNS record
-//                    )
-struct SingleHostName : public Relay
-{
-    DnsName dns_name{};
-    std::optional<Port> port{};
-
-    SingleHostName() : Relay{Relay::Type::single_host_name} {}
-    SingleHostName(std::string_view name)
-        : Relay{Relay::Type::single_host_name}, dns_name{name}
-    {
-    }
-    SingleHostName(std::string_view name, size_t port_num)
-        : Relay{Relay::Type::single_host_name}, dns_name{name}, port{port_num}
-    {
-    }
-
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        auto cbor_serializer = cppbor::Array{cppbor::Uint(type)};
-        if (port.has_value())
-        {
-            cbor_serializer.add(cppbor::Uint(port.value()));
-        }
-        else
-        {
-            cbor_serializer.add(cppbor::Null());
-        }
-        cbor_serializer.add(cppbor::Tstr(dns_name));
-        return cbor_serializer;
-    }  // serializer
-};
-
-// multi_host_name = ( 2
-//                    , dns_name ; A SRV DNS record
-//                    )
-struct MultiHostName : public Relay
-{
-    DnsName dns_name;
-
-    MultiHostName() : Relay{Relay::Type::multi_host_name} {}
-    MultiHostName(std::string_view name)
-        : Relay{Relay::Type::multi_host_name}, dns_name{name}
-    {
-    }
-
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        return cppbor::Array{cppbor::Uint(type), cppbor::Tstr(dns_name)};
-    }  // serializer
-};
-
 /// @brief Stake pool parameters that are recorded on-chain.
+///
+/// CDDL description:
 ///
 ///     pool_params = ( operator:       pool_keyhash
 ///                   , vrf_keyhash:    vrf_keyhash
@@ -730,17 +690,19 @@ struct PoolParams
     UnitInterval margin{};
     RewardAccount reward_account{};
     std::set<AddrKeyHash> pool_owners{};
-    std::vector<std::unique_ptr<Relay>> relays{};
+    std::vector<Relay> relays{};
     std::optional<PoolMetadata> pool_metadata{};
 };
 
 /// @brief A stake credential.
-/// @code
-/// stake_credential =
-///   [  0, addr_keyhash
-///   // 1, scripthash
-///   ]
-/// @endcode
+///
+/// CDDL description:
+///
+///     stake_credential =
+///       [  0, addr_keyhash
+///       // 1, scripthash
+///       ]
+///
 struct StakeCredential : public ArraySerializable
 {
     enum Type
@@ -752,25 +714,167 @@ struct StakeCredential : public ArraySerializable
     Type type;
     Hash28 cred;
 
-    [[nodiscard]] auto serializer() const -> cppbor::Array
-    {
-        return cppbor::Array{
-            cppbor::Uint(type), cppbor::Bstr{{cred.data(), cred.size()}}
-        };
-    }  // serializer
+    /// @brief Populate a CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] auto serializer() const -> cppbor::Array;
+
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    auto deserializer(const cppbor::Array& data) -> void final;
 };
 
-/// move_instantaneous_reward = [ 0 / 1, { * stake_credential => coin } ]
-/// ; The first field determines where the funds are drawn from.
-/// ; 0 denotes the reserves, 1 denotes the treasury.
-struct MoveInstantaneousReward
+/// @brief Contents of a move instantaneous rewards certificate.
+///
+/// CDDL description:
+///
+///     move_instantaneous_reward = [ 0 / 1, { * stake_credential => coin } ]
+///     ; The first field determines where the funds are drawn from.
+///     ; 0 denotes the reserves, 1 denotes the treasury.
+///
+struct MoveInstantaneousReward : public ArraySerializable
 {
-    MoveInstantaneousReward(Uint s) : source{s} {}
-    const Uint source;
-    std::vector<std::tuple<StakeCredential, Coin>> stake_credentials;
+    /// @brief The source of the rewards.
+    enum RewardSource
+    {
+        reserves = 0,
+        treasury = 1
+    };
+
+    /// Source of the rewards
+    RewardSource source;
+
+    /// Map of credentials to amount of rewards
+    std::vector<std::pair<StakeCredential, Coin>> stake_credentials;
+
+    /// @brief Populate a CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] auto serializer() const -> cppbor::Array final;
+
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    auto deserializer(const cppbor::Array& data) -> void final;
 };
 
-/// @brief A transaction certificate (base type).
+/// @brief A stake registration certificate.
+///
+/// CDDL description:
+///
+///     stake_registration = (0, stake_credential)
+///
+struct StakeRegistration
+{
+    /// @brief The cerificate type CBOR tag.
+    static constexpr auto TypeTag() -> Uint { return 0; }
+
+    /// @brief The certificate stake credential.
+    StakeCredential stake_credential;
+};  // StakeRegistration
+
+/// @brief A stake deregistration certificate.
+///
+/// CDDL description:
+///
+///     stake_deregistration = (1, stake_credential)
+///
+struct StakeDeregistration
+{
+    /// @brief The cerificate type CBOR tag.
+    static constexpr auto TypeTag() -> Uint { return 1; }
+
+    /// @brief The certificate stake credential.
+    StakeCredential stake_credential;
+};  // StakeDeregistration
+
+/// @brief A stake delegation certificate.
+///
+/// CDDL description:
+///
+///     stake_delegation = (2, stake_credential, pool_keyhash)
+///
+struct StakeDelegation
+{
+    /// @brief The cerificate type CBOR tag.
+    static constexpr auto TypeTag() -> Uint { return 2; }
+
+    /// @brief The certificate stake credential.
+    StakeCredential stake_credential;
+
+    /// @brief The identity of the stake pool intended for delegation.
+    PoolKeyHash pool_keyhash;
+};  // StakeDelegation
+
+/// @brief A pool registration certificate.
+///
+/// CDDL description:
+///
+///     pool_registration = (3, pool_params)
+///
+struct PoolRegistration
+{
+    /// @brief The cerificate type CBOR tag.
+    static constexpr auto TypeTag() -> Uint { return 3; }
+
+    /// @brief The parameters of a stake pool.
+    PoolParams pool_params;
+};  // PoolRegistration
+
+/// @brief A pool retirement certificate.
+///
+/// CDDL description:
+///
+///     pool_retirement = (4, pool_keyhash, epoch)
+///
+struct PoolRetirement
+{
+    /// @brief The cerificate type CBOR tag.
+    static constexpr auto TypeTag() -> Uint { return 4; }
+
+    /// @brief Blake2b_224 hash of the stake pool verification key.
+    PoolKeyHash pool_keyhash;
+
+    /// @brief The epoch when the pool will be retired.
+    Epoch epoch;
+};  // PoolRetirement
+
+/// @brief A genesis key delegation certificate.
+///
+/// CDDL description:
+///
+///     genesis_key_delegation = (5,
+///         genesishash, genesis_delegate_hash, vrf_keyhash)
+///
+struct GenesisKeyDelegation
+{
+    /// @brief The cerificate type CBOR tag.
+    static constexpr auto TypeTag() -> Uint { return 5; }
+
+    GenesisHash genesishash;
+    GenesisDelegateHash genesis_delegate_hash;
+    VrfKeyHash vrf_keyhash;
+};  // GenesisKeyDelegation
+
+/// @brief A move instantaneous rewards certificate.
+///
+/// CDDL description:
+///
+///     move_instantaneous_rewards_cert = (6, move_instantaneous_reward)
+///
+struct MoveInstantaneousRewardsCert
+{
+    /// @brief The cerificate type CBOR tag.
+    static constexpr auto TypeTag() -> Uint { return 6; }
+
+    MoveInstantaneousReward move_instantaneous_reward;
+};  // MoveInstantaneousRewardsCert
+
+/// @brief A transaction certificate.
+///
+/// A Shelley era transaction certificate may take on one of seven types:
+/// stake_registration, stake_deregistration, stake_delegation,
+/// pool_registration, pool_retirement, genesis_key_delegation,
+/// or move_instantaneous_rewards_cert. The certificates all contain different
+/// data but have a common interface for serialization/deserialization and an
+/// integer type indicator.
 ///
 /// CDDL description:
 ///
@@ -784,178 +888,37 @@ struct MoveInstantaneousReward
 ///       // move_instantaneous_rewards_cert
 ///       ]
 ///
-///     stake_registration = (0, stake_credential)
-///     stake_deregistration = (1, stake_credential)
-///     stake_delegation = (2, stake_credential, pool_keyhash)
-///     pool_registration = (3, pool_params)
-///     pool_retirement = (4, pool_keyhash, epoch)
-///     genesis_key_delegation = (5, genesishash, genesis_delegate_hash,
-///     vrf_keyhash) move_instantaneous_rewards_cert = (6,
-///     move_instantaneous_reward)
-///
 struct Certificate : public ArraySerializable
 {
-    /// @brief The certificate type.
-    enum Type
-    {
-        stake_registration = 0,
-        stake_deregistration = 1,
-        stake_delegation = 2,
-        pool_registration = 3,
-        pool_retirement = 4,
-        genesis_key_delegation = 5,
-        move_instantaneous_rewards_cert = 6
-    };
+    /// @brief A variant for the different certificate types.
+    std::variant<
+        std::monostate,  // empty variant
+        StakeRegistration,
+        StakeDeregistration,
+        StakeDelegation,
+        PoolRegistration,
+        PoolRetirement,
+        GenesisKeyDelegation,
+        MoveInstantaneousRewardsCert>
+        certificate;
 
-    /// @brief Constant certificate type (must be set on construction).
-    const Certificate::Type type;
+    Certificate() = default;
+    explicit Certificate(StakeRegistration c) : certificate{c} {}
+    explicit Certificate(StakeDeregistration c) : certificate{c} {}
+    explicit Certificate(StakeDelegation c) : certificate{c} {}
+    explicit Certificate(PoolRegistration c) : certificate{c} {}
+    explicit Certificate(PoolRetirement c) : certificate{c} {}
+    explicit Certificate(GenesisKeyDelegation c) : certificate{c} {}
+    explicit Certificate(MoveInstantaneousRewardsCert c) : certificate{c} {}
 
-    /// @brief Construct a new Certificate object with a type.
-    /// @param t Type enum for the certificate (cannot be changed).
-    [[nodiscard]] Certificate(Certificate::Type t) : type(t) {}
+    /// @brief Populate a CBOR object for serialization.
+    /// @return CBOR array object.
+    [[nodiscard]] auto serializer() const -> cppbor::Array final;
+
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    auto deserializer(const cppbor::Array& data) -> void final;
 };  // Certificate
-
-/// @brief A stake registration certificate.
-///
-/// CDDL:
-///
-///     stake_registration = (0, stake_credential)
-///
-struct StakeRegistration : public Certificate
-{
-    /// @brief The certificate stake credential.
-    StakeCredential stake_credential;
-
-    /// @brief Construct a new StakeRegistration certificate object.
-    StakeRegistration() : Certificate{Certificate::stake_registration} {}
-
-    /// @brief Create a pool registration CBOR object for serialization.
-    /// @return CBOR array object.
-    [[nodiscard]] cppbor::Array serializer() const final;
-};  // StakeRegistration
-
-/// @brief A stake deregistration certificate.
-///
-/// CDDL:
-///
-///     stake_deregistration = (1, stake_credential)
-///
-struct StakeDeregistration : public Certificate
-{
-    /// @brief The certificate stake credential.
-    StakeCredential stake_credential;
-
-    /// @brief Construct a new StakeDeregistration certificate object.
-    StakeDeregistration() : Certificate{Certificate::stake_deregistration} {}
-
-    /// @brief Create a pool registration CBOR object for serialization.
-    /// @return CBOR array object.
-    [[nodiscard]] cppbor::Array serializer() const final;
-};  // StakeDeregistration
-
-/// @brief A stake delegation certificate.
-///
-/// CDDL:
-///
-///     stake_delegation = (2, stake_credential, pool_keyhash)
-///
-struct StakeDelegation : public Certificate
-{
-    /// @brief The certificate stake credential.
-    StakeCredential stake_credential;
-
-    /// @brief The identity of the stake pool intended for delegation.
-    PoolKeyHash pool_keyhash;
-
-    /// @brief Construct a new StakeDelegation certificate object.
-    StakeDelegation() : Certificate{Certificate::stake_delegation} {}
-
-    /// @brief Create a pool registration CBOR object for serialization.
-    /// @return CBOR array object.
-    [[nodiscard]] cppbor::Array serializer() const final;
-};  // StakeDelegation
-
-/// @brief A pool registration certificate.
-///
-/// CDDL:
-///
-///     pool_registration = (3, pool_params)
-///
-struct PoolRegistration : public Certificate
-{
-    /// @brief The parameters of a stake pool.
-    PoolParams pool_params;
-
-    /// @brief Construct a new PoolRegistration object.
-    PoolRegistration() : Certificate{Certificate::pool_registration} {}
-
-    /// @brief Create a pool registration CBOR object for serialization.
-    /// @return CBOR array object.
-    [[nodiscard]] cppbor::Array serializer() const final;
-};  // PoolRegistration
-
-/// @brief A pool retirement certificate.
-///
-/// CDDL:
-///
-///     pool_retirement = (4, pool_keyhash, epoch)
-///
-struct PoolRetirement : public Certificate
-{
-    /// @brief Blake2b_224 hash of the stake pool verification key.
-    PoolKeyHash pool_keyhash;
-
-    /// @brief The epoch when the pool will be retired.
-    Epoch epoch;
-
-    /// @brief Construct a new PoolRetirement object.
-    PoolRetirement() : Certificate{Certificate::pool_retirement} {}
-
-    /// @brief Create a pool deregistration CBOR object for serialization.
-    /// @return CBOR array object.
-    [[nodiscard]] cppbor::Array serializer() const final;
-};  // PoolRetirement
-
-/// @brief A genesis key delegation certificate.
-///
-/// CDDL:
-///
-///     genesis_key_delegation = (5,
-///         genesishash, genesis_delegate_hash, vrf_keyhash)
-///
-struct GenesisKeyDelegation : public Certificate
-{
-    GenesisHash genesishash;
-    GenesisDelegateHash genesis_delegate_hash;
-    VrfKeyHash vrf_keyhash;
-
-    GenesisKeyDelegation() : Certificate{Certificate::genesis_key_delegation} {}
-
-    /// @brief Create a pool deregistration CBOR object for serialization.
-    /// @return CBOR array object.
-    [[nodiscard]] cppbor::Array serializer() const final;
-};  // GenesisKeyDelegation
-
-/// @brief A move instantaneous rewards certificate.
-///
-/// CDDL:
-///
-///     move_instantaneous_rewards_cert = (6, move_instantaneous_reward)
-///
-struct MoveInstantaneousRewardsCert : public Certificate
-{
-    MoveInstantaneousReward move_instantaneous_reward;
-
-    MoveInstantaneousRewardsCert(MoveInstantaneousReward m)
-        : Certificate{Certificate::move_instantaneous_rewards_cert},
-          move_instantaneous_reward{m}
-    {
-    }
-
-    /// @brief Create a pool deregistration CBOR object for serialization.
-    /// @return CBOR array object.
-    [[nodiscard]] cppbor::Array serializer() const final;
-};  // MoveInstantaneousRewardsCert
 
 /// @brief A transaction output
 ///
@@ -971,10 +934,13 @@ struct TransactionOutput : public ArraySerializable
     /// @brief The amount of the output (lovelace).
     Coin amount;
 
-    /// @brief Create a transaction output CBOR object for serialization.
+    /// @brief Populate a CBOR object for serialization.
     /// @return CBOR array object.
-    [[nodiscard]] cppbor::Array serializer() const final;
+    [[nodiscard]] auto serializer() const -> cppbor::Array final;
 
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    auto deserializer(const cppbor::Array& data) -> void final;
 };  // TransactionOutput
 
 /// @brief A transaction input
@@ -1000,9 +966,13 @@ struct TransactionInput : public ArraySerializable
         return (this->transaction_id <=> rhs.transaction_id) < 0;
     }
 
-    /// @brief Create a transaction output CBOR object for serialization.
+    /// @brief Populate a CBOR object for serialization.
     /// @return CBOR array object.
     [[nodiscard]] cppbor::Array serializer() const final;
+
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    auto deserializer(const cppbor::Array& data) -> void final;
 };  // TransactionInput
 
 /// @brief The body of a transaction
@@ -1022,40 +992,22 @@ struct TransactionInput : public ArraySerializable
 ///
 struct TransactionBody : public MapSerializable
 {
-    using cert_types = std::variant<
-        StakeRegistration,
-        StakeDeregistration,
-        StakeDelegation,
-        PoolRegistration,
-        PoolRetirement,
-        GenesisKeyDelegation,
-        MoveInstantaneousRewardsCert>;
+    std::set<TransactionInput> transaction_inputs{};
+    std::vector<TransactionOutput> transaction_outputs{};
+    Coin fee = 0;
+    Uint ttl = 0;
+    std::vector<Certificate> certificates{};
+    Withdrawals withdrawals{};
+    std::optional<Update> update{};
+    std::optional<MetadataHash> metadata_hash{};
 
-    std::set<TransactionInput> transaction_inputs;
-    std::vector<TransactionOutput> transaction_outputs;
-    Coin fee;
-    Uint ttl;
-    std::optional<std::vector<cert_types>> certificates;
-    std::optional<Withdrawals> withdrawals;
-    std::optional<Update> update;
-    std::optional<MetadataHash> metadata_hash;
-
-    TransactionBody()
-    {
-        transaction_inputs = std::set<TransactionInput>{};
-        transaction_outputs = std::vector<TransactionOutput>{};
-        fee = Coin{};
-        ttl = 0;
-        certificates = std::nullopt;
-        withdrawals = std::nullopt;
-        update = std::nullopt;
-        metadata_hash = std::nullopt;
-    }
-
-    /// @brief Create a transaction body CBOR object for serialization.
+    /// @brief Populate a CBOR object for serialization.
     /// @return CBOR map object.
-    [[nodiscard]] cppbor::Map serializer() const final;
+    [[nodiscard]] auto serializer() const -> cppbor::Map final;
 
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR map object.
+    auto deserializer(const cppbor::Map& data) -> void final;
 };  // TransactionBody
 
 /// @brief Represent the witness set of a transaction.
@@ -1070,21 +1022,17 @@ struct TransactionBody : public MapSerializable
 ///
 struct TransactionWitnessSet : public MapSerializable
 {
-    using multisig_script_type =
-        std::variant<MultisigPubkey, MultisigAll, MultisigAny, MultisigNofK>;
+    std::vector<VkeyWitness> vkeywitnesses;
+    std::vector<MultisigScript> multisig_scripts;
+    std::vector<BootstrapWitness> bootstrap_witnesses;
 
-    std::optional<std::vector<VkeyWitness>> vkeywitnesses;
-    std::optional<std::vector<multisig_script_type>> multisig_script;
-    std::optional<std::vector<BootstrapWitness>> bootstrap_witnesses;
+    /// @brief Populate a CBOR object for serialization.
+    /// @return CBOR map object.
+    [[nodiscard]] auto serializer() const -> cppbor::Map final;
 
-    TransactionWitnessSet()
-    {
-        vkeywitnesses = std::nullopt;
-        multisig_script = std::nullopt;
-        bootstrap_witnesses = std::nullopt;
-    }
-
-    [[nodiscard]] auto serializer() const -> cppbor::Map;
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR map object.
+    void deserializer(const cppbor::Map& data) final;
 };
 
 /// @brief A transaction
@@ -1103,17 +1051,13 @@ struct Transaction : public ArraySerializable
     TransactionWitnessSet transaction_witness_set;
     std::optional<TransactionMetadata> transaction_metadata;
 
-    Transaction()
-    {
-        transaction_body = TransactionBody();
-        transaction_witness_set = TransactionWitnessSet();
-        transaction_metadata = std::nullopt;
-    }
-
     /// @brief Create a transaction CBOR object for serialization.
     /// @return CBOR array object.
-    [[nodiscard]] cppbor::Array serializer() const final;
+    [[nodiscard]] auto serializer() const -> cppbor::Array final;
 
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    auto deserializer(const cppbor::Array& data) -> void final;
 };  // Transaction
 
 /// @brief Stake pool operational certificate.
@@ -1149,7 +1093,7 @@ struct OperationalCert
 ///   , operational_cert
 ///   , protocol_version
 ///   ]
-struct HeaderBody
+struct HeaderBody // : public ArraySerializable
 {
     Uint block_number;
     Uint slot;
@@ -1288,21 +1232,21 @@ struct NativeScript
 struct ScriptPubkey : public NativeScript
 {
     ScriptPubkey() : NativeScript{NativeScript::Type::script_pubkey} {}
-    std::vector<std::unique_ptr<AddrKeyHash>> addr_keyhashes;
+    std::vector<std::shared_ptr<AddrKeyHash>> addr_keyhashes;
 };
 
 /// script_all = (1, [ * native_script ])
 struct ScriptAll : public NativeScript
 {
     ScriptAll() : NativeScript{NativeScript::Type::script_all} {}
-    std::vector<std::unique_ptr<NativeScript>> scripts;
+    std::vector<std::shared_ptr<NativeScript>> scripts;
 };
 
 /// script_any = (2, [ * native_script ])
 struct ScriptAny : public NativeScript
 {
     ScriptAny() : NativeScript{NativeScript::Type::script_any} {}
-    std::vector<std::unique_ptr<NativeScript>> scripts;
+    std::vector<std::shared_ptr<NativeScript>> scripts;
 };
 
 /// script_n_of_k = (3, n: uint, [ * native_script ])
@@ -1310,7 +1254,7 @@ struct ScriptNofK : public NativeScript
 {
     ScriptNofK() : NativeScript{NativeScript::Type::script_n_of_k} {}
     Uint n;
-    std::vector<std::unique_ptr<NativeScript>> scripts;
+    std::vector<std::shared_ptr<NativeScript>> scripts;
 };
 
 /// invalid_before = (4, uint)
@@ -1340,12 +1284,12 @@ struct TransactionWitnessSet
     TransactionWitnessSet()
     {
         vkeywitnesses = std::vector<shelley::VkeyWitness>{};
-        multisig_scripts = std::vector<std::unique_ptr<NativeScript>>{};
+        multisig_scripts = std::vector<std::shared_ptr<NativeScript>>{};
         bootstrap_witnesses = std::vector<shelley::BootstrapWitness>{};
     }
 
     std::vector<shelley::VkeyWitness> vkeywitnesses;
-    std::vector<std::unique_ptr<NativeScript>> multisig_scripts;
+    std::vector<std::shared_ptr<NativeScript>> multisig_scripts;
     std::vector<shelley::BootstrapWitness> bootstrap_witnesses;
 };
 
@@ -1397,7 +1341,7 @@ struct TransactionBody
     std::vector<shelley::TransactionOutput> transaction_outputs;
     Coin fee;
     Uint ttl;
-    std::optional<std::vector<std::unique_ptr<shelley::Certificate>>>
+    std::optional<std::vector<std::shared_ptr<shelley::Certificate>>>
         certificates;
     std::optional<shelley::Withdrawals> withdrawals;
     std::optional<shelley::Update> update;
@@ -1492,6 +1436,9 @@ struct TransactionOutput : public ArraySerializable
     /// @return CBOR array object.
     [[nodiscard]] cppbor::Array serializer() const final;
 
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR array object.
+    void deserializer(const cppbor::Array& data) final {}
 };  // TransactionOutput
 
 }  // namespace alonzo
@@ -1528,20 +1475,20 @@ using pool_metadata = std::tuple<Url, PoolMetadataHash>;
 //     ipv4 = bytes .size 4
 //     ipv6 = bytes .size 16
 //
-struct Relay
-{
-    enum class Type
-    {
-        single_host_addr,
-        single_host_name,
-        multi_host_name
-    };  // Type
-    Relay::Type type_{};
-    uint16_t port_{};
-    Bytes4 ipv4_{};
-    Bytes16 ipv6_{};
-    std::string dns_name_{};
-};  // Relay
+// struct Relay
+// {
+//     enum class Type
+//     {
+//         single_host_addr,
+//         single_host_name,
+//         multi_host_name
+//     };  // Type
+//     Relay::Type type_{};
+//     uint16_t port_{};
+//     Bytes4 ipv4_{};
+//     Bytes16 ipv6_{};
+//     std::string dns_name_{};
+// };  // Relay
 
 /// @brief Stake pool parameters that are recorded on-chain.
 ///
@@ -1775,6 +1722,10 @@ struct ScriptRef : public TagSerializable
     Bytes script_cbor{};
 
     [[nodiscard]] cppbor::SemanticTag serializer() const final;
+
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR semantic tag object.
+    void deserializer(const cppbor::SemanticTag& data) final {}
 };
 
 /// @brief PostAlonzoTransactionOutput
@@ -1806,6 +1757,9 @@ struct PostAlonzoTransactionOutput : public MapSerializable
     /// @return CBOR array object.
     [[nodiscard]] cppbor::Map serializer() const final;
 
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR map object.
+    void deserializer(const cppbor::Map& data) final {}
 };  // PostAlonzoTransactionOutput
 
 /// @brief Represent a transaction output.
@@ -1853,7 +1807,7 @@ using TransactionInput = shelley::TransactionInput;
 ///
 struct TransactionBody : public MapSerializable
 {
-    using cert_types = std::variant<
+    using CertType = std::variant<
         StakeRegistration,
         StakeDeregistration,
         StakeDelegation,
@@ -1866,8 +1820,8 @@ struct TransactionBody : public MapSerializable
     std::vector<TransactionOutput> transaction_outputs{};
     Coin fee{};
     std::optional<Uint> ttl{};
-    // std::optional<std::vector<cert_types>> certificates;
-    std::optional<Withdrawals> withdrawals;
+    std::vector<CertType> certificates{};
+    Withdrawals withdrawals{};
     // std::optional<Update> update;
     // std::optional<MetadataHash> metadata_hash;
     // std::optional<AuxiliaryDataHash> auxiliary_data_hash;
@@ -1885,6 +1839,9 @@ struct TransactionBody : public MapSerializable
     /// @return CBOR map object.
     [[nodiscard]] cppbor::Map serializer() const final;
 
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR map object.
+    void deserializer(const cppbor::Map& data) final {}
 };  // TransactionBody
 
 /// @brief Structure to hold the witnesses for a transaction.
@@ -1913,6 +1870,10 @@ struct TransactionWitnessSet : public MapSerializable
     /// @brief Create a transaction witness set CBOR object for serialization.
     /// @return CBOR map object.
     [[nodiscard]] cppbor::Map serializer() const final;
+
+    /// @brief Populate the object from the CBOR data.
+    /// @param data CBOR map object.
+    void deserializer(const cppbor::Map& data) final {}
 };
 
 // transaction_metadatum =
@@ -1944,6 +1905,8 @@ struct Transaction : public ArraySerializable
     /// @brief Create a transaction CBOR object for serialization.
     /// @return CBOR array object.
     [[nodiscard]] cppbor::Array serializer() const final;
+
+    void deserializer(const cppbor::Array& data) final {}
 
 };  // Transaction
 

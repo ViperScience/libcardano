@@ -640,7 +640,8 @@ class RegistrationCertificateManager
     /// @return The CBOR byte string as a byte vector.
     [[nodiscard]] auto serialize() const -> std::vector<uint8_t>
     {
-        return cert_.serialize();
+        auto cert = cardano::shelley::Certificate(this->cert_);
+        return cert.serialize();
     }
 
     /// @brief Export the certifiate to a file in the text envelope format.
@@ -694,7 +695,8 @@ class DeregistrationCertificateManager
     /// @return The CBOR byte string as a byte vector.
     [[nodiscard]] auto serialize() const -> std::vector<uint8_t>
     {
-        return cert_.serialize();
+        auto cert = cardano::shelley::Certificate(this->cert_);
+        return cert.serialize();
     }
 
     /// @brief Export the certifiate to a file in the text envelope format.

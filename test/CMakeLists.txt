@@ -91,6 +91,13 @@ ADD_TEST("Cardano Mnemonic API" test_cardano_mnemonic)
 ################################################################################
 
 ################################################################################
+# Test Shelley-Era transaction building, signing, and serializing to CBOR.
+################################################################################
+ADD_EXECUTABLE(test_shelley_tx test_cardano_shelley_transaction_api.cpp)
+target_link_libraries(test_shelley_tx PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Transaction API [Shelley-Era]" test_shelley_tx)
+
+################################################################################
 # Test Cardano transaction building, signing, and serializing to CBOR
 ################################################################################
 ADD_EXECUTABLE(test_cardano_transaction test_cardano_transaction_api.cpp)

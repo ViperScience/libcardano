@@ -34,11 +34,31 @@ struct ArraySerializable
     /// @return CBOR array object.
     [[nodiscard]] virtual auto serializer() const -> cppbor::Array = 0;
 
+    /// @brief Virtual method to parse the CBOR structure.
+    /// @param data CBOR array object.
+    virtual auto deserializer(const cppbor::Array& data) -> void = 0;
+
     /// @brief Serialize the object as a CBOR byte vector.
     /// @return CBOR byte vector.
     [[nodiscard]] auto serialize() const -> std::vector<uint8_t>
     {
         return serializer().encode();
+    }
+
+    /// @brief Deserialize CBOR byte vector.
+    /// @param bytes CBOR byte vector.
+    auto deserialize(std::span<const uint8_t> bytes) -> void
+    {
+        auto [item, end, error] = cppbor::parse(bytes.data(), bytes.size());
+        if (!item || !error.empty())
+        {
+            throw std::runtime_error("CBOR parsing failed: " + error);
+        }
+        if (!item->asArray())
+        {
+            throw std::runtime_error("Byte vector must be a CBOR array.");
+        }
+        deserializer(*(item->asArray()));
     }
 
     virtual ~ArraySerializable() = default;
@@ -51,11 +71,31 @@ struct MapSerializable
     /// @return CBOR map object.
     [[nodiscard]] virtual auto serializer() const -> cppbor::Map = 0;
 
+    /// @brief Virtual method to parse the CBOR structure.
+    /// @param data CBOR map object.
+    virtual auto deserializer(const cppbor::Map& data) -> void = 0;
+
     /// @brief Serialize the object as a CBOR byte vector.
     /// @return CBOR byte vector.
     [[nodiscard]] auto serialize() const -> std::vector<uint8_t>
     {
         return serializer().encode();
+    }
+
+    /// @brief Deserialize CBOR byte vector.
+    /// @param bytes CBOR byte vector.
+    auto deserialize(std::span<const uint8_t> bytes) -> void
+    {
+        auto [item, end, error] = cppbor::parse(bytes.data(), bytes.size());
+        if (!item || !error.empty())
+        {
+            throw std::runtime_error("CBOR parsing failed: " + error);
+        }
+        if (!item->asMap())
+        {
+            throw std::runtime_error("Byte vector must be a CBOR array.");
+        }
+        deserializer(*(item->asMap()));
     }
 
     virtual ~MapSerializable() = default;
@@ -68,11 +108,31 @@ struct TagSerializable
     /// @return CBOR tagged item object.
     [[nodiscard]] virtual auto serializer() const -> cppbor::SemanticTag = 0;
 
+    /// @brief Virtual method to parse the CBOR structure.
+    /// @param data CBOR SemanticTag object.
+    virtual auto deserializer(const cppbor::SemanticTag& data) -> void = 0;
+
     /// @brief Serialize the object as a CBOR byte vector.
     /// @return CBOR byte vector.
     [[nodiscard]] auto serialize() const -> std::vector<uint8_t>
     {
         return serializer().encode();
+    }
+
+    /// @brief Deserialize CBOR byte vector.
+    /// @param bytes CBOR byte vector.
+    auto deserialize(std::span<const uint8_t> bytes) -> void
+    {
+        auto [item, end, error] = cppbor::parse(bytes.data(), bytes.size());
+        if (!item || !error.empty())
+        {
+            throw std::runtime_error("CBOR parsing failed: " + error);
+        }
+        if (!item->asSemanticTag())
+        {
+            throw std::runtime_error("Byte vector must be a CBOR array.");
+        }
+        deserializer(*(item->asSemanticTag()));
     }
 
     virtual ~TagSerializable() = default;
@@ -88,11 +148,51 @@ struct Rational : public TagSerializable
     uint64_t num;
     uint64_t den;
 
-    // Serialize as 2-elem array with tag 6.30
+    /// Serialize as 2-elem array with tag 6.30
     [[nodiscard]] auto serializer() const -> cppbor::SemanticTag override
     {
         return cppbor::SemanticTag{30, cppbor::Array{num, den}};
     }  // serializer
+
+    /// Deserialize the two values from the CBOR object
+    auto deserializer(const cppbor::SemanticTag& data) -> void override
+    {
+        if (data.semanticTag() != 30)
+        {
+            throw std::runtime_error(
+                "Invalid tag for Rational: expected 30, got " +
+                std::to_string(data.semanticTag())
+            );
+        }
+
+        if (!data.asArray())
+        {
+            throw std::runtime_error("Rational data must be a CBOR array");
+        }
+
+        if (data.asArray()->size() != 2)
+        {
+            throw std::runtime_error(
+                "Rational array must have exactly 2 elements"
+            );
+        }
+
+        const auto arr = data.asArray();
+        if (!(arr->get(0)->asUint()) || !(arr->get(1)->asUint()))
+        {
+            throw std::runtime_error(
+                "Rational elements must be unsigned integers"
+            );
+        }
+
+        this->num = arr->get(0)->asUint()->unsignedValue();
+        this->den = arr->get(1)->asUint()->unsignedValue();
+
+        if (this->den == 0)
+        {
+            throw std::runtime_error("Denominator cannot be zero");
+        }
+    }  // deserializer
 };  // Rational
 
 }  // namespace cardano

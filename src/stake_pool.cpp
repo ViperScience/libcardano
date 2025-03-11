@@ -30,6 +30,7 @@
 #include <cardano/encodings.hpp>
 #include <cardano/stake_pool.hpp>
 #include <cardano/util.hpp>
+#include "cardano/ledger.hpp"
 
 using namespace cardano;
 using namespace cardano::stake_pool;
@@ -313,11 +314,11 @@ auto RegistrationCertificateManager::addOwner(const RewardsAddress& stake_addr)
     this->cert_.pool_params.pool_owners.insert(arr);
 }  // RegistrationCertificateManager::addOwner
 
-auto RegistrationCertificateManager::addRelay(std::string_view relay) -> void
+auto RegistrationCertificateManager::addRelay(std::string_view dns_name) -> void
 {
-    this->cert_.pool_params.relays.push_back(
-        std::make_unique<shelley::MultiHostName>(relay)
-    );
+    auto relay = shelley::Relay::MultiHostName{};
+    relay.dns_name = dns_name;
+    this->cert_.pool_params.relays.emplace_back(std::move(relay));
 }  // RegistrationCertificateManager::addRelay
 
 auto RegistrationCertificateManager::addRelay(
@@ -325,9 +326,10 @@ auto RegistrationCertificateManager::addRelay(
     uint16_t port
 ) -> void
 {
-    this->cert_.pool_params.relays.push_back(
-        std::make_unique<shelley::SingleHostName>(dns_name, port)
-    );
+    auto relay = shelley::Relay::SingleHostName{};
+    relay.dns_name = dns_name;
+    relay.port = port;
+    this->cert_.pool_params.relays.emplace_back(std::move(relay));
 }  // RegistrationCertificateManager::addRelay
 
 auto RegistrationCertificateManager::addRelay(
@@ -335,9 +337,10 @@ auto RegistrationCertificateManager::addRelay(
     uint16_t port
 ) -> void
 {
-    this->cert_.pool_params.relays.push_back(
-        std::make_unique<shelley::SingleHostAddr>(ip, port)
-    );
+    auto relay = shelley::Relay::SingleHostAddr{};
+    relay.ipv4 = ip;
+    relay.port = port;
+    this->cert_.pool_params.relays.emplace_back(std::move(relay));
 }  // RegistrationCertificateManager::addRelay
 
 auto RegistrationCertificateManager::addRelay(
@@ -345,9 +348,10 @@ auto RegistrationCertificateManager::addRelay(
     uint16_t port
 ) -> void
 {
-    this->cert_.pool_params.relays.push_back(
-        std::make_unique<shelley::SingleHostAddr>(ip, port)
-    );
+    auto relay = shelley::Relay::SingleHostAddr{};
+    relay.ipv6 = ip;
+    relay.port = port;
+    this->cert_.pool_params.relays.emplace_back(std::move(relay));
 }  // RegistrationCertificateManager::addRelay
 
 auto RegistrationCertificateManager::setMetadata(

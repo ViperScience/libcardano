@@ -35,6 +35,19 @@ endif()
 # Determine if this is the top-level project
 set(CARDANO_IS_TOP_LEVEL ${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
 
+# Only do these if this is the main project, and not if it is included through
+# add_subdirectory.
+if(CARDANO_IS_TOP_LEVEL)
+    # Let's ensure -std=c++xx instead of -std=g++xx
+    set(CMAKE_CXX_EXTENSIONS OFF)
+  
+    # Let's nicely support folders in IDEs
+    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+  
+    # For use with code analyzers
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 ########################################################################
 # Additional packages
 ########################################################################
@@ -113,6 +126,8 @@ set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/alonzo/genesis.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/bip32_ed25519.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/byron/genesis.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/babbage/ledger.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/babbage/transaction.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/conway/genesis.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ed25519.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/encodings.cpp
@@ -120,8 +135,9 @@ set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ledger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mnemonic.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shelley/genesis.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/shelley/ledger.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/shelley/transaction.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/stake_pool.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/transaction.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/util.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vrf.cpp
 )
