@@ -27,7 +27,6 @@
 #include <string_view>
 
 // Third-party library headers
-#include <botan/hash.h>
 
 // Public libcardano headers
 #include <cardano/address.hpp>

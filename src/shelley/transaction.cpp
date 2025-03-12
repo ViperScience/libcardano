@@ -232,7 +232,7 @@ auto TransactionBuilder::balance(uint32_t numWitnesses) -> TransactionBuilder&
     {
         if (i == 100)
         {
-            throw std::runtime_error("");
+            throw std::runtime_error("Unable to balance transaction...");
         }
 
         this->updateFee(numWitnesses);

@@ -29,7 +29,7 @@
 #include <memory>
 #include <optional>
 #include <set>
-#include <source_location>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -1438,7 +1438,9 @@ struct TransactionOutput : public ArraySerializable
 
     /// @brief Populate the object from the CBOR data.
     /// @param data CBOR array object.
-    void deserializer(const cppbor::Array& data) final {}
+    void deserializer(const cppbor::Array& data) final {
+        throw std::runtime_error("Not yet implemented (deserialize " + std::to_string(data.size()) + " bytes)");
+    }
 };  // TransactionOutput
 
 }  // namespace alonzo
@@ -1725,7 +1727,9 @@ struct ScriptRef : public TagSerializable
 
     /// @brief Populate the object from the CBOR data.
     /// @param data CBOR semantic tag object.
-    void deserializer(const cppbor::SemanticTag& data) final {}
+    void deserializer(const cppbor::SemanticTag& data) final {
+        throw std::runtime_error("Not yet implemented (deserialize " + std::to_string(data.size()) + " bytes)");
+    }
 };
 
 /// @brief PostAlonzoTransactionOutput
@@ -1759,7 +1763,9 @@ struct PostAlonzoTransactionOutput : public MapSerializable
 
     /// @brief Populate the object from the CBOR data.
     /// @param data CBOR map object.
-    void deserializer(const cppbor::Map& data) final {}
+    void deserializer(const cppbor::Map& data) final {
+        throw std::runtime_error("Not yet implemented (deserialize " + std::to_string(data.size()) + " bytes)");
+    }
 };  // PostAlonzoTransactionOutput
 
 /// @brief Represent a transaction output.
@@ -1841,7 +1847,9 @@ struct TransactionBody : public MapSerializable
 
     /// @brief Populate the object from the CBOR data.
     /// @param data CBOR map object.
-    void deserializer(const cppbor::Map& data) final {}
+    void deserializer(const cppbor::Map& data) final {
+        throw std::runtime_error("Not yet implemented (deserialize " + std::to_string(data.size()) + " bytes)");
+    }
 };  // TransactionBody
 
 /// @brief Structure to hold the witnesses for a transaction.
@@ -1873,7 +1881,9 @@ struct TransactionWitnessSet : public MapSerializable
 
     /// @brief Populate the object from the CBOR data.
     /// @param data CBOR map object.
-    void deserializer(const cppbor::Map& data) final {}
+    void deserializer(const cppbor::Map& data) final {
+        throw std::runtime_error("Not yet implemented (deserialize " + std::to_string(data.size()) + " bytes)");
+    }
 };
 
 // transaction_metadatum =
@@ -1906,7 +1916,9 @@ struct Transaction : public ArraySerializable
     /// @return CBOR array object.
     [[nodiscard]] cppbor::Array serializer() const final;
 
-    void deserializer(const cppbor::Array& data) final {}
+    void deserializer(const cppbor::Array& data) final {
+        throw std::runtime_error("Not yet implemented (deserialize " + std::to_string(data.size()) + " bytes)");
+    }
 
 };  // Transaction
 

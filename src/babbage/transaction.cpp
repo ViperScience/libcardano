@@ -169,8 +169,9 @@ auto babbage::TransactionBuilder::calculateFee(uint32_t numWitnesses
 auto babbage::TransactionBuilder::balance(uint32_t numWitnesses
 ) -> babbage::TransactionBuilder&
 {
-    auto total_input = 0;    // includes withdrawals
-    auto total_outputs = 0;  // includes deposites
+    throw std::runtime_error("Not yet implemented (balance for " + std::to_string(numWitnesses) + " witnesses)");
+    // auto total_input = 0;    // includes withdrawals
+    // auto total_outputs = 0;  // includes deposites
     // calculate fees
     // is inputs > fees + outputs?
     //   if inputs + min_utxo > fees + outputs
