@@ -121,7 +121,7 @@ using TransactionIndex = uint16_t;
 // Unit interval is a rational between 0 and 1.
 using UnitInterval = Rational;
 
-// /// @brief Cardano Byron blockchain CBOR schema
+/// @brief The namespace for functions and types specific to the Byron era.
 namespace byron
 {
 // u8 = uint .lt 256
@@ -371,7 +371,7 @@ struct address
 
 }  // namespace byron
 
-/// @brief Shelley era ledger types
+/// @brief The namespace for functions and types specific to the Shelley era.
 namespace shelley
 {
 
@@ -1177,7 +1177,7 @@ struct Block
 
 }  // namespace shelley
 
-/// @brief Allegra era ledger types
+/// @brief The namespace for functions and types specific to the Allegra era.
 namespace allegra
 {
 
@@ -1395,7 +1395,7 @@ struct Block
 
 }  // namespace allegra
 
-// /// @brief Mary era ledger types
+/// @brief The namespace for functions and types specific to the Mary era.
 namespace mary
 {
 // multiasset<a> = { * policy_id => { * asset_name => a } }
@@ -1406,7 +1406,7 @@ namespace mary
 // mint = multiasset<int64>
 }  // namespace mary
 
-/// @brief Alonzo era ledger types
+/// @brief The namespace for functions and types specific to the Alonzo era.
 namespace alonzo
 {
 
@@ -1445,7 +1445,7 @@ struct TransactionOutput : public ArraySerializable
 
 }  // namespace alonzo
 
-/// @brief Babbage era ledger types
+/// @brief The namespace for functions and types specific to the Babbage era.
 namespace babbage
 {
 
@@ -1924,7 +1924,7 @@ struct Transaction : public ArraySerializable
 
 }  // namespace babbage
 
-// /// @brief Conway era ledger types
+/// @brief The namespace for functions and types specific to the Conway era.
 namespace conway
 {
 }  // namespace conway

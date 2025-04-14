@@ -25,16 +25,17 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 // Third-Party Library Headers
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
+/// @brief The root namespace for all Cardano functions and types.
 namespace cardano
 {
 
+/// @brief The namespace for functions and types specific to the Byron era.
 namespace byron
 {
 
@@ -142,6 +143,7 @@ struct GenesisParameters
 
 }  // namespace byron
 
+/// @brief The namespace for functions and types specific to the Shelley era.
 namespace shelley
 {
 
@@ -231,6 +233,7 @@ struct GenesisParameters
 
 }  // namespace shelley
 
+/// @brief The namespace for functions and types specific to the Alonzo era.
 namespace alonzo
 {
 
@@ -296,6 +299,7 @@ struct GenesisParameters
 
 }  // namespace alonzo
 
+/// @brief The namespace for functions and types specific to the Conway era.
 namespace conway
 {
 

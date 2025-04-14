@@ -39,6 +39,7 @@
 
 using json = nlohmann::json;
 
+/// @brief The root namespace for all Cardano functions and types.
 namespace cardano
 {
 
@@ -59,6 +60,7 @@ class ITransactionBuilder
 {
 };
 
+/// @brief The namespace for functions and types specific to the Shelley era.
 namespace shelley
 {
 
@@ -378,6 +380,7 @@ class TransactionBuilder : public ITransactionBuilder
 
 }  // namespace shelley
 
+/// @brief The namespace for functions and types specific to the Babbage era.
 namespace babbage
 {
 
