@@ -52,7 +52,7 @@ constexpr auto TAG_DERIVE_CC_NORMAL = static_cast<uint8_t>(0x03);
 // Return true if the index is hardened
 constexpr auto index_is_hardened(uint32_t index) -> bool
 {
-    return (index & (1 << 31)) ? true : false;
+    return (index & 0x80000000u) ? true : false;
 }  // index_is_hardened
 
 // Serialize the 32 bit index into an array of four bytes.
