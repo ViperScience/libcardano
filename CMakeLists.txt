@@ -192,12 +192,12 @@ endif()
 # Specify libraries for linking
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        Botan::Botan
         cryptopp::cryptopp
         sodium::sodium
         Threads::Threads
         OpenSSL::SSL
     PUBLIC
+        Botan::Botan
         cppbor::cppbor
         nlohmann_json::nlohmann_json
 )
