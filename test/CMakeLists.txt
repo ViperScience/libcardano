@@ -140,6 +140,13 @@ target_link_libraries(test_cardano_util PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Utilities API" test_cardano_util)
 
 ################################################################################
+# Test Cardano Secure Memory API
+################################################################################
+ADD_EXECUTABLE(test_cardano_secmem test_cardano_secmem_api.cpp)
+target_link_libraries(test_cardano_secmem PRIVATE ${TEST_LIBCARDANO_LIBS})
+ADD_TEST("Cardano Secure Memory API" test_cardano_secmem)
+
+################################################################################
 # Test Cardano Genesis API
 ################################################################################
 ADD_EXECUTABLE(test_cardano_genesis test_cardano_genesis_api.cpp)

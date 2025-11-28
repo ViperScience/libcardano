@@ -402,6 +402,9 @@ auto BASE58::decode(std::string_view str) -> std::vector<uint8_t>
     for (size_t i = 0; i < enc_len; i++)
     {
         auto charset_index = static_cast<uint8_t>(str[i]);
+        if (charset_index >= 128) {
+            throw std::invalid_argument("Invalid BASE58 character (out of range)");
+        }
         auto carry = (uint32_t)B58_CHARSET_REV[charset_index];
         for (size_t j = 0; j < res_len; j++)
         {

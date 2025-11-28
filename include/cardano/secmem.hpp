@@ -21,10 +21,15 @@
 #ifndef _CARDANO_SECMEM_HPP_
 #define _CARDANO_SECMEM_HPP_
 
+#include <botan/mem_ops.h>
 #include <sys/mman.h>
 
+// Standard Library Headers
 #include <algorithm>
 #include <array>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 
 namespace cardano
 {
@@ -39,15 +44,19 @@ struct SecureByteArray : public std::array<uint8_t, Size>
 {
     SecureByteArray()
     {
-        mlock(std::array<uint8_t, Size>::data(), sizeof(uint8_t) * Size);
+        if (mlock(std::array<uint8_t, Size>::data(), Size) != 0)
+        {
+            throw std::runtime_error(
+                "ERROR: mlock failed (errno " + std::to_string(errno) +
+                ") - sensitive data may be swapped to disk!"
+            );
+        }
     }
 
     ~SecureByteArray()
     {
-        char *bytes =
-            reinterpret_cast<char *>(std::array<uint8_t, Size>::data());
-        std::fill_n<volatile char *>(bytes, sizeof(uint8_t) * Size, 0);
-        munlock(bytes, sizeof(uint8_t) * Size);
+        Botan::secure_scrub_memory(std::array<uint8_t, Size>::data(), Size);
+        munlock(std::array<uint8_t, Size>::data(), Size);
     }
 };  // SecureByteArray
 

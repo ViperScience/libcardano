@@ -86,4 +86,30 @@ TEST_CASE("testCardanoEncodingAPIs")
         auto addr_decode = cardano::BASE58::decode_hex(addr_b58);
         REQUIRE(addr_decode == addr_hex);
     }
+
+    SECTION("testBase58InvalidCharacters")
+    {
+        // Test that characters with ASCII value >= 128 throw exceptions
+        // This verifies the security fix for out-of-bounds array access
+
+        // Extended ASCII character (0x80 = 128)
+        std::string invalid1 = "123\x80""456";
+        REQUIRE_THROWS_AS(cardano::BASE58::decode(invalid1), std::invalid_argument);
+
+        // High-byte character (0xFF = 255)
+        std::string invalid2 = "ABC\xFF""XYZ";
+        REQUIRE_THROWS_AS(cardano::BASE58::decode(invalid2), std::invalid_argument);
+
+        // UTF-8 multibyte sequence (© symbol)
+        std::string invalid3 = "Test\xC2\xA9String";
+        REQUIRE_THROWS_AS(cardano::BASE58::decode(invalid3), std::invalid_argument);
+
+        // Another extended ASCII (0x90 = 144)
+        std::string invalid4 = "\x90""ValidBase58";
+        REQUIRE_THROWS_AS(cardano::BASE58::decode(invalid4), std::invalid_argument);
+
+        // Test with character at exactly boundary (0x7F = 127 should work)
+        std::string boundary_valid = "111";  // Valid BASE58
+        REQUIRE_NOTHROW(cardano::BASE58::decode(boundary_valid));
+    }
 }

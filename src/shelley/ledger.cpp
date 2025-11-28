@@ -49,14 +49,14 @@ void PoolMetadata::deserializer(const cppbor::Array& data)
         throw std::runtime_error("PoolMetadata data must be a CBOR array");
     }
 
-    if (data.asArray()->size() != 2)
+    const auto arr = data.asArray();
+    if (arr->size() != 2)
     {
         throw std::runtime_error(
             "PoolMetadata CBOR array must have exactly 2 elements"
         );
     }
 
-    const auto arr = data.asArray();
     if (!(arr->get(0)->asTstr()) || !(arr->get(1)->asBstr()))
     {
         throw std::runtime_error(
@@ -65,7 +65,15 @@ void PoolMetadata::deserializer(const cppbor::Array& data)
     }
 
     this->url = arr->get(0)->asTstr()->value();
-    std::copy_n(arr->get(1)->asBstr()->value().begin(), 32, this->hash.begin());
+
+    const auto cbor_hash = arr->get(1)->asBstr()->value();
+    if (cbor_hash.size() != 32)
+    {
+        throw std::invalid_argument(
+            "Invalid data size: expected 32 bytes, got " + std::to_string(cbor_hash.size())
+        );
+    }
+    std::copy_n(cbor_hash.begin(), 32, this->hash.begin());
 }
 
 auto Relay::serializer() const -> cppbor::Array
@@ -156,18 +164,24 @@ auto Relay::deserializer(const cppbor::Array& data) -> void
                 (data.get(2)->asBstr()->value().size() == 4))
             {
                 auto ip = IPV4{};
-                std::copy_n(
-                    data.get(2)->asBstr()->value().begin(), 4, ip.begin()
-                );
+                const auto ip_bytes = data.get(2)->asBstr()->value();
+                if (ip_bytes.size() != 4)
+                {
+                    throw std::invalid_argument("Expected 4 bytes for IPv4 addr.");
+                }
+                std::copy_n(ip_bytes.begin(), 4, ip.begin());
                 r.ipv4 = ip;
             }
             else if (data.get(2)->asBstr() &&
                      (data.get(2)->asBstr()->value().size() == 16))
             {
                 auto ip = IPV6{};
-                std::copy_n(
-                    data.get(2)->asBstr()->value().begin(), 16, ip.begin()
-                );
+                const auto ip_bytes = data.get(2)->asBstr()->value();
+                if (ip_bytes.size() != 16)
+                {
+                    throw std::invalid_argument("Expected 16 bytes for IPv6 addr.");
+                }
+                std::copy_n(ip_bytes.begin(), 16, ip.begin());
                 r.ipv6 = ip;
             }
             this->relay = std::move(r);
@@ -248,19 +262,27 @@ auto StakeCredential::deserializer(const cppbor::Array& data) -> void
         );
     }
 
-    switch (cbor_array->get(0)->asUint()->value())
+    const auto cbor_type_id = cbor_array->get(0)->asUint()->value();
+    switch (cbor_type_id)
     {
         case 0:
             this->type = Type::addr_keyhash;
+            break;
         case 1:
             this->type = Type::scripthash;
+            break;
         default:
             throw std::runtime_error("Invalid stake credential type.");
     }
 
-    std::copy_n(
-        cbor_array->get(1)->asBstr()->value().begin(), 28, this->cred.begin()
-    );
+    const auto cbor_cred = cbor_array->get(1)->asBstr()->value();
+    if (cbor_cred.size() != 28)
+    {
+        throw std::invalid_argument(
+            "Invalid data size: expected 28 bytes, got " + std::to_string(cbor_cred.size())
+        );
+    }
+    std::copy_n(cbor_cred.begin(), 28, this->cred.begin());
 }  // StakeCredential::deserializer
 
 auto MoveInstantaneousReward::serializer() const -> cppbor::Array
@@ -292,12 +314,15 @@ auto MoveInstantaneousReward::deserializer(const cppbor::Array& data) -> void
         );
     }
 
-    switch (cbor_array->get(0)->asUint()->value())
+    const auto cbor_source_id = cbor_array->get(0)->asUint()->value();
+    switch (cbor_source_id)
     {
         case 0:
             this->source = RewardSource::reserves;
+            break;
         case 1:
             this->source = RewardSource::treasury;
+            break;
         default:
             throw std::runtime_error("Invalid reward source.");
     }
@@ -466,11 +491,12 @@ auto Certificate::deserializer(const cppbor::Array& data) -> void
             }
             auto cert = StakeDelegation{};
             cert.stake_credential.deserializer(*(data.get(1)->asArray()));
-            std::copy_n(
-                data.get(2)->asBstr()->value().begin(),
-                28,
-                cert.pool_keyhash.begin()
-            );
+            const auto hash_bytes = data.get(2)->asBstr()->value();
+            if (hash_bytes.size() != 28)
+            {
+                throw std::invalid_argument("Expected 28 bytes for hash.");
+            }
+            std::copy_n(hash_bytes.begin(), 28, cert.pool_keyhash.begin());
             this->certificate = std::move(cert);
             break;
         }
@@ -481,16 +507,24 @@ auto Certificate::deserializer(const cppbor::Array& data) -> void
                 !(data.get(3)->asUint()) || !(data.get(4)->asUint()) ||
                 !(data.get(5)->asArray()) || !(data.get(6)->asBstr()))
             {
-                throw std::runtime_error(
+                throw std::invalid_argument(
                     "PoolRegistration CBOR elements are not the expected types"
                 );
             }
             auto params = PoolParams{};
+            if (data.get(1)->asBstr()->value().size() != params.pool_operator.size())
+            {
+                throw std::invalid_argument("Unexpected number of bytes.");
+            }
             std::copy_n(
                 data.get(1)->asBstr()->value().begin(),
                 params.pool_operator.size(),
                 params.pool_operator.begin()
             );
+            if (data.get(2)->asBstr()->value().size() != params.vrf_keyhash.size())
+            {
+                throw std::invalid_argument("Unexpected number of bytes.");
+            }
             std::copy_n(
                 data.get(2)->asBstr()->value().begin(),
                 params.vrf_keyhash.size(),
@@ -506,6 +540,10 @@ auto Certificate::deserializer(const cppbor::Array& data) -> void
                 for (auto it = arr->begin(); it != arr->end(); ++it)
                 {
                     auto owner = AddrKeyHash{};
+                    if ((*it)->asBstr()->value().size() != owner.size())
+                    {
+                        throw std::invalid_argument("Invalid key hash size.");
+                    }
                     std::copy_n(
                         (*it)->asBstr()->value().begin(),
                         owner.size(),
@@ -541,14 +579,13 @@ auto Certificate::deserializer(const cppbor::Array& data) -> void
                 );
             }
             auto cert = PoolRetirement{};
-            if (data.get(1)->asBstr()->value().size() !=
-                cert.pool_keyhash.size())
+            const auto hash_bytes = data.get(1)->asBstr()->value();
+            if (hash_bytes.size() != cert.pool_keyhash.size())
             {
-                throw std::runtime_error("Invalid data size for pool key hash."
-                );
+                throw std::runtime_error("Invalid size for pool key hash.");
             }
             std::copy_n(
-                data.get(1)->asBstr()->value().begin(),
+                hash_bytes.begin(),
                 cert.pool_keyhash.size(),
                 cert.pool_keyhash.begin()
             );
@@ -559,18 +596,30 @@ auto Certificate::deserializer(const cppbor::Array& data) -> void
         case GenesisKeyDelegation::TypeTag():
         {
             auto cert = GenesisKeyDelegation{};
+            if (data.get(0)->asBstr()->value().size() != cert.genesishash.size())
+            {
+                throw std::invalid_argument("Unexpected number of bytes.");
+            }
             std::copy_n(
                 data.get(0)->asBstr()->value().begin(),
                 cert.genesishash.size(),
                 cert.genesishash.begin()
             );
+            if (data.get(1)->asBstr()->value().size() != cert.genesis_delegate_hash.size())
+            {
+                throw std::invalid_argument("Unexpected number of bytes.");
+            }
             std::copy_n(
                 data.get(1)->asBstr()->value().begin(),
                 cert.genesis_delegate_hash.size(),
                 cert.genesis_delegate_hash.begin()
             );
+            if (data.get(2)->asBstr()->value().size() != cert.vrf_keyhash.size())
+            {
+                throw std::invalid_argument("Unexpected number of bytes.");
+            }
             std::copy_n(
-                data.get(1)->asBstr()->value().begin(),
+                data.get(2)->asBstr()->value().begin(),
                 cert.vrf_keyhash.size(),
                 cert.vrf_keyhash.begin()
             );
@@ -637,12 +686,12 @@ auto TransactionInput::deserializer(const cppbor::Array& data) -> void
 {
     if (!data.asArray())
     {
-        throw std::runtime_error("TransactionInput data must be a CBOR array");
+        throw std::invalid_argument("TransactionInput data must be a CBOR array");
     }
 
     if (data.asArray()->size() != 2)
     {
-        throw std::runtime_error(
+        throw std::invalid_argument(
             "TransactionInput CBOR array must have exactly 2 elements"
         );
     }
@@ -651,16 +700,16 @@ auto TransactionInput::deserializer(const cppbor::Array& data) -> void
 
     if (!(cbor_array->get(0)->asBstr()) || !(cbor_array->get(1)->asUint()))
     {
-        throw std::runtime_error(
+        throw std::invalid_argument(
             "TransactionInput CBOR elements are not the expected types"
         );
     }
 
-    std::copy_n(
-        cbor_array->get(0)->asBstr()->value().begin(),
-        32,
-        this->transaction_id.begin()
-    );
+    const auto tx_id = cbor_array->get(0)->asBstr()->value();
+    if (tx_id.size() != 32) {
+        throw std::invalid_argument("Expected 32 bytes.");
+    }
+    std::copy_n(tx_id.begin(), 32, this->transaction_id.begin());
     this->index = cbor_array->get(1)->asUint()->unsignedValue();
 }  // TransactionInput::deserializer
 
@@ -723,7 +772,7 @@ auto MultisigScript::deserializer(const cppbor::Array& data) -> void
 {
     if ((data.size() < 2) || !(data.get(0)->asUint()))
     {
-        throw std::runtime_error("MultisigScript data must be a CBOR array");
+        throw std::invalid_argument("MultisigScript data must be a CBOR array");
     }
 
     switch (data.get(0)->asUint()->unsignedValue())
@@ -733,13 +782,19 @@ auto MultisigScript::deserializer(const cppbor::Array& data) -> void
             if (!(data.size() == 2) || !(data.get(0)->asUint()) ||
                 !(data.get(1)->asBstr()))
             {
-                throw std::runtime_error(
+                throw std::invalid_argument(
                     "MultisigPubkey CBOR elements are not the expected types"
                 );
             }
+    
             auto msig = MultisigPubkey{};
+            const auto msig_bytes = data.get(1)->asBstr()->value();
+            if (msig_bytes.size() != msig.addr_keyhash.size())
+            {
+                throw std::invalid_argument("Invalid address key hash size");
+            }
             std::copy_n(
-                data.get(1)->asBstr()->value().begin(),
+                msig_bytes.begin(),
                 msig.addr_keyhash.size(),
                 msig.addr_keyhash.begin()
             );
@@ -962,9 +1017,12 @@ auto TransactionBody::deserializer(const cppbor::Map& data) -> void
     if (cbor_map->get(7) && cbor_map->get(7)->asBstr())
     {
         auto bytes = Hash32{};
-        std::copy_n(
-            cbor_map->get(7)->asBstr()->value().begin(), 32, bytes.begin()
-        );
+        const auto deser_bytes = cbor_map->get(7)->asBstr()->value();
+        if (deser_bytes.size() != 32)
+        {
+            throw std::invalid_argument("Expected 32 bytes for hash.");
+        }
+        std::copy_n(deser_bytes.begin(), 32, bytes.begin());
         this->metadata_hash = bytes;
     }
 
