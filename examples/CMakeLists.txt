@@ -27,7 +27,7 @@ set(LIBCARDANO_EXAMPLE_LINK_LIBS
     Botan::Botan
     cryptopp::cryptopp
     cppbor::cppbor
-    sodium::sodium
+    cardano_sodium::cardano_sodium
     cardano::cardano
 )
 
