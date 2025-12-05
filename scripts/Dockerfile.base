@@ -48,20 +48,7 @@ RUN curl -LO https://botan.randombit.net/releases/Botan-3.4.0.tar.xz \
   && make install \
   && cd .. && rm -rf Botan*
 
-# Install the Cardano fork of libsodium
-WORKDIR /tmp
-RUN git clone https://github.com/input-output-hk/libsodium \
-  && cd libsodium \
-  && git checkout dbb48cc \
-  && ./autogen.sh \
-  && ./configure \
-  && make -j8 \
-  && make install \
-  && cd .. && rm -rf libsodium
-RUN export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" \
-  && export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
-
-  # Install Doxygen
+# Install Doxygen
 WORKDIR /tmp
 RUN curl -LO https://www.doxygen.nl/files/doxygen-1.11.0.linux.bin.tar.gz \
   && tar --extract --file doxygen-1.11.0.linux.bin.tar.gz \

@@ -69,13 +69,18 @@ find_package(Threads REQUIRED)
 # Include OpenSSL for the Botan library
 find_package(OpenSSL REQUIRED)
 
-# Include the Cardano fork of libsodium. Requires installation.
-set(sodium_USE_STATIC_LIBS ON)
-find_package(Sodium REQUIRED)
-
 # Include the Botan library for cryptographic functions.
 # Must be installed on the system.
 find_package(Botan 3.4.0 REQUIRED)
+
+# Include the Cardano fork of libsodium. Requires installation.
+FetchContent_Declare(
+    cardano_sodium
+    GIT_REPOSITORY https://gitlab.com/viperscience/cardano-libsodium-cmake.git
+    GIT_TAG        295d5ba29e62c2fd2899085a9583f6629e1795e0
+)
+set(SODIUM_DISABLE_TESTS ON)
+FetchContent_MakeAvailable(cardano_sodium)
 
 # Use the Viper Science fork of libcppbor for CBOR functionality
 FetchContent_Declare(
@@ -192,8 +197,8 @@ endif()
 # Specify libraries for linking
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+        cardano_sodium::cardano_sodium
         cryptopp::cryptopp
-        sodium::sodium
         Threads::Threads
         OpenSSL::SSL
     PUBLIC
