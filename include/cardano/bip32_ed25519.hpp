@@ -177,13 +177,13 @@ class PrivateKey
     /// @brief Generate a key from a mnemonic seed phrase.
     /// @param mn The mnemonic object.
     /// @return A new private key.
-    static auto fromMnemonic(const Mnemonic& mn) -> PrivateKey;
+    [[nodiscard]] static auto fromMnemonic(const Mnemonic& mn) -> PrivateKey;
 
     /// @brief Generate a key from a mnemonic seed phrase.
     /// @param mn The mnemonic object.
     /// @param passphrase An optional passphrase to combine with the seed.
     /// @return A new private key.
-    static auto fromMnemonic(
+    [[nodiscard]] static auto fromMnemonic(
         const cardano::Mnemonic& mn,
         std::string_view passphrase
     ) -> PrivateKey;
@@ -193,7 +193,7 @@ class PrivateKey
     /// @return A new private key.
     /// @details Use the key generation method employed by Daedalus for
     /// generating Byron addresses.
-    static auto fromMnemonicByron(const Mnemonic& mn) -> PrivateKey;
+    [[nodiscard]] static auto fromMnemonicByron(const Mnemonic& mn) -> PrivateKey;
 
     /// @brief Return a constant reference to the private key secure byte
     /// array.
@@ -225,7 +225,7 @@ class PrivateKey
     /// that used by the Daedalus wallet. This clears the unencrypted private
     /// key of the calling object.
     /// @param password The password to use for the encryption.
-    auto encrypt(std::string_view password) const -> EncryptedPrivateKey;
+    [[nodiscard]] auto encrypt(std::string_view password) const -> EncryptedPrivateKey;
 };  // PrivateKey
 
 /// @brief Represent an encrypted BIP32-Ed25519 private key.
