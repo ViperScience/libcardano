@@ -50,7 +50,7 @@ auto cardano::util::rationalApprox(double f, int64_t md)
     auto h = std::array<int64_t, 3>{0, 1, 0};
     auto k = std::array<int64_t, 3>{1, 0, 0};
     int64_t a, x, d, n = 1;
-    int i, neg = 0;
+    // int i, neg = 0;
 
     if (md <= 1)
     {
@@ -59,9 +59,9 @@ auto cardano::util::rationalApprox(double f, int64_t md)
         return {num, denom};
     }
 
-    if (f < 0)
+    const bool is_neg = (f < 0);
+    if (is_neg)
     {
-        neg = 1;
         f = -f;
     }
 
@@ -73,7 +73,7 @@ auto cardano::util::rationalApprox(double f, int64_t md)
     d = static_cast<int64_t>(f);
 
     // continued fraction and check denominator each step
-    for (i = 0; i < 64; i++)
+    for (int i = 0; i < 64; i++)
     {
         a = n ? d / n : 0;
         if (i && !a) break;
@@ -100,6 +100,6 @@ auto cardano::util::rationalApprox(double f, int64_t md)
         k[1] = k[2];
     }
     denom = k[1];
-    num = neg ? -h[1] : h[1];
+    num = is_neg ? -h[1] : h[1];
     return {num, denom};
 }  // rationalApprox
