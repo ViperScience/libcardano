@@ -199,7 +199,14 @@ auto PublicKey::verifySignature(
 auto PublicKey::deriveChild(const uint32_t index, const DerivationMode mode)
     const -> PublicKey
 {
-    if (index_is_hardened(index)) throw std::exception();
+    if (index_is_hardened(index))
+    {
+        throw std::invalid_argument(
+            "Cannot derive hardened child from public key. "
+            "Hardened derivation requires a private key. "
+            "Index: " + std::to_string(index) + "."
+        );
+    }
 
     auto idxBuf = serialize_index32(index, mode);
 

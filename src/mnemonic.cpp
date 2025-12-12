@@ -103,7 +103,11 @@ Mnemonic::Mnemonic(std::span<std::string_view> seed_phrase, BIP39Language lang)
         }
     }
     if (this->word_list_.size() != this->word_indexes_.size())
-        throw std::invalid_argument("Words and indexes must match lengths");
+    {
+        throw std::invalid_argument(
+            "Invalid mnemonic: found words not in BIP39 dictionary."
+        );
+    }
 }  // Mnemonic::Mnemonic(std::span<std::string_view>, BIP39Language lang)
 
 Mnemonic::Mnemonic(std::span<std::string> seed_phrase, BIP39Language lang)
