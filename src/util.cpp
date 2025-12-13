@@ -32,13 +32,32 @@ auto cardano::util::writeEnvelopeTextFile(
     const std::string_view cbor_hex
 ) -> void
 {
-    std::ofstream out(std::string(file_path).c_str());
-    out << "{\n";
-    out << R"(    "type": ")" << type << "\",\n";
-    out << R"(    "description": ")" << description << "\",\n";
-    out << R"(    "cborHex": ")" << cbor_hex << "\"\n";
-    out << "}";
-    out.close();
+    auto out = std::ofstream(std::string(file_path).c_str());
+    if (!out)
+    {
+        throw std::runtime_error(
+            "Failed to open file for writing: " + std::string(file_path)
+        );
+    }
+
+    out.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+
+    try
+    {
+        out << "{\n";
+        out << R"(    "type": ")" << type << "\",\n";
+        out << R"(    "description": ")" << description << "\",\n";
+        out << R"(    "cborHex": ")" << cbor_hex << "\"\n";
+        out << "}";
+        // Destructor will close and flush
+    }
+    catch (const std::ofstream::failure& e)
+    {
+        throw std::runtime_error(
+            "Failed to write to file " + std::string(file_path) +
+            ": " + e.what()
+        );
+    }
 }  // writeEnvelopeTextFile
 
 auto cardano::util::rationalApprox(double f, int64_t md)
