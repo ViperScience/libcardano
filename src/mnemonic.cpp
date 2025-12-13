@@ -22,6 +22,7 @@
 #include <cmath>
 #include <memory>
 #include <span>
+#include <unordered_map>
 
 // Third Party Library Headers
 #include <botan/auto_rng.h>
@@ -34,10 +35,12 @@
 
 using namespace cardano;
 
+namespace {
+
 constexpr uint16_t WORD_INDEX_MASK = 0b0000011111111111;
 constexpr uint16_t WORD_SIZE_BITS = 11;
 
-constexpr auto is_valid_mnemonic_size(size_t sz) -> bool
+constexpr auto IsValidMnemonicSize(size_t sz) -> bool
 {
     switch (sz)
     {
@@ -52,7 +55,18 @@ constexpr auto is_valid_mnemonic_size(size_t sz) -> bool
             return false;
     }
     return true;
-}  // is_valid_mnemonic_size
+}  // IsValidMnemonicSize
+
+auto CreateDictionaryLookup(const std::span<const std::string_view> dict)
+    -> std::unordered_map<std::string_view, uint16_t>
+{
+    auto lookup = std::unordered_map<std::string_view, uint16_t>();
+    lookup.reserve(dict.size());
+    for (uint16_t i = 0; i < dict.size(); i++) lookup[dict[i]] = i;
+    return lookup;
+}  // CreateDictionaryLookup
+
+}  // unnamed namespace
 
 Mnemonic::Mnemonic(
     std::span<std::string_view> seed_phrase,
@@ -61,7 +75,7 @@ Mnemonic::Mnemonic(
 {
     if (seed_phrase.size() != word_indexes.size())
         throw std::invalid_argument("Words and indexes must match lengths");
-    if (!is_valid_mnemonic_size(seed_phrase.size()))
+    if (!IsValidMnemonicSize(seed_phrase.size()))
         throw std::invalid_argument("Not a valid mnemonic size");
     this->word_indexes_.assign(word_indexes.begin(), word_indexes.end());
     for (const auto w : seed_phrase)
@@ -75,7 +89,7 @@ Mnemonic::Mnemonic(
 {
     if (seed_phrase.size() != word_indexes.size())
         throw std::invalid_argument("Words and indexes must match lengths");
-    if (!is_valid_mnemonic_size(seed_phrase.size()))
+    if (!IsValidMnemonicSize(seed_phrase.size()))
         throw std::invalid_argument("Not a valid mnemonic size");
     for (const auto &i : word_indexes) this->word_indexes_.push_back(i);
     for (const auto &w : seed_phrase) this->word_list_.push_back(w);
@@ -83,56 +97,64 @@ Mnemonic::Mnemonic(
 
 Mnemonic::Mnemonic(std::span<std::string_view> seed_phrase, BIP39Language lang)
 {
-    if (!is_valid_mnemonic_size(seed_phrase.size()))
+    if (!IsValidMnemonicSize(seed_phrase.size()))
+    {
         throw std::invalid_argument(
             "Mnemonic does not contain a valid number of words."
         );
+    }
+    
     for (const auto w : seed_phrase) this->word_list_.push_back(std::string(w));
 
     // Find the dictionary indexes for each word.
+    // Use O(n) hash lookups instead of O(n*m) linear search.
     auto d = BIP39Dictionary::GetDictionary(lang);
+    auto lookup = CreateDictionaryLookup(d);
     for (const auto &w : this->word_list_)
     {
-        for (uint16_t i = 0; i < d.size(); i++)
+        auto it = lookup.find(w);
+        if (it != lookup.end())
         {
-            if (d[i] == w)
-            {
-                this->word_indexes_.push_back(i);
-                break;
-            }
+            this->word_indexes_.push_back(it->second);
         }
-    }
-    if (this->word_list_.size() != this->word_indexes_.size())
-    {
-        throw std::invalid_argument(
-            "Invalid mnemonic: found words not in BIP39 dictionary."
-        );
+        else
+        {
+            throw std::invalid_argument(
+                "Invalid mnemonic: " + w + " not found in BIP39 dictionary."
+            );
+        }
     }
 }  // Mnemonic::Mnemonic(std::span<std::string_view>, BIP39Language lang)
 
 Mnemonic::Mnemonic(std::span<std::string> seed_phrase, BIP39Language lang)
 {
-    if (!is_valid_mnemonic_size(seed_phrase.size()))
+    if (!IsValidMnemonicSize(seed_phrase.size()))
+    {
         throw std::invalid_argument(
             "Mnemonic does not contain a valid number of words."
         );
+    }
+
     for (const auto &w : seed_phrase) this->word_list_.push_back(w);
 
     // Find the dictionary indexes for each word.
+    // Use O(n) hash lookups instead of O(n*m) linear search.
     auto d = BIP39Dictionary::GetDictionary(lang);
+    auto lookup = CreateDictionaryLookup(d);
     for (const auto &w : this->word_list_)
     {
-        for (uint16_t i = 0; i < d.size(); i++)
+        auto it = lookup.find(w);
+        if (it != lookup.end())
         {
-            if (d[i] == w)
-            {
-                this->word_indexes_.push_back(i);
-                break;
-            }
+            this->word_indexes_.push_back(it->second);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Invalid mnemonic: " + w + " not found in BIP39 dictionary."
+            );
         }
     }
-    if (this->word_list_.size() != this->word_indexes_.size())
-        throw std::invalid_argument("Words and indexes must match lengths");
 }  // Mnemonic::Mnemonic(std::span<std::string>, BIP39Language lang)
 
 Mnemonic::Mnemonic(std::string_view seed_phrase, BIP39Language lang)
@@ -148,32 +170,38 @@ Mnemonic::Mnemonic(std::string_view seed_phrase, BIP39Language lang)
         seed.erase(0, pos + delim.length());
     }
     this->word_list_.push_back(seed);
-    if (!is_valid_mnemonic_size(this->word_list_.size()))
+
+    if (!IsValidMnemonicSize(this->word_list_.size()))
+    {
         throw std::invalid_argument(
             "Mnemonic does not contain a valid number of words."
         );
+    }
 
     // Find the dictionary indexes for each word.
+    // Use O(n) hash lookups instead of O(n*m) linear search.
     auto d = BIP39Dictionary::GetDictionary(lang);
+    auto lookup = CreateDictionaryLookup(d);
     for (const auto &w : this->word_list_)
     {
-        for (uint16_t i = 0; i < d.size(); i++)
+        auto it = lookup.find(w);
+        if (it != lookup.end())
         {
-            if (d[i] == w)
-            {
-                this->word_indexes_.push_back(i);
-                break;
-            }
+            this->word_indexes_.push_back(it->second);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "Invalid mnemonic: " + w + " not found in BIP39 dictionary."
+            );
         }
     }
-    if (this->word_list_.size() != this->word_indexes_.size())
-        throw std::invalid_argument("Words and indexes must match lengths");
 }  // Mnemonic::Mnemonic(std::string_view seed_phrase, BIP39Language lang)
 
 auto Mnemonic::generate(size_t mnemonic_size, BIP39Language lang) -> Mnemonic
 {
     // Verify the Mnemonic size is supported.
-    if (!is_valid_mnemonic_size(mnemonic_size))
+    if (!IsValidMnemonicSize(mnemonic_size))
         throw std::invalid_argument("Not a valid mnemonic size");
 
     // CS = ENT / 32
@@ -254,7 +282,7 @@ auto Mnemonic::generate(size_t mnemonic_size, BIP39Language lang) -> Mnemonic
 auto Mnemonic::toEntropy() const -> std::tuple<std::vector<uint8_t>, uint8_t>
 {
     const auto mnemonic_size = this->word_indexes_.size();
-    if (!is_valid_mnemonic_size(mnemonic_size))
+    if (!IsValidMnemonicSize(mnemonic_size))
         throw std::invalid_argument("Not a valid mnemonic size");
     const auto checksum_size_bits = mnemonic_size / 3;
     const auto entropy_size_bytes = checksum_size_bits * 4;
@@ -314,7 +342,7 @@ auto Mnemonic::checksum() const -> uint8_t
 auto Mnemonic::verify_checksum() const -> bool
 {
     const auto mnemonic_size = this->word_indexes_.size();
-    if (!is_valid_mnemonic_size(mnemonic_size))
+    if (!IsValidMnemonicSize(mnemonic_size))
         throw std::invalid_argument("Not a valid mnemonic size");
     const auto checksum_size_bits = mnemonic_size / 3;
 
