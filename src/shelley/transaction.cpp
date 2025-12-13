@@ -402,29 +402,34 @@ auto TransactionBuilder::serialize() const -> std::vector<uint8_t>
     return this->tx_.serialize();
 }  // TransactionBuilder::serialize
 
-auto TransactionBuilder::calculateFee(uint32_t numWitnesses) -> uint64_t
+auto TransactionBuilder::calculateFee(uint32_t numWitnesses) const -> uint64_t
 {
     const auto a = static_cast<uint64_t>(this->min_fee_a_);
     const auto b = static_cast<uint64_t>(this->min_fee_b_);
 
+    // Create a temporary copy - don't modify original
+    auto temp_tx = this->tx_;
+    if (!temp_tx.transaction_witness_set.vkeywitnesses.empty())
+    {
+        temp_tx.transaction_witness_set.vkeywitnesses.clear();
+    }
+
     // Add dummy vkey witnesses
-    this->clearWitnessSet();
     for (uint32_t i = 0; i < numWitnesses; ++i)
     {
         const auto dummy_key = util::makeRandomByteArray<32>();
         const auto dummy_witness = util::makeRandomByteArray<64>();
-        this->tx_.transaction_witness_set.vkeywitnesses.push_back(
+        temp_tx.transaction_witness_set.vkeywitnesses.push_back(
             {dummy_key, dummy_witness}
         );
     }
 
-    auto calculated_fee = a * this->serialize().size() + b;
-    while (calculated_fee != this->tx_.transaction_body.fee)
+    auto calculated_fee = a * temp_tx.serialize().size() + b;
+    while (calculated_fee != temp_tx.transaction_body.fee)
     {
-        this->tx_.transaction_body.fee = calculated_fee;
-        calculated_fee = a * this->serialize().size() + b;
+        temp_tx.transaction_body.fee = calculated_fee;
+        calculated_fee = a * temp_tx.serialize().size() + b;
     }
-    this->clearWitnessSet();
 
     return calculated_fee;
 }  // TransactionBuilder::calculateFee

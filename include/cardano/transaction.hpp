@@ -344,7 +344,7 @@ class TransactionBuilder : public ITransactionBuilder
     ///
     /// @param numWitnesses Number of expected witnesses.
     /// @return A reference to the transaction builder.
-    auto calculateFee(uint32_t numWitnesses = 0) -> uint64_t;
+    auto calculateFee(uint32_t numWitnesses = 0) const -> uint64_t;
 
     /// @brief Return a constant reference to the transaction object.
     [[nodiscard]] const auto& getTransaction() const { return this->tx_; }
