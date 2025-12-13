@@ -224,13 +224,12 @@ auto TransactionBuilder::totalOutgoing() -> int64_t
     return total_outputs;
 }  // TransactionBuilder::sumOutputs
 
-auto TransactionBuilder::balance(uint32_t numWitnesses) -> TransactionBuilder&
+auto TransactionBuilder::balance(uint32_t numWitnesses, bool force) -> TransactionBuilder&
 {
-    bool force = false;
-
+    auto max_iter = 100;
     for (auto i = 0;; ++i)
     {
-        if (i == 100)
+        if (i == max_iter)
         {
             throw std::runtime_error("Unable to balance transaction...");
         }
@@ -242,9 +241,9 @@ auto TransactionBuilder::balance(uint32_t numWitnesses) -> TransactionBuilder&
             // We are done, the transaction is balanced.
             break;
         }
-        else if (change < 0)
+        else if (change < 0) // negative change value
         {
-            if (i == 0)
+            if (this->tx_.transaction_body.transaction_outputs.size() == 0)
             {
                 // There is simply not enough inputs to cover the outputs.
                 throw std::runtime_error("Insufficient funds");
@@ -253,19 +252,26 @@ auto TransactionBuilder::balance(uint32_t numWitnesses) -> TransactionBuilder&
             {
                 // In this case, we've already added a change output and
                 // probably just need to slighly decrease the change output
-                // amount to account for slight increase in fees.
+                // amount to account for a small increase in fees.
+
+                // Access the change output. If there are multiple, use the
+                // last one.
                 auto& change_output =
                     this->tx_.transaction_body.transaction_outputs.back();
-                change_output.amount = static_cast<uint64_t>(
-                    static_cast<int64_t>(change_output.amount) + change
-                );
-                if (static_cast<int64_t>(change_output.amount) <
-                    this->min_utxo_)
+                
+                auto prev_amt = static_cast<int64_t>(change_output.amount);
+                auto new_amt = prev_amt + change;  // add neg value to subtract
+
+                if (new_amt < this->min_utxo_)
                 {
                     // The change output is not viable. We need to either error
-                    // or waste the extra ADA in fees. Remove the invalid change
-                    // output
+                    // or waste the extra ADA in fees. Remove the change
+                    // output.
                     this->tx_.transaction_body.transaction_outputs.pop_back();
+                }
+                else
+                {
+                    change_output.amount = static_cast<Coin>(new_amt);
                 }
             }
         }
@@ -274,11 +280,10 @@ auto TransactionBuilder::balance(uint32_t numWitnesses) -> TransactionBuilder&
             if ((i == 0) && (change > this->min_utxo_))
             {
                 // Add the change output
-                auto output = shelley::TransactionOutput{};
-                output.address = this->change_addr_;
-                output.amount = static_cast<Coin>(change);
-                this->tx_.transaction_body.transaction_outputs.push_back(output
-                );
+                auto tout = shelley::TransactionOutput{};
+                tout.address = this->change_addr_;
+                tout.amount = static_cast<Coin>(change);
+                this->tx_.transaction_body.transaction_outputs.push_back(tout);
                 // The TX is not balanced yet because the fees neeed to be
                 // re-computed to account for the bytes added by the change
                 // output.
@@ -286,7 +291,7 @@ auto TransactionBuilder::balance(uint32_t numWitnesses) -> TransactionBuilder&
             else
             {
                 // We cannot balance the transaction unless we force it to waste
-                // the extra lavelace in fees.
+                // the extra lovelace in fees.
                 if (force)
                 {
                     this->tx_.transaction_body.fee += static_cast<Coin>(change);

@@ -297,8 +297,9 @@ class TransactionBuilder : public ITransactionBuilder
     /// other transaction parameters may change the fees.
     ///
     /// @param numWitnesses Number of expected witnesses.
+    /// @param force Force balance by including small change in fee.
     /// @return A reference to the transaction builder.
-    auto balance(uint32_t numWitnesses = 0) -> TransactionBuilder&;
+    auto balance(uint32_t numWitnesses = 0, bool force = false) -> TransactionBuilder&;
 
     /// @brief Sign the transaction and add the signature to the witness set.
     /// @param skey An Ed25519 signing key.
