@@ -40,9 +40,15 @@ using namespace cardano;
 namespace
 {
 
-// Define header bytes as constants so they can be changed if need be.
+// Address type masks and shifts
+constexpr uint8_t NETWORK_TAG_BIT_MASK = 0b00001111;
+constexpr uint8_t ADDRESS_TYPE_BIT_SHIFT = 4;
+
+// Network tags
 constexpr uint8_t NETWORK_TAG_MAINNET = 0b0001;
 constexpr uint8_t NETWORK_TAG_TESTNET = 0b0000;
+
+// Address types
 constexpr uint8_t SHELLY_ADDR_PAYMENTKEYHASH_STAKEKEYHASH = 0b0000;
 // constexpr uint8_t SHELLY_ADDR_SCRIPTHASH_STAKEKEYHASH = 0b0001;
 // constexpr uint8_t SHELLY_ADDR_PAYMENTKEYHASH_SCRIPTHASH = 0b0010;
@@ -53,6 +59,32 @@ constexpr uint8_t SHELLY_ADDR_PAYMENTKEYHASH = 0b0110;
 // constexpr uint8_t SHELLY_ADDR_SCRIPTHASH = 0b0111;
 constexpr uint8_t STAKE_ADDR_STAKEKEYHASH = 0b1110;
 // constexpr uint8_t STAKE_ADDR_SCRIPTHASH = 0b1111;
+
+// Helper macros
+
+constexpr auto BuildHeaderByte(uint8_t addr_type, uint8_t network_tag) -> uint8_t
+{
+    return (addr_type << ADDRESS_TYPE_BIT_SHIFT) | network_tag;
+}  // BuildHeaderByte
+
+constexpr auto GetAddressType(uint8_t header_byte)
+{
+    return header_byte >> ADDRESS_TYPE_BIT_SHIFT;
+}  // GetAddressType
+
+constexpr auto GetNetworkTag(uint8_t header_byte)
+{
+    return header_byte & NETWORK_TAG_BIT_MASK;
+}  // GetNetworkTag
+
+auto HashPublicKey(const bip32_ed25519::PublicKey& key) -> std::array<uint8_t, KEY_HASH_LENGTH>
+{
+    auto hashed = std::array<uint8_t, KEY_HASH_LENGTH>();
+    const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
+    blake2b->update(key.bytes());
+    blake2b->final(hashed);
+    return hashed;
+}  // HashPublicKey
 
 }  // unnamed namespace
 
@@ -81,13 +113,12 @@ BaseAddress::BaseAddress(
     std::array<uint8_t, KEY_HASH_LENGTH> stake_key_hash
 )
 {
-    this->pmt_key_hash_ = std::move(pmt_key_hash);
-    this->stk_key_hash_ = std::move(stake_key_hash);
-    this->header_byte_ = SHELLY_ADDR_PAYMENTKEYHASH_STAKEKEYHASH << 4;
-    if (nid == NetworkID::mainnet)
-        this->header_byte_ |= NETWORK_TAG_MAINNET;
-    else
-        this->header_byte_ |= NETWORK_TAG_TESTNET;
+    this->pmt_key_hash_ = pmt_key_hash;
+    this->stk_key_hash_ = stake_key_hash;
+    this->header_byte_ = BuildHeaderByte(
+        SHELLY_ADDR_PAYMENTKEYHASH_STAKEKEYHASH,
+        nid == NetworkID::mainnet ? NETWORK_TAG_MAINNET : NETWORK_TAG_TESTNET
+    );
 }  // BaseAddress::BaseAddress
 
 auto cardano::BaseAddress::fromKeys(
@@ -96,21 +127,10 @@ auto cardano::BaseAddress::fromKeys(
     const bip32_ed25519::PublicKey& stake_key
 ) -> BaseAddress
 {
-    const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
-
-    const auto pmt_key_bytes = pmt_key.bytes();
-    blake2b->update(pmt_key_bytes.data(), pmt_key_bytes.size());
-    const auto pmt_key_hash = blake2b->final();
-
-    const auto stake_key_bytes = stake_key.bytes();
-    blake2b->update(stake_key_bytes.data(), stake_key_bytes.size());
-    const auto stake_key_hash = blake2b->final();
-
-    // Put the hashes in std::arrays of bytes for the address constructor.
     return BaseAddress(
         nid,
-        util::makeByteArray<KEY_HASH_LENGTH>(pmt_key_hash),
-        util::makeByteArray<KEY_HASH_LENGTH>(stake_key_hash)
+        HashPublicKey(pmt_key),
+        HashPublicKey(stake_key)
     );
 }  // BaseAddress::fromKeys
 
@@ -118,11 +138,16 @@ auto BaseAddress::fromBech32(const std::string_view addr_bech32) -> BaseAddress
 {
     auto addr = BaseAddress();
     auto [hrp, data] = cardano::BECH32::decode(addr_bech32);
-    if (data.size() != KEY_HASH_LENGTH * 2 + 1)
-        throw std::runtime_error("Invalid Bech32 data.");
+    if (data.size() != KEY_HASH_LENGTH * 2 + 1) {
+        throw std::invalid_argument(
+           "Invalid Bech32 data for BaseAddress: expected " +
+           std::to_string(KEY_HASH_LENGTH * 2 + 1) + " bytes, got " +
+           std::to_string(data.size()) + " bytes."
+       );
+    }
     addr.header_byte_ = data[0];
-    if (addr.header_byte_ >> 4 != SHELLY_ADDR_PAYMENTKEYHASH_STAKEKEYHASH)
-        throw std::runtime_error("Invalid address header byte.");
+    if (GetAddressType(addr.header_byte_) != SHELLY_ADDR_PAYMENTKEYHASH_STAKEKEYHASH)
+        throw std::runtime_error("Invalid BaseAddress header byte.");
     for (size_t i = 0; i < KEY_HASH_LENGTH; i++)
     {
         addr.pmt_key_hash_[i] = data[i + 1];
@@ -146,7 +171,7 @@ auto BaseAddress::toBytesRaw() const -> std::vector<uint8_t>
 
 auto BaseAddress::toBech32() const -> std::string
 {
-    if ((this->header_byte_ & 0b00001111) == NETWORK_TAG_MAINNET)
+    if (GetNetworkTag(this->header_byte_) == NETWORK_TAG_MAINNET)
         return BECH32::encode("addr", this->toBytes());
     return BECH32::encode("addr_test", this->toBytes());
 }  // BaseAddress::toBech32
@@ -156,12 +181,11 @@ EnterpriseAddress::EnterpriseAddress(
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash
 )
 {
-    this->key_hash_ = std::move(key_hash);
-    this->header_byte_ = SHELLY_ADDR_PAYMENTKEYHASH << 4;
-    if (nid == NetworkID::mainnet)
-        this->header_byte_ |= NETWORK_TAG_MAINNET;
-    else
-        this->header_byte_ |= NETWORK_TAG_TESTNET;
+    this->key_hash_ = key_hash;
+    this->header_byte_ = BuildHeaderByte(
+        SHELLY_ADDR_PAYMENTKEYHASH,
+        nid == NetworkID::mainnet ? NETWORK_TAG_MAINNET : NETWORK_TAG_TESTNET
+    );
 }  // EnterpriseAddress::RewardsAddress
 
 auto EnterpriseAddress::fromKey(
@@ -169,26 +193,23 @@ auto EnterpriseAddress::fromKey(
     const bip32_ed25519::PublicKey& key
 ) -> EnterpriseAddress
 {
-    const auto key_bytes = key.bytes();
-    const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
-    blake2b->update(key_bytes.data(), key_bytes.size());
-    const auto key_hash = blake2b->final();
-
-    // Put the hash in a std::array of bytes for the address constructor.
-    auto key_hash_array = util::makeByteArray<KEY_HASH_LENGTH>(key_hash);
-
-    return EnterpriseAddress(nid, key_hash_array);
+    return EnterpriseAddress(nid, HashPublicKey(key));
 }  // EnterpriseAddress::fromKeys
 
 auto EnterpriseAddress::fromBech32(const std::string_view addr_bech32) -> EnterpriseAddress
 {
     auto addr = EnterpriseAddress();
     auto [hrp, data] = cardano::BECH32::decode(addr_bech32);
-    if (data.size() != KEY_HASH_LENGTH + 1)
-        throw std::runtime_error("Invalid Bech32 data.");
+    if (data.size() != KEY_HASH_LENGTH + 1) {
+        throw std::invalid_argument(
+           "Invalid Bech32 data for EnterpriseAddress: expected " +
+           std::to_string(KEY_HASH_LENGTH + 1) + " bytes, got " +
+           std::to_string(data.size()) + " bytes."
+       );
+    }
     addr.header_byte_ = data[0];
-    if (addr.header_byte_ >> 4 != SHELLY_ADDR_PAYMENTKEYHASH)
-        throw std::runtime_error("Invalid address header byte.");
+    if (GetAddressType(addr.header_byte_) != SHELLY_ADDR_PAYMENTKEYHASH)
+        throw std::runtime_error("Invalid EnterpriseAddress header byte.");
     for (size_t i = 0; i < KEY_HASH_LENGTH; i++)
         addr.key_hash_[i] = data[i + 1];
     return addr;
@@ -211,7 +232,7 @@ auto EnterpriseAddress::toBytesRaw() const -> std::vector<uint8_t>
 
 auto EnterpriseAddress::toBech32() const -> std::string
 {
-    if ((this->header_byte_ & 0b00001111) == NETWORK_TAG_MAINNET)
+    if (GetNetworkTag(this->header_byte_) == NETWORK_TAG_MAINNET)
         return BECH32::encode("addr", this->toBytes());
     return BECH32::encode("addr_test", this->toBytes());
 }  // EnterpriseAddress::toBech32
@@ -221,12 +242,11 @@ RewardsAddress::RewardsAddress(
     std::array<uint8_t, KEY_HASH_LENGTH> key_hash
 )
 {
-    this->key_hash_ = std::move(key_hash);
-    this->header_byte_ = STAKE_ADDR_STAKEKEYHASH << 4;
-    if (nid == NetworkID::mainnet)
-        this->header_byte_ |= NETWORK_TAG_MAINNET;
-    else
-        this->header_byte_ |= NETWORK_TAG_TESTNET;
+    this->key_hash_ = key_hash;
+    this->header_byte_ = BuildHeaderByte(
+        STAKE_ADDR_STAKEKEYHASH,
+        nid == NetworkID::mainnet ? NETWORK_TAG_MAINNET : NETWORK_TAG_TESTNET
+    );
 }  // RewardsAddress::RewardsAddress
 
 auto RewardsAddress::fromKey(
@@ -234,26 +254,23 @@ auto RewardsAddress::fromKey(
     const bip32_ed25519::PublicKey& stake_key
 ) -> RewardsAddress
 {
-    const auto stake_key_bytes = stake_key.bytes();
-    const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
-    blake2b->update(stake_key_bytes.data(), stake_key_bytes.size());
-    const auto key_hash = blake2b->final();
-
-    // Put the hash in a std::array of bytes for the address constructor.
-    auto key_hash_array = util::makeByteArray<KEY_HASH_LENGTH>(key_hash);
-
-    return RewardsAddress(nid, key_hash_array);
+    return RewardsAddress(nid, HashPublicKey(stake_key));
 }  // RewardsAddress::fromKeys
 
 auto RewardsAddress::fromBech32(const std::string_view addr_bech32) -> RewardsAddress
 {
     auto addr = RewardsAddress();
     auto [hrp, data] = BECH32::decode(addr_bech32);
-    if (data.size() != KEY_HASH_LENGTH + 1)
-        throw std::runtime_error("Invalid Bech32 data.");
+    if (data.size() != KEY_HASH_LENGTH + 1) {
+        throw std::invalid_argument(
+           "Invalid Bech32 data for RewardsAddress: expected " +
+           std::to_string(KEY_HASH_LENGTH + 1) + " bytes, got " +
+           std::to_string(data.size()) + " bytes."
+       );
+    }
     addr.header_byte_ = data[0];
-    if (addr.header_byte_ >> 4 != STAKE_ADDR_STAKEKEYHASH)
-        throw std::runtime_error("Invalid address header byte.");
+    if (GetAddressType(addr.header_byte_) != STAKE_ADDR_STAKEKEYHASH)
+        throw std::runtime_error("Invalid RewardsAddress header byte.");
     for (size_t i = 0; i < KEY_HASH_LENGTH; i++)
         addr.key_hash_[i] = data[i + 1];
     return addr;
@@ -276,7 +293,7 @@ auto RewardsAddress::toBytesRaw() const -> std::vector<uint8_t>
 
 auto RewardsAddress::toBech32() const -> std::string
 {
-    if ((this->header_byte_ & 0b00001111) == NETWORK_TAG_MAINNET)
+    if (GetNetworkTag(this->header_byte_) == NETWORK_TAG_MAINNET)
         return BECH32::encode("stake", this->toBytes());
     return BECH32::encode("stake_test", this->toBytes());
 }  // RewardsAddress::toBech32
@@ -508,7 +525,7 @@ auto ByronAddress::fromCBOR(std::span<const uint8_t> addr_cbor) -> ByronAddress
 
         // Check the CRC32 of the payload.
         if (!ByronAddress::crc_check(payload_bytes, (uint32_t)payload_crc32))
-            throw std::logic_error("");
+            throw std::invalid_argument("Address failed CRC32 check.");
 
         // Decode the address payload which is itself CBOR data
         auto payload_item = cbor_decode(payload_bytes);
@@ -606,14 +623,11 @@ auto sha3_then_blake2b224(std::span<const uint8_t> data
     auto sha3 = Botan::HashFunction::create("SHA-3(256)");
     auto blake2b = Botan::HashFunction::create("Blake2b(224)");
 
+    std::array<uint8_t, 28> hashed_data;
     sha3->update(data.data(), data.size());
     blake2b->update(sha3->final().data(), 32);
-    auto blake2b_out = blake2b->final();
+    blake2b->final(hashed_data);
 
-    std::array<uint8_t, 28> hashed_data;
-    std::move(
-        std::begin(blake2b_out), std::end(blake2b_out), hashed_data.begin()
-    );
     return hashed_data;
 }  // sha3_then_blake2b224
 
