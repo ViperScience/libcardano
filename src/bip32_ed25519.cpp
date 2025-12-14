@@ -49,6 +49,8 @@ constexpr auto TAG_DERIVE_CC_HARDENED = static_cast<uint8_t>(0x01);
 constexpr auto TAG_DERIVE_Z_NORMAL = static_cast<uint8_t>(0x02);
 constexpr auto TAG_DERIVE_CC_NORMAL = static_cast<uint8_t>(0x03);
 
+constexpr auto MAX_ITERATIONS = (size_t)1000;
+
 // Return true if the index is hardened
 constexpr auto index_is_hardened(uint32_t index) -> bool
 {
@@ -107,8 +109,14 @@ constexpr auto tweak_bits_icarus(std::span<uint8_t> data) -> void
 auto hash_repeatedly(const std::vector<uint8_t>& key, size_t count)
     -> std::vector<uint8_t>
 {
-    if (count > 1000)
-        throw std::runtime_error("Cannot generate root key (looping forever).");
+    if (count > MAX_ITERATIONS)
+    {
+        throw std::runtime_error(
+            "Cannot generate root key: maximum iterations (" +
+            std::to_string(MAX_ITERATIONS) + ") exceeded. "
+            "This indicates either a corrupted seed or an implementation error."
+        );
+    }
 
     const auto mac = Botan::MessageAuthenticationCode::create("HMAC(SHA-512)");
     if (!mac) throw std::runtime_error("Unable to create HMAC object.");
