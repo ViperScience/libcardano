@@ -117,19 +117,27 @@ class BaseAddress : public IShelleyAddress
         std::array<uint8_t, KEY_HASH_LENGTH> stake_key_hash
     );
 
+    BaseAddress(BaseAddress&&) noexcept = default;
+    BaseAddress& operator=(BaseAddress&&) noexcept = default;
+
+    BaseAddress(const BaseAddress&) = default;
+    BaseAddress& operator=(const BaseAddress&) = default;
+
+    ~BaseAddress() = default;
+
     /// @brief Create a new BaseAddress object from the public keys.
     /// @param nid The network ID.
     /// @param pmt_key The payment key.
     /// @param stake_key The stake key.
     /// @return The created BaseAddress object.
-    static auto fromKeys(
+    [[nodiscard]] static auto fromKeys(
         NetworkID nid,
         const bip32_ed25519::PublicKey& pmt_key,
         const bip32_ed25519::PublicKey& stake_key
     ) -> BaseAddress;
 
     /// @brief Create a new BaseAddress object from a bech32 address.
-    static auto fromBech32(const std::string_view addr) -> BaseAddress;
+    [[nodiscard]] static auto fromBech32(const std::string_view addr) -> BaseAddress;
 
     /// @brief Return the address as a byte array including the header byte.
     /// @return The address as a byte array.
@@ -164,18 +172,26 @@ class EnterpriseAddress : public IShelleyAddress
         std::array<uint8_t, KEY_HASH_LENGTH> key_hash
     );
 
+    EnterpriseAddress(EnterpriseAddress&&) noexcept = default;
+    EnterpriseAddress& operator=(EnterpriseAddress&&) noexcept = default;
+
+    EnterpriseAddress(const EnterpriseAddress&) = default;
+    EnterpriseAddress& operator=(const EnterpriseAddress&) = default;
+
+    ~EnterpriseAddress() = default;
+  
     /// @brief Factory method to create an EnterpriseAddress object from a key.
     /// @param nid The network ID enum.
     /// @param pub_key The public key.
     /// @return The created EnterpriseAddress object.
-    static auto fromKey(NetworkID nid, const bip32_ed25519::PublicKey& pub_key)
+    [[nodiscard]] static auto fromKey(NetworkID nid, const bip32_ed25519::PublicKey& pub_key)
         -> EnterpriseAddress;
 
     /// @brief Factory method to create an EnterpriseAddress object from a
     /// bech32 address.
     /// @param addr The bech32 address.
     /// @return The created EnterpriseAddress object.
-    static auto fromBech32(const std::string_view addr) -> EnterpriseAddress;
+    [[nodiscard]] static auto fromBech32(const std::string_view addr) -> EnterpriseAddress;
 
     /// @brief Return the address as a byte array including the header byte.
     /// @return The address as a byte array.
@@ -210,11 +226,19 @@ class RewardsAddress : public IShelleyAddress
         std::array<uint8_t, KEY_HASH_LENGTH> key_hash
     );
 
+    RewardsAddress(RewardsAddress&&) noexcept = default;
+    RewardsAddress& operator=(RewardsAddress&&) noexcept = default;
+
+    RewardsAddress(const RewardsAddress&) = default;
+    RewardsAddress& operator=(const RewardsAddress&) = default;
+
+    ~RewardsAddress() = default;
+
     /// @brief Factory method to create a RewardsAddress object from a key.
     /// @param nid The network ID enum.
     /// @param stake_key The stake key.
     /// @return The created RewardsAddress object.
-    static auto fromKey(
+    [[nodiscard]] static auto fromKey(
         NetworkID nid,
         const bip32_ed25519::PublicKey& stake_key
     ) -> RewardsAddress;
@@ -223,7 +247,7 @@ class RewardsAddress : public IShelleyAddress
     /// address.
     /// @param addr The bech32 address.
     /// @return The created RewardsAddress object.
-    static auto fromBech32(const std::string_view addr) -> RewardsAddress;
+    [[nodiscard]] static auto fromBech32(const std::string_view addr) -> RewardsAddress;
 
     /// @brief Return the address as a byte array including the header byte.
     /// @return The address as a byte array.
@@ -263,10 +287,18 @@ class ByronAddress
         {
         }
 
+        Attributes(Attributes&&) noexcept = default;
+        Attributes& operator=(Attributes&&) noexcept = default;
+
+        Attributes(const Attributes&) = default;
+        Attributes& operator=(const Attributes&) = default;
+
+        ~Attributes() = default;
+
         /// Factory method to create an attributes object from a root public key
         /// and unencrypted path. The key is used to encrypt the address
         /// derivation path and the resulting ciphertext stored in the object.
-        static auto fromKey(
+        [[nodiscard]] static auto fromKey(
             const bip32_ed25519::PublicKey& xpub,
             std::span<const uint32_t> path,
             uint32_t magic = 0
@@ -291,12 +323,20 @@ class ByronAddress
     {
     }
 
+    ByronAddress(ByronAddress&&) noexcept = default;
+    ByronAddress& operator=(ByronAddress&&) noexcept = default;
+
+    ByronAddress(const ByronAddress&) = default;
+    ByronAddress& operator=(const ByronAddress&) = default;
+
+    ~ByronAddress() = default;
+
     /// @brief Factory method to create a ByronAddress object from a root key.
     /// @param xprv The root private key.
     /// @param derivation_path The address derivation path.
     /// @param network_magic The network magic (if not 0, then its a testnet).
     /// @return The created ByronAddress object.
-    static auto fromRootKey(
+    [[nodiscard]] static auto fromRootKey(
         const bip32_ed25519::PrivateKey& xprv,
         std::span<const uint32_t> derivation_path,
         uint32_t network_magic = 0
@@ -306,13 +346,13 @@ class ByronAddress
     /// encoded address.
     /// @param cbor_data The CBOR encoded address.
     /// @return The created ByronAddress object.
-    static auto fromCBOR(std::span<const uint8_t> cbor_data) -> ByronAddress;
+    [[nodiscard]] static auto fromCBOR(std::span<const uint8_t> cbor_data) -> ByronAddress;
 
     /// Factory method to create a ByronAddress object from a base58 encoded
     /// address.
     /// @param addr The base58 encoded address.
     /// @return The created ByronAddress object.
-    static auto fromBase58(std::string addr) -> ByronAddress;
+    [[nodiscard]] static auto fromBase58(std::string addr) -> ByronAddress;
 
     /// Serialize to vector of CBOR bytes.
     [[nodiscard]] auto toCBOR() const -> std::vector<uint8_t>;
