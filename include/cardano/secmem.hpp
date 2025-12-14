@@ -42,7 +42,7 @@ struct ByteArray : public std::array<uint8_t, Size>
 template <std::size_t Size>
 struct SecureByteArray : public std::array<uint8_t, Size>
 {
-    SecureByteArray()
+    SecureByteArray() : std::array<uint8_t, Size>{}
     {
         if (mlock(std::array<uint8_t, Size>::data(), Size) != 0)
         {
