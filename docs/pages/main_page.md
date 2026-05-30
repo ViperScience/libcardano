@@ -6,6 +6,8 @@
 
 Libcardano is a high-performance library of Cardano blockchain tools written in modern C++.
 
+Libcardano is an **offline** SDK: it focuses on key management, address derivation, and transaction construction, signing, and (de)serialization. It does **not** include node networking or chain synchronization — the signed transactions it produces are handed off for submission by your own node, wallet backend, or service. Ledger data structures span the Byron through Conway eras; the active transaction-building path currently targets the **Babbage** era (the Shelley implementation is retained for older eras).
+
 <!-- --------------------------------------------------------------------------------------------------------------- -->
 
 @section mainpage-features Features
@@ -32,28 +34,37 @@ You can search from anywhere by pressing the TAB key.
 
 @section mainpage-basic-usage Basic Usage
 
-Libcardano is designed to be a simple plugin for C++ applications to include Cardano blockchain functionality. In your C++ code simply add `#include <cardano/cardano.hpp>` and then use library objects and methods under the `cardano` namespace. Finally, link against libcardano during build. If built and installed properly using the provided CMake configuration, libcardano may be included in your own CMake projects via `find_package(Cardano)`.
+Libcardano is designed to be a simple plugin for C++ applications to include Cardano blockchain functionality. In your C++ code simply add `#include <cardano/cardano.hpp>` and then use library objects and methods under the `cardano` namespace. Finally, link against libcardano during build. If built and installed properly using the provided CMake configuration, libcardano may be included in your own CMake projects via `find_package(cardano)`.
 
 <!-- --------------------------------------------------------------------------------------------------------------- -->
 
 @section mainpage-building Building from Source
 
-The libcardano library currently relies on functionality provided in submodules. Prior to building, you must clone the repository including the submodules.
+Clone the repository and change into it:
 
-    git clone --recurse-submodules -j8 https://gitlab.com/viperscience/libcardano.git
-
-A CMake build file is included which simplifies the compilation, test, and install process.
-
+    git clone https://gitlab.com/viperscience/libcardano.git
     cd libcardano
-    mkdir build && cd build \
-    cmake -DCMAKE_BUILD_TYPE=Release ..
-    make -j 8
-    make test
-    make install
+
+Building requires a C++20 toolchain (GCC 14+ or a recent Clang) and CMake 3.25+. Only Botan 3 and OpenSSL development libraries need to be present on the system; every other dependency is fetched automatically by CMake at configure time.
+
+A [`justfile`](https://gitlab.com/viperscience/libcardano/-/blob/main/justfile) wraps the configure/build/test/install workflow into a single step:
+
+    just build      # Release build (library + examples)
+    just test       # build, then run the full test suite
+    just install    # test, then install system-wide (uses sudo)
+
+To invoke CMake directly instead:
+
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    cmake --build build --parallel 8
+    ctest --test-dir build --output-on-failure
+    cmake --install build
 
 A Docker build option is also provided.
 
     docker build -t libcardano:latest .
+
+A pre-configured Dev Container (see `.devcontainer/`) ships the full toolchain and all system dependencies, requiring only a dev-container-compatible editor on the host.
 
 <!-- --------------------------------------------------------------------------------------------------------------- -->
 
@@ -61,7 +72,8 @@ A Docker build option is also provided.
 
 Libcardano links with the following external dependencies. 
 
-* [Botan-2](https://botan.randombit.net/)
+* [Botan-3](https://botan.randombit.net/) — general cryptography (hashing, RNG, encryption/decryption).
+* [libsodium](https://github.com/IntersectMBO/libsodium) — the Cardano fork provides the VRF keys used in the protocol; its Ed25519 functions are also used.
 
 The provided Docker file demonstrates how to build and install the required dependencies and Cmake find scripts are also provided.
 
