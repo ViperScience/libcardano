@@ -3,7 +3,6 @@
 
 # VS Code
 .vscode
-.devcontainer
 
 # Build
 bb

@@ -1,0 +1,19 @@
+{
+  "name": "libcardano",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".",
+  },
+  "remoteUser": "ubuntu",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-vscode.cpptools", "ms-vscode.cmake-tools"],
+      "settings": {
+        "cmake.configureArgs": ["-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=mold"],
+        "terminal.integrated.defaultProfile.linux": "zsh",
+      },
+    },
+  },
+}
