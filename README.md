@@ -11,7 +11,7 @@
 
 A high-performance Software Development Kit (SDK) for the Cardano Blockchain written in modern C++.
 
-📖 **[Full API documentation →](https://viperscience.gitlab.io/libcardano/)** — class reference plus worked code examples (deriving an address from a mnemonic, generating stake pool keys and certificates, and more).
+**[Full API documentation →](https://viperscience.gitlab.io/libcardano/)** — class reference plus worked code examples (deriving an address from a mnemonic, generating stake pool keys and certificates, and more).
 
 libcardano is an **offline** SDK: it focuses on key management, address derivation, and transaction construction, signing, and (de)serialization. It does **not** include node networking or chain synchronization — the signed transactions it produces are handed off for submission by your own node, wallet backend, or service. Ledger data structures span the Byron through Conway eras; the active transaction-building path currently targets the **Babbage** era (the Shelley implementation is retained for older eras).
 
@@ -31,8 +31,9 @@ libcardano is an **offline** SDK: it focuses on key management, address derivati
 ## Quick Start
 
 The fastest way to start developing is with the bundled
-[**Dev Container**](https://containers.dev/). It ships every dependency
-preinstalled — Botan 3, OpenSSL, a C++20 toolchain (GCC 14 + Clang), CMake, the
+[**Dev Container**](https://containers.dev/). It ships everything preinstalled —
+a C++20 toolchain (GCC 14 + Clang), CMake, [`cpx`](https://github.com/ozacod/cpx)
+with a bundled vcpkg, a system Botan 3 + OpenSSL (for the no-vcpkg path), the
 [`just`](https://github.com/casey/just) task runner, and the `mold` linker — so
 there is nothing to install on your host beyond the container runtime.
 
@@ -41,16 +42,16 @@ there is nothing to install on your host beyond the container runtime.
        git clone https://gitlab.com/viperscience/libcardano.git
 
 2. Open the project in your dev-container-compatible editor and reopen it in the
-   container when prompted. The image builds on first use.
+   container when prompted.
 
 3. Inside the container, build and test the library with a single command:
 
-       just test
+       just bb
 
-That's it. `just test` configures a Release build, compiles the library and
-examples, and runs the full test suite. Run `just` on its own to list every
-available recipe. See [Building with `just`](#building-with-just) for the
-complete recipe reference.
+That's it. `just bb` builds libcardano through cpx (CMake + vcpkg) in Debug and
+runs the full test suite (use `just bbr` for an optimized Release build + test).
+Run `just` on its own to list every available recipe. See
+[Building with `just`](#building-with-just) for the complete recipe reference.
 
 ## Basic Usage
 
@@ -95,17 +96,36 @@ Building requires a **C++20 toolchain** (GCC 14+ or a recent Clang) and
 build is also configured for MSVC, but other platforms are not regularly
 exercised.
 
-Only **Botan 3** and **OpenSSL** development libraries need to be present on
-the system; every other dependency is fetched automatically by CMake at
-configure time. The [Quick Start](#quick-start) Dev Container provides these
-prerequisites for you — if you build outside the container, install them first
-using your platform's package manager (or see the
-[`.devcontainer/Dockerfile`](.devcontainer/Dockerfile) for reference).
+libcardano resolves its remaining dependencies one of two ways, and the system
+prerequisites differ between them:
+
+- **CMake + vcpkg** (the default, driven by [`cpx`](https://github.com/ozacod/cpx)) —
+  vcpkg supplies *every* dependency, **including Botan and OpenSSL**, so nothing
+  beyond the toolchain, CMake, and vcpkg/cpx needs to be installed on the system.
+- **CMake + FetchContent** (no vcpkg) — only **Botan 3** and **OpenSSL**
+  development libraries must be present on the system; every other dependency is
+  fetched automatically by CMake at configure time.
+
+The [Quick Start](#quick-start) Dev Container provides everything for both paths
+— if you build outside the container, install the prerequisites for whichever
+path you use (or see the [`.devcontainer/Dockerfile`](.devcontainer/Dockerfile)
+for reference).
 
 ### Building with `just`
 
-A [`justfile`](justfile) wraps the configure/build/test/install workflow so the
-library can be built repeatably in a single step. This is the recommended path:
+A [`justfile`](justfile) wraps the build/test workflow. The default recipes use
+[`cpx`](https://github.com/ozacod/cpx) (CMake + vcpkg); a parallel set of
+pure-CMake recipes (dependencies via FetchContent, no vcpkg) is also provided.
+
+    just bb     # Debug build + test via cpx (CMake + vcpkg)
+    just bbr    # Release (-O3) build + test via cpx (CMake + vcpkg)
+
+Additional cpx recipes: `cpx-build` (Release build only), `cpx-test-fetchcontent`
+(Release build + test without vcpkg), and `cpx-clean`.
+
+The pure-CMake recipes build without vcpkg, resolving dependencies via
+FetchContent. They are also what `just install` uses, since cpx has no install
+step:
 
     just build      # Release build (library + examples)
     just test       # build, then run the full test suite

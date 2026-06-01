@@ -1,19 +1,18 @@
 # macOS
 .DS_Store
 
-# VS Code
-.vscode
-
 # Build
-bb
-build
-.build
-.local_build
-.cache
+.bin/
+.build/
+.local_build/
+.cache/
+build/
 compile_commands.json
 
-# CLion
+# Tools
+.claude
 .idea
+.vscode
 cmake-build*
 
 # Docs

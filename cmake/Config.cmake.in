@@ -3,7 +3,7 @@
 include(CMakeFindDependencyMacro)
 find_dependency(Botan)
 find_dependency(Threads)
-find_dependency(cardano_sodium)
+find_dependency(@CARDANO_SODIUM_DEPENDENCY@)
 find_dependency(cryptopp)
 find_dependency(cppbor)
 find_dependency(nlohmann_json)

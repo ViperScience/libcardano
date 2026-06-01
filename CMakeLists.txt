@@ -21,7 +21,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 # set the project name, language,  and version
-project(cardano 
+project(cardano
     DESCRIPTION "A modern C++ development kit for the Cardano blockchain."
     VERSION 1.0.0
     LANGUAGES C CXX
@@ -40,92 +40,169 @@ set(CARDANO_IS_TOP_LEVEL ${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
 if(CARDANO_IS_TOP_LEVEL)
     # Let's ensure -std=c++xx instead of -std=g++xx
     set(CMAKE_CXX_EXTENSIONS OFF)
-  
+
     # Let's nicely support folders in IDEs
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-  
+
     # For use with code analyzers
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
 ########################################################################
-# Additional packages
+# Additional packages / dependency resolution
+########################################################################
+#
+# libcardano resolves its dependencies through two strategies that can be
+# freely mixed within a single build:
+#
+#   * find_package() — for dependencies available via vcpkg or as system
+#     packages: Botan, OpenSSL and nlohmann-json from the public registry
+#     (and Catch2 for the tests), plus the ViperScience forks libsodium and
+#     libcppbor from the custom registry declared in vcpkg-configuration.json.
+#     When configured with the vcpkg toolchain these are supplied by vcpkg; the
+#     dependencies listed in vcpkg.json drive that.
+#
+#   * FetchContent — fallback for every probed dependency, and the only source
+#     for the crypto++ fork, which is not yet packaged for vcpkg. Each hybrid
+#     dependency is probed with find_package() first and only fetched if that
+#     probe fails, so the same tree builds with or without a vcpkg toolchain.
+#
+# Set CARDANO_PREFER_FETCHCONTENT=ON to force the legacy all-FetchContent
+# behaviour (handy when building without a vcpkg toolchain or to pin exact
+# dependency revisions regardless of what is installed on the system).
 ########################################################################
 include(FetchContent)
 
 # Add the local cmake directory to the path for custom search files
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-# Load static libraries since we are building a static library
-if(WIN32)
-    list(INSERT CMAKE_FIND_LIBRARY_SUFFIXES 0 .lib .a)
-else()
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+option(CARDANO_PREFER_FETCHCONTENT
+    "Always use FetchContent for dependencies, even those available via vcpkg/system" OFF)
+
+# Load static libraries since we are building a static library.
+# Note: under a vcpkg toolchain the library kind is governed by the selected
+# triplet, so only constrain the suffixes when not building with vcpkg.
+if(NOT DEFINED VCPKG_TARGET_TRIPLET)
+    if(WIN32)
+        list(INSERT CMAKE_FIND_LIBRARY_SUFFIXES 0 .lib .a)
+    else()
+        set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+    endif()
 endif()
 
 # Include a thread library for linking that is specific to the platform.
 find_package(Threads REQUIRED)
 
-# Include OpenSSL for the Botan library
+# Include OpenSSL for the Botan library (vcpkg port: openssl).
 find_package(OpenSSL REQUIRED)
 
-# Include the Botan library for cryptographic functions.
-# Must be installed on the system.
+# Include the Botan library for cryptographic functions. Botan 3.3+ installs
+# botan-config.cmake, so find_package works for both a system install and the
+# vcpkg `botan` port (both expose the Botan::Botan target). There is no
+# practical FetchContent fallback for Botan.
 find_package(Botan 3.4.0 REQUIRED)
-
-# Include the Cardano fork of libsodium. Requires installation.
-FetchContent_Declare(
-    cardano_sodium
-    GIT_REPOSITORY https://gitlab.com/viperscience/cardano-libsodium-cmake.git
-    GIT_TAG        295d5ba29e62c2fd2899085a9583f6629e1795e0
-)
-set(SODIUM_DISABLE_TESTS ON)
-FetchContent_MakeAvailable(cardano_sodium)
-
-# Use the Viper Science fork of libcppbor for CBOR functionality
-FetchContent_Declare(
-  libcppbor
-  GIT_REPOSITORY https://gitlab.com/viperscience/libcppbor.git
-  GIT_TAG        bddc539f6fa6b38205029d58d6a707a7efbf5740
-)
-FetchContent_MakeAvailable(libcppbor)
-
-# Use the nlohmann/json library for JSON serialization/deserialization.
-FetchContent_Declare(
-    json
-    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
-)
-if(CARDANO_IS_TOP_LEVEL)
-    set(JSON_Install ON)
+# vcpkg's static triplets export only the Botan::Botan-static target, whereas a
+# typical system/shared install provides Botan::Botan. Normalise to Botan::Botan
+# so the library, tests, and examples link a single target name in either case.
+if(NOT TARGET Botan::Botan AND TARGET Botan::Botan-static)
+    add_library(Botan::Botan ALIAS Botan::Botan-static)
 endif()
-FetchContent_MakeAvailable(json)
 
-# Include the Viper fork of crypto++.
-# Use cryptopp_cmake to integrate crypto++ with the cmake build system.
+# --- nlohmann/json: vcpkg/system first, FetchContent fallback ---------------
+if(NOT CARDANO_PREFER_FETCHCONTENT)
+    find_package(nlohmann_json 3.11 CONFIG QUIET)
+endif()
+if(nlohmann_json_FOUND)
+    message(STATUS "libcardano: nlohmann_json found via find_package (${nlohmann_json_DIR})")
+else()
+    message(STATUS "libcardano: nlohmann_json provided by FetchContent")
+    FetchContent_Declare(
+        json
+        URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+    )
+    if(CARDANO_IS_TOP_LEVEL)
+        set(JSON_Install ON)
+    endif()
+    FetchContent_MakeAvailable(json)
+endif()
 
-FetchContent_Declare(
-  cryptopp
-  GIT_REPOSITORY https://github.com/ViperScience/cryptopp.git
-  GIT_TAG        ed614691c3f33a152a223ab8d2630dcc17d58020
-)
-FetchContent_MakeAvailable(cryptopp)
+# --- libsodium (Cardano fork): vcpkg registry first, FetchContent fallback --
+# The ViperScience libsodium fork carries the Cardano VRF construction. The
+# vcpkg port exports it as `unofficial-sodium` (target unofficial-sodium::sodium),
+# while the FetchContent fork exports `cardano_sodium` (target
+# cardano_sodium::cardano_sodium). Normalise to CARDANO_SODIUM_TARGET so the rest
+# of the build links a single name regardless of how it was resolved.
+if(NOT CARDANO_PREFER_FETCHCONTENT)
+    find_package(unofficial-sodium CONFIG QUIET)
+endif()
+if(unofficial-sodium_FOUND)
+    message(STATUS "libcardano: libsodium found via find_package (unofficial-sodium)")
+    set(CARDANO_SODIUM_TARGET unofficial-sodium::sodium)
+    set(CARDANO_SODIUM_DEPENDENCY "unofficial-sodium CONFIG")
+else()
+    message(STATUS "libcardano: libsodium provided by FetchContent (ViperScience cardano fork)")
+    FetchContent_Declare(
+        cardano_sodium
+        GIT_REPOSITORY https://gitlab.com/viperscience/cardano-libsodium-cmake.git
+        GIT_TAG        295d5ba29e62c2fd2899085a9583f6629e1795e0
+    )
+    set(SODIUM_DISABLE_TESTS ON)
+    FetchContent_MakeAvailable(cardano_sodium)
+    set(CARDANO_SODIUM_TARGET cardano_sodium::cardano_sodium)
+    set(CARDANO_SODIUM_DEPENDENCY "cardano_sodium")
+endif()
 
-set(CRYPTOPP_SOURCES ${cryptopp_SOURCE_DIR})
-set(CRYPTOPP_USE_MASTER_BRANCH 1)
-set(CRYPTOPP_BUILD_TESTING OFF)
+# --- libcppbor fork: not in vcpkg, FetchContent (probe first) ---------------
+if(NOT CARDANO_PREFER_FETCHCONTENT)
+    find_package(cppbor QUIET)
+endif()
+if(cppbor_FOUND)
+    message(STATUS "libcardano: cppbor found via find_package (${cppbor_DIR})")
+else()
+    message(STATUS "libcardano: cppbor provided by FetchContent (ViperScience fork)")
+    FetchContent_Declare(
+        libcppbor
+        GIT_REPOSITORY https://gitlab.com/viperscience/libcppbor.git
+        GIT_TAG        bddc539f6fa6b38205029d58d6a707a7efbf5740
+    )
+    FetchContent_MakeAvailable(libcppbor)
+endif()
 
-FetchContent_Declare(
-  cryptopp_cmake
-  GIT_REPOSITORY https://github.com/abdes/cryptopp-cmake.git
-  GIT_TAG        CRYPTOPP_8_9_0
-)
-FetchContent_MakeAvailable(cryptopp_cmake)
+# --- crypto++ fork: not in vcpkg (needs private APIs), FetchContent ---------
+# The upstream vcpkg `cryptopp` port does NOT expose the private BIP32-Ed25519
+# derivation APIs that Cardano-style HD wallets require, so the ViperScience
+# fork must be used here. cryptopp-cmake provides the CMake integration.
+if(NOT CARDANO_PREFER_FETCHCONTENT)
+    find_package(cryptopp QUIET)
+endif()
+if(cryptopp_FOUND)
+    message(STATUS "libcardano: cryptopp found via find_package (${cryptopp_DIR})")
+else()
+    message(STATUS "libcardano: cryptopp provided by FetchContent (ViperScience fork + cryptopp-cmake)")
+    FetchContent_Declare(
+        cryptopp
+        GIT_REPOSITORY https://github.com/ViperScience/cryptopp.git
+        GIT_TAG        ed614691c3f33a152a223ab8d2630dcc17d58020
+    )
+    FetchContent_MakeAvailable(cryptopp)
+
+    set(CRYPTOPP_SOURCES ${cryptopp_SOURCE_DIR})
+    set(CRYPTOPP_USE_MASTER_BRANCH 1)
+    set(CRYPTOPP_BUILD_TESTING OFF)
+
+    FetchContent_Declare(
+        cryptopp_cmake
+        GIT_REPOSITORY https://github.com/abdes/cryptopp-cmake.git
+        GIT_TAG        CRYPTOPP_8_9_0
+    )
+    FetchContent_MakeAvailable(cryptopp_cmake)
+endif()
 
 ################################################################################
 # Define the Library Target
 ################################################################################
 
-# Specify the libcardano source files (including submodules)
+# Specify the libcardano source files
 set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/address.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/alonzo/genesis.cpp
@@ -147,7 +224,7 @@ set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vrf.cpp
 )
 
-# Add the library to build but do not specify STATIC vs. SHARED. A shared 
+# Add the library to build but do not specify STATIC vs. SHARED. A shared
 # library will be built if CMake is run with: -DBUILD_SHARED_LIBS=ON
 add_library(${PROJECT_NAME} ${CARDANO_SOURCES})
 add_library(cardano::cardano ALIAS ${PROJECT_NAME})
@@ -197,7 +274,7 @@ endif()
 # Specify libraries for linking
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        cardano_sodium::cardano_sodium
+        ${CARDANO_SODIUM_TARGET}
         cryptopp::cryptopp
         Threads::Threads
         OpenSSL::SSL
@@ -219,7 +296,7 @@ if(CARDANO_IS_TOP_LEVEL OR ENABLE_CARDANO_TESTS)
         # Individual tests may be found in the `tests`subdirectory of the
         # repository.
         add_subdirectory(test)
-        
+
         # Copy data files for integration tests
         file(COPY test/data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/test)
     endif()
@@ -272,7 +349,7 @@ if(CARDANO_IS_TOP_LEVEL OR ENABLE_CARDANO_INSTALL)
         ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/util.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/cardano/vrf.hpp
     )
-    install(FILES ${CARDANO_HEADERS} 
+    install(FILES ${CARDANO_HEADERS}
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
     )
 

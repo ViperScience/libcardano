@@ -20,13 +20,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Use Catch2 as the unit testing framework
-FetchContent_Declare(
-  Catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v3.6.0
-)
-FetchContent_MakeAvailable(Catch2)
+# Use Catch2 as the unit testing framework. Prefer a vcpkg/system package
+# (vcpkg port: catch2) and fall back to FetchContent when it is not found.
+if(NOT CARDANO_PREFER_FETCHCONTENT)
+    find_package(Catch2 3 CONFIG QUIET)
+endif()
+if(Catch2_FOUND)
+    message(STATUS "libcardano: Catch2 found via find_package (${Catch2_DIR})")
+else()
+    message(STATUS "libcardano: Catch2 provided by FetchContent")
+    FetchContent_Declare(
+      Catch2
+      GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+      GIT_TAG        v3.6.0
+    )
+    FetchContent_MakeAvailable(Catch2)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -38,7 +47,7 @@ set(TEST_LIBCARDANO_LIBS
     Botan::Botan
     cryptopp::cryptopp
     cppbor::cppbor
-    cardano_sodium::cardano_sodium
+    ${CARDANO_SODIUM_TARGET}
     cardano::cardano
 )
 
@@ -152,3 +161,19 @@ ADD_TEST("Cardano Secure Memory API" test_cardano_secmem)
 ADD_EXECUTABLE(test_cardano_genesis test_cardano_genesis_api.cpp)
 target_link_libraries(test_cardano_genesis PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Genesis API" test_cardano_genesis)
+
+################################################################################
+# Aggregate "cardano_tests" target
+################################################################################
+# The suite is split across several executables, each registered with CTest via
+# ADD_TEST above. `cpx test` builds a single target named "<project>_tests"
+# (cardano_tests) and then runs ctest, so provide that target as an aggregate
+# that compiles every test_* executable. Plain `ctest`/`just test` are
+# unaffected. The list is collected automatically so new tests are picked up.
+get_property(_cardano_test_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+add_custom_target(cardano_tests)
+foreach(_target IN LISTS _cardano_test_targets)
+    if(_target MATCHES "^test_")
+        add_dependencies(cardano_tests ${_target})
+    endif()
+endforeach()

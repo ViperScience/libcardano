@@ -1,0 +1,24 @@
+{
+    "dependencies": [
+        "botan",
+        "libcppbor",
+        "libsodium",
+        "nlohmann-json",
+        "openssl"
+    ],
+    "default-features": [
+        "tests"
+    ],
+    "features": {
+        "tests": {
+            "description": "Build the libcardano unit-test suite (Catch2)",
+            "dependencies": ["catch2"]
+        }
+    },
+    "overrides": [
+        {
+            "name": "botan",
+            "version": "3.7.1"
+        }
+    ]
+}

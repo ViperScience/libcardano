@@ -1,0 +1,106 @@
+# cpx-ci.yaml - CI/CD Toolchain Configuration
+#
+# This file defines runners (execution environments) and toolchains (build configurations).
+# Use 'cpx build all' to build for all active toolchains.
+# Use 'cpx build --toolchain <name>' to build for a specific toolchain.
+# Use 'cpx add-toolchain' for an interactive wizard to add new toolchains.
+
+# ============================================================================
+# RUNNERS
+# ============================================================================
+# Runners define WHERE your code is built (Docker, SSH, or native host).
+#
+# Runner fields:
+#   name   - Unique identifier referenced by toolchains
+#   type   - "docker", "ssh", or omit for "native"
+#   image  - Docker image (required for type: docker)
+#   host   - SSH host (required for type: ssh)
+#   user   - SSH user (required for type: ssh)
+
+# runners:
+#   - name: ubuntu20-docker
+#     type: docker
+#     image: ubuntu:20.04
+#
+#   - name: debian
+#     type: docker
+#     image: debian:trixie
+#
+#   - name: build-server
+#     type: ssh
+#     host: build.example.com
+#     user: builder
+
+# ============================================================================
+# TOOLCHAINS
+# ============================================================================
+# Toolchains define HOW your code is built (compilers, flags, options).
+#
+# Toolchain fields:
+#   name         - Unique identifier (used with --toolchain flag)
+#   runner       - References a runner name above (or "native" for host builds)
+#   active       - true/false to enable/disable (default: true)
+#   cc           - C compiler (e.g., gcc, clang)
+#   cxx          - C++ compiler (e.g., g++, clang++)
+#   build_type   - Debug, Release, RelWithDebInfo, MinSizeRel (default: Release)
+#   optimization - 0, 1, 2, 3, s, fast (default: 2)
+#   jobs         - Parallel build jobs, 0 = auto (default: 0)
+#   cmake_options      - Additional CMake arguments
+#   build_options      - Additional build arguments
+#   cmake_toolchain_file - Path to CMake toolchain file
+#   env          - Environment variables
+
+# toolchains:
+#   - name: linux-amd64
+#     runner: ubuntu20-docker
+#     cc: gcc
+#     cxx: g++
+#     build_type: Release
+#     optimization: "2"
+#     active: true
+#     cmake_options:
+#       - -DENABLE_TESTING=ON
+#     env:
+#       CFLAGS: "-march=native"
+#
+#   - name: linux-clang
+#     runner: debian
+#     cc: clang
+#     cxx: clang++
+#     build_type: Release
+#     optimization: "3"
+#
+#   - name: native
+#     runner: native
+#     cc: clang
+#     cxx: clang++
+
+# ============================================================================
+# ACTIVE CONFIGURATION
+# ============================================================================
+
+runners:
+  # Build on the host (no Docker). Type omitted => native/local.
+  - name: native
+
+toolchains:
+  # Release + -O3 test build. Run with: cpx test --toolchain release
+  - name: release
+    runner: native
+    build_type: Release
+    optimization: "3"
+    # cpx's native-toolchain path does NOT auto-inject the vcpkg toolchain file
+    # (unlike `cpx build`/`cpx test`), so set it explicitly to keep this build
+    # resolving dependencies through vcpkg + the custom registry. Without it the
+    # build still works but falls back to FetchContent. Path is the cpx-bundled
+    # vcpkg — change it if your vcpkg lives elsewhere.
+    cmake_toolchain_file: /home/ubuntu/.local/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+  # Same Release + -O3 build, but with NO vcpkg toolchain file. CMake then
+  # resolves every dependency via FetchContent (plus system Botan/OpenSSL),
+  # exercising the pure-CMake path. Run with:
+  #   cpx test --toolchain release-fetchcontent
+  - name: release-fetchcontent
+    runner: native
+    build_type: Release
+    optimization: "3"

@@ -1,0 +1,20 @@
+{
+    "default-registry": {
+        "kind": "git",
+        "baseline": "05442024c3fda64320bd25d2251cc9807b84fb6f",
+        "repository": "https://github.com/microsoft/vcpkg"
+    },
+    "registries": [
+        {
+            "kind": "artifact",
+            "location": "https://github.com/microsoft/vcpkg-ce-catalog/archive/refs/heads/main.zip",
+            "name": "microsoft"
+        },
+        {
+            "kind": "git",
+            "repository": "https://gitlab.com/viperscience/viperscience-vcpkg-registry",
+            "baseline": "8aff97d46992ae143d9456f707d222e25ae1b68b",
+            "packages": ["libcppbor", "libsodium"]
+        }
+    ]
+}
