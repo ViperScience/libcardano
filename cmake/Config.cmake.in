@@ -2,6 +2,12 @@
 
 include(CMakeFindDependencyMacro)
 find_dependency(Botan)
+# vcpkg's static triplets export only Botan::Botan-static, while a shared/system
+# install provides Botan::Botan. The build tree normalises to Botan::Botan, so
+# recreate that alias here for consumers of the installed package.
+if(NOT TARGET Botan::Botan AND TARGET Botan::Botan-static)
+    add_library(Botan::Botan ALIAS Botan::Botan-static)
+endif()
 find_dependency(Threads)
 find_dependency(@CARDANO_SODIUM_DEPENDENCY@)
 find_dependency(cppbor)
