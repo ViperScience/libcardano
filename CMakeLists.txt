@@ -62,8 +62,7 @@ endif()
 #     When configured with the vcpkg toolchain these are supplied by vcpkg; the
 #     dependencies listed in vcpkg.json drive that.
 #
-#   * FetchContent — fallback for every probed dependency, and the only source
-#     for the crypto++ fork, which is not yet packaged for vcpkg. Each hybrid
+#   * FetchContent — fallback for every probed dependency. Each hybrid
 #     dependency is probed with find_package() first and only fetched if that
 #     probe fails, so the same tree builds with or without a vcpkg toolchain.
 #
@@ -168,36 +167,6 @@ else()
     FetchContent_MakeAvailable(libcppbor)
 endif()
 
-# --- crypto++ fork: not in vcpkg (needs private APIs), FetchContent ---------
-# The upstream vcpkg `cryptopp` port does NOT expose the private BIP32-Ed25519
-# derivation APIs that Cardano-style HD wallets require, so the ViperScience
-# fork must be used here. cryptopp-cmake provides the CMake integration.
-if(NOT CARDANO_PREFER_FETCHCONTENT)
-    find_package(cryptopp QUIET)
-endif()
-if(cryptopp_FOUND)
-    message(STATUS "libcardano: cryptopp found via find_package (${cryptopp_DIR})")
-else()
-    message(STATUS "libcardano: cryptopp provided by FetchContent (ViperScience fork + cryptopp-cmake)")
-    FetchContent_Declare(
-        cryptopp
-        GIT_REPOSITORY https://github.com/ViperScience/cryptopp.git
-        GIT_TAG        ed614691c3f33a152a223ab8d2630dcc17d58020
-    )
-    FetchContent_MakeAvailable(cryptopp)
-
-    set(CRYPTOPP_SOURCES ${cryptopp_SOURCE_DIR})
-    set(CRYPTOPP_USE_MASTER_BRANCH 1)
-    set(CRYPTOPP_BUILD_TESTING OFF)
-
-    FetchContent_Declare(
-        cryptopp_cmake
-        GIT_REPOSITORY https://github.com/abdes/cryptopp-cmake.git
-        GIT_TAG        CRYPTOPP_8_9_0
-    )
-    FetchContent_MakeAvailable(cryptopp_cmake)
-endif()
-
 ################################################################################
 # Define the Library Target
 ################################################################################
@@ -275,7 +244,6 @@ endif()
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         ${CARDANO_SODIUM_TARGET}
-        cryptopp::cryptopp
         Threads::Threads
         OpenSSL::SSL
     PUBLIC

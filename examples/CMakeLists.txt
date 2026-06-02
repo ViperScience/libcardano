@@ -25,7 +25,6 @@ set(LIBCARDANO_EXAMPLE_LINK_LIBS
     OpenSSL::SSL
     Threads::Threads
     Botan::Botan
-    cryptopp::cryptopp
     cppbor::cppbor
     ${CARDANO_SODIUM_TARGET}
     cardano::cardano

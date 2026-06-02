@@ -45,7 +45,6 @@ set(TEST_LIBCARDANO_LIBS
     OpenSSL::SSL
     Threads::Threads
     Botan::Botan
-    cryptopp::cryptopp
     cppbor::cppbor
     ${CARDANO_SODIUM_TARGET}
     cardano::cardano

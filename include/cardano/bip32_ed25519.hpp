@@ -23,7 +23,6 @@
 
 // Standard library headers
 #include <cstdint>
-#include <span>
 #include <string_view>
 
 // Public libcardano headers
@@ -171,8 +170,8 @@ class PrivateKey
 
     /// @brief Create a new BIP32-Ed25519 private key from a root seed.
     /// @details The root seed is 32-bytes, i.e., a regular ed25519 private key.
-    [[nodiscard]] static auto fromSeed(std::span<const uint8_t, SEED_SIZE> pub
-    ) -> PrivateKey;
+    [[nodiscard]] static auto fromSeed(std::span<const uint8_t, SEED_SIZE> pub)
+        -> PrivateKey;
 
     /// @brief Generate a key from a mnemonic seed phrase.
     /// @param mn The mnemonic object.
@@ -193,7 +192,8 @@ class PrivateKey
     /// @return A new private key.
     /// @details Use the key generation method employed by Daedalus for
     /// generating Byron addresses.
-    [[nodiscard]] static auto fromMnemonicByron(const Mnemonic& mn) -> PrivateKey;
+    [[nodiscard]] static auto fromMnemonicByron(const Mnemonic& mn)
+        -> PrivateKey;
 
     /// @brief Return a constant reference to the private key secure byte
     /// array.
@@ -210,8 +210,8 @@ class PrivateKey
 
     /// @brief Generate a message signature from the private key.
     /// @param msg A span of bytes (uint8_t) representing the message to sign.
-    [[nodiscard]] auto sign(std::span<const uint8_t> msg
-    ) const -> ByteArray<SIGNATURE_SIZE>;
+    [[nodiscard]] auto sign(std::span<const uint8_t> msg) const
+        -> ByteArray<SIGNATURE_SIZE>;
 
     /// @brief Derive a child key from the private key.
     /// @param index BIP32 derivation index.
@@ -225,7 +225,8 @@ class PrivateKey
     /// that used by the Daedalus wallet. This clears the unencrypted private
     /// key of the calling object.
     /// @param password The password to use for the encryption.
-    [[nodiscard]] auto encrypt(std::string_view password) const -> EncryptedPrivateKey;
+    [[nodiscard]] auto encrypt(std::string_view password) const
+        -> EncryptedPrivateKey;
 };  // PrivateKey
 
 /// @brief Represent an encrypted BIP32-Ed25519 private key.

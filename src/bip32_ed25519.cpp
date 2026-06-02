@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Viper Science LLC
+// Copyright (c) 2026 Viper Science LLC
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@
 #include <botan/stream_cipher.h>
 #include <botan/system_rng.h>
 #include <cppbor/cppbor.h>
-#include <donna.h>
+#include <sodium.h>
 
 // Public libcardano headers
 #include <cardano/bip32_ed25519.hpp>
@@ -41,6 +41,10 @@ using namespace cardano;
 using namespace cardano::bip32_ed25519;
 using namespace std::string_view_literals;
 
+// ---------------------------------------------------------------------------
+// BIP32-Ed25519 primitives implemented over Botan (hashing) and libsodium
+// (scalar/point arithmetic).
+// ---------------------------------------------------------------------------
 namespace  // unnamed namespace
 {
 
@@ -50,6 +54,9 @@ constexpr auto TAG_DERIVE_Z_NORMAL = static_cast<uint8_t>(0x02);
 constexpr auto TAG_DERIVE_CC_NORMAL = static_cast<uint8_t>(0x03);
 
 constexpr auto MAX_ITERATIONS = (size_t)1000;
+constexpr auto SCALAR_SIZE = (size_t)crypto_core_ed25519_SCALARBYTES;
+constexpr auto NONREDUCED_SCALAR_SIZE =
+    (size_t)crypto_core_ed25519_NONREDUCEDSCALARBYTES;
 
 // Return true if the index is hardened
 constexpr auto index_is_hardened(uint32_t index) -> bool
@@ -106,14 +113,15 @@ constexpr auto tweak_bits_icarus(std::span<uint8_t> data) -> void
     data[31] |= 0b01000000;
 }  // tweak_bits_icarus
 
-auto hash_repeatedly(const std::vector<uint8_t>& key, size_t count)
+auto hash_repeatedly(std::span<const uint8_t> key, size_t count)
     -> std::vector<uint8_t>
 {
     if (count > MAX_ITERATIONS)
     {
         throw std::runtime_error(
             "Cannot generate root key: maximum iterations (" +
-            std::to_string(MAX_ITERATIONS) + ") exceeded. "
+            std::to_string(MAX_ITERATIONS) +
+            ") exceeded. "
             "This indicates either a corrupted seed or an implementation error."
         );
     }
@@ -155,6 +163,133 @@ auto hash_seed(std::span<const uint8_t> seed) -> std::vector<uint8_t>
 
     return hashed_seed;
 }  // hash_seed
+
+// Reduce a (possibly unreduced) 32-byte scalar mod L into a canonical scalar.
+// The output is written through a non-const span so callers may target either
+// a plain or a secure byte buffer.
+auto reduce_scalar_mod_l(
+    std::span<const uint8_t, SCALAR_SIZE> in,
+    std::span<uint8_t, SCALAR_SIZE> out
+) -> void
+{
+    auto wide = SecureByteArray<NONREDUCED_SCALAR_SIZE>{};
+    std::ranges::copy(in, wide.begin());
+    crypto_core_ed25519_scalar_reduce(out.data(), wide.data());
+}  // reduce_scalar_mod_l
+
+// kL || kR = SHA512(seed), then clamp kL. The extended key is written through a
+// non-const span so it can land in a secure buffer.
+auto bip32_ed25519_extend(
+    std::span<const uint8_t, SEED_SIZE> seed,
+    std::span<uint8_t, KEY_SIZE> secret_key
+) -> void
+{
+    const auto sha512 = Botan::HashFunction::create_or_throw("SHA-512");
+    sha512->update(seed);
+    sha512->final(secret_key);
+
+    secret_key[0] &= 0b11111000;   // clear the lowest 3 bits
+    secret_key[31] &= 0b01111111;  // clear the highest bit
+    secret_key[31] |= 0b01000000;  // set the 2nd-highest bit
+}  // bip32_ed25519_extend
+
+// A = [kL]B, where kL is the lower 32 bytes of the extended secret key.
+// [kL]B == [kL mod L]B, so reducing kL first matches donna.
+auto bip32_ed25519_publickey(std::span<const uint8_t, KEY_SIZE> secret_key)
+    -> std::array<uint8_t, PUBLIC_KEY_SIZE>
+{
+    auto scalar = SecureByteArray<SCALAR_SIZE>{};
+    reduce_scalar_mod_l(secret_key.first<SCALAR_SIZE>(), scalar);
+    auto public_key = std::array<uint8_t, PUBLIC_KEY_SIZE>{};
+    if (crypto_scalarmult_ed25519_base_noclamp(
+            public_key.data(), scalar.data()
+        ) != 0)
+    {
+        throw std::runtime_error("Failed to derive BIP32-Ed25519 public key.");
+    }
+    return public_key;
+}  // bip32_ed25519_publickey
+
+// res = P1 + P2. donna unpacks both operands and the result negated (a double
+// negation that cancels), so a straight addition is byte-identical.
+auto bip32_ed25519_point_add(
+    std::span<const uint8_t, PUBLIC_KEY_SIZE> public_key1,
+    std::span<const uint8_t, PUBLIC_KEY_SIZE> public_key2
+) -> std::array<uint8_t, PUBLIC_KEY_SIZE>
+{
+    auto res = std::array<uint8_t, PUBLIC_KEY_SIZE>{};
+    if (crypto_core_ed25519_add(
+            res.data(), public_key1.data(), public_key2.data()
+        ) != 0)
+    {
+        throw std::runtime_error(
+            "Failed to add points during BIP32-Ed25519 derivation."
+        );
+    }
+    return res;
+}  // bip32_ed25519_point_add
+
+// res = (kL1 + kL2) mod L, each kL the lower 32 bytes of an extended key.
+auto bip32_ed25519_scalar_add(
+    std::span<const uint8_t, KEY_SIZE> secret_key1,
+    std::span<const uint8_t, KEY_SIZE> secret_key2
+) -> std::array<uint8_t, SCALAR_SIZE>
+{
+    auto s1 = SecureByteArray<SCALAR_SIZE>{};
+    auto s2 = SecureByteArray<SCALAR_SIZE>{};
+    reduce_scalar_mod_l(secret_key1.first<SCALAR_SIZE>(), s1);
+    reduce_scalar_mod_l(secret_key2.first<SCALAR_SIZE>(), s2);
+    auto res = std::array<uint8_t, SCALAR_SIZE>{};
+    crypto_core_ed25519_scalar_add(res.data(), s1.data(), s2.data());
+    return res;
+}  // bip32_ed25519_scalar_add
+
+// signature = R || S, where (kL = secret_key[0..32], kR = secret_key[32..64],
+// A = public_key):
+//   r = SHA512(kR || m) mod L,  R = [r]B
+//   S = (r + H(R || A || m) * kL) mod L
+auto bip32_ed25519_sign(
+    std::span<const uint8_t> message,
+    std::span<const uint8_t, KEY_SIZE> secret_key,
+    std::span<const uint8_t, PUBLIC_KEY_SIZE> public_key
+) -> std::array<uint8_t, SIGNATURE_SIZE>
+{
+    const auto sha512 = Botan::HashFunction::create_or_throw("SHA-512");
+
+    // r = SHA512(kR || m), reduced mod L.
+    sha512->update(secret_key.last<SCALAR_SIZE>());
+    sha512->update(message);
+    const auto hashr = sha512->final();
+    auto r = SecureByteArray<SCALAR_SIZE>{};
+    crypto_core_ed25519_scalar_reduce(r.data(), hashr.data());
+
+    // R = [r]B, stored in the lower 32 bytes of the signature.
+    auto signature = std::array<uint8_t, SIGNATURE_SIZE>{};
+    if (crypto_scalarmult_ed25519_base_noclamp(signature.data(), r.data()) != 0)
+    {
+        throw std::runtime_error(
+            "Failed to compute the BIP32-Ed25519 signature point."
+        );
+    }
+
+    // hram = SHA512(R || A || m), reduced mod L.
+    sha512->update(std::span{signature}.first<SCALAR_SIZE>());
+    sha512->update(public_key);
+    sha512->update(message);
+    const auto hash = sha512->final();
+    auto hram = ByteArray<SCALAR_SIZE>{};
+    crypto_core_ed25519_scalar_reduce(hram.data(), hash.data());
+
+    // S = (r + hram * kL) mod L, stored in the upper 32 bytes.
+    auto a = SecureByteArray<SCALAR_SIZE>{};
+    reduce_scalar_mod_l(secret_key.first<SCALAR_SIZE>(), a);
+    auto s = SecureByteArray<SCALAR_SIZE>{};
+    crypto_core_ed25519_scalar_mul(s.data(), hram.data(), a.data());
+    crypto_core_ed25519_scalar_add(s.data(), s.data(), r.data());
+    std::ranges::copy(s, signature.begin() + SCALAR_SIZE);
+
+    return signature;
+}  // bip32_ed25519_sign
 
 }  // unnamed namespace
 
@@ -199,20 +334,23 @@ auto PublicKey::verifySignature(
     std::span<const uint8_t, SIGNATURE_SIZE> sig
 ) const -> bool
 {
-    return CryptoPP::Donna::ed25519_sign_open(
-               msg.data(), msg.size(), this->pub_.data(), sig.data()
+    return crypto_sign_verify_detached(
+               sig.data(), msg.data(), msg.size(), this->pub_.data()
            ) == 0;
 }  // PublicKey::verifySignature
 
-auto PublicKey::deriveChild(const uint32_t index, const DerivationMode mode)
-    const -> PublicKey
+auto PublicKey::deriveChild(
+    const uint32_t index,
+    const DerivationMode mode
+) const -> PublicKey
 {
     if (index_is_hardened(index))
     {
         throw std::invalid_argument(
             "Cannot derive hardened child from public key. "
             "Hardened derivation requires a private key. "
-            "Index: " + std::to_string(index) + "."
+            "Index: " +
+            std::to_string(index) + "."
         );
     }
 
@@ -258,11 +396,8 @@ auto PublicKey::deriveChild(const uint32_t index, const DerivationMode mode)
         }
     }
 
-    auto pub_new = ByteArray<32>();
-    CryptoPP::Donna::bip32_ed25519_publickey(pub_new.data(), zl8.data());
-    CryptoPP::Donna::bip32_ed25519_point_add(
-        pub_new.data(), this->pub_.data(), pub_new.data()
-    );
+    auto pub_new = bip32_ed25519_publickey(zl8);
+    pub_new = bip32_ed25519_point_add(pub_new, this->pub_);
 
     // calculate the new chain code
     mac->set_key(this->cc_.data(), this->cc_.size());
@@ -325,10 +460,11 @@ auto PrivateKey::generate() -> PrivateKey
     return PrivateKey(key);
 }  // PrivateKey::generate
 
-auto PrivateKey::fromSeed(std::span<const uint8_t, SEED_SIZE> seed) -> PrivateKey
+auto PrivateKey::fromSeed(std::span<const uint8_t, SEED_SIZE> seed)
+    -> PrivateKey
 {
     auto key = SecureByteArray<KEY_SIZE>();
-    CryptoPP::Donna::bip32_ed25519_extend(key.data(), seed.data());
+    bip32_ed25519_extend(seed, key);
 
     // Calculate the chain code
     auto cc = ByteArray<CHAIN_CODE_SIZE>();
@@ -338,7 +474,7 @@ auto PrivateKey::fromSeed(std::span<const uint8_t, SEED_SIZE> seed) -> PrivateKe
     hasher->final(cc);
 
     return PrivateKey(key, cc);
-} //  PrivateKey::fromSeed
+}  //  PrivateKey::fromSeed
 
 auto PrivateKey::fromMnemonic(
     const cardano::Mnemonic& mn,
@@ -385,29 +521,24 @@ auto PrivateKey::xbytes() const -> SecureByteArray<XKEY_SIZE>
 
 auto PrivateKey::publicKey() const -> PublicKey
 {
-    auto pkey_bytes = ByteArray<PUBLIC_KEY_SIZE>();
-    CryptoPP::Donna::bip32_ed25519_publickey(
-        pkey_bytes.data(), this->prv_.data()
-    );
+    const auto pkey_bytes = bip32_ed25519_publickey(this->prv_);
     return PublicKey(pkey_bytes, this->cc_);
 }  // PrivateKey::publicKey
 
-auto PrivateKey::sign(std::span<const uint8_t> msg
-) const -> ByteArray<SIGNATURE_SIZE>
+auto PrivateKey::sign(std::span<const uint8_t> msg) const
+    -> ByteArray<SIGNATURE_SIZE>
 {
-    auto sig = ByteArray<SIGNATURE_SIZE>();
-    CryptoPP::Donna::bip32_ed25519_sign(
-        msg.data(),
-        msg.size(),
-        this->prv_.data(),
-        this->publicKey().bytes().data(),
-        sig.data()
-    );
-    return sig;
+    const auto sig =
+        bip32_ed25519_sign(msg, this->prv_, this->publicKey().bytes());
+    auto out = ByteArray<SIGNATURE_SIZE>();
+    std::ranges::copy(sig, out.begin());
+    return out;
 }
 
-auto PrivateKey::deriveChild(const uint32_t index, const DerivationMode mode)
-    const -> PrivateKey
+auto PrivateKey::deriveChild(
+    const uint32_t index,
+    const DerivationMode mode
+) const -> PrivateKey
 {
     const auto pkey_bytes = this->publicKey().bytes();
     const auto skey_bytes = this->prv_;
@@ -446,10 +577,9 @@ auto PrivateKey::deriveChild(const uint32_t index, const DerivationMode mode)
                 prev_acc = z[i] >> 5;
             }
 
-            // Kl = 8*Zl + parent(K)l
-            CryptoPP::Donna::bip32_ed25519_scalar_add(
-                zl8.data(), this->prv_.data(), res_key.data()
-            );
+            // Kl = (8*Zl + parent(K)l) mod L
+            const auto kl = bip32_ed25519_scalar_add(zl8, this->prv_);
+            std::ranges::copy(kl, res_key.begin());
 
             // Fill in the right-most bytes
             for (auto i = 0UL; i < 32; i++)
