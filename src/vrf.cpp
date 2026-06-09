@@ -21,6 +21,7 @@
 #include <cardano/vrf.hpp>
 
 // Standard library headers
+#include <algorithm>
 #include <stdexcept>
 
 // Third-party headers
@@ -53,8 +54,8 @@ auto VRFSecretKey::generate() -> VRFSecretKey
     return VRFSecretKey::fromSeed(seed_bytes);
 }  // VRFSecretKey::generate
 
-auto VRFSecretKey::fromSeed(std::span<const uint8_t, VRF_SEED_SIZE> seed
-) -> VRFSecretKey
+auto VRFSecretKey::fromSeed(std::span<const uint8_t, VRF_SEED_SIZE> seed)
+    -> VRFSecretKey
 {
     auto pk = ByteArray<crypto_sign_PUBLICKEYBYTES>();
     auto sk = SecureByteArray<crypto_sign_SECRETKEYBYTES>();
@@ -81,16 +82,16 @@ auto VRFSecretKey::isValid() const -> bool
     return pk.bytes() == sk.publicKey().bytes();
 }  // VRFSecretKey::isValid
 
-auto VRFSecretKey::sign(std::span<const uint8_t> msg
-) const -> std::array<uint8_t, ed25519::SIGNATURE_SIZE>
+auto VRFSecretKey::sign(std::span<const uint8_t> msg) const
+    -> std::array<uint8_t, ed25519::SIGNATURE_SIZE>
 {
     auto sk =
         ed25519::PrivateKey(std::span(this->prv_).first<ed25519::KEY_SIZE>());
     return sk.sign(msg);
 }  // VRFSecretKey::sign
 
-auto VRFSecretKey::constructProof(std::span<const uint8_t> msg
-) -> std::array<uint8_t, VRF_PROOF_SIZE>
+auto VRFSecretKey::constructProof(std::span<const uint8_t> msg)
+    -> std::array<uint8_t, VRF_PROOF_SIZE>
 {
     auto proof = std::array<uint8_t, VRF_PROOF_SIZE>{};
     auto result = crypto_vrf_ietfdraft03_prove(
@@ -112,8 +113,8 @@ auto VRFSecretKey::verifyProof(
     return pk.verifyProof(msg, proof);
 }  // VRFSecretKey::verifyProof
 
-auto VRFSecretKey::proofToHash(std::span<const uint8_t, VRF_PROOF_SIZE> proof
-) -> std::array<uint8_t, VRF_PROOF_HASH_SIZE>
+auto VRFSecretKey::proofToHash(std::span<const uint8_t, VRF_PROOF_SIZE> proof)
+    -> std::array<uint8_t, VRF_PROOF_HASH_SIZE>
 {
     auto hash = std::array<uint8_t, VRF_PROOF_HASH_SIZE>{};
     auto result =
@@ -125,8 +126,8 @@ auto VRFSecretKey::proofToHash(std::span<const uint8_t, VRF_PROOF_SIZE> proof
     return hash;
 }  // VRFSecretKey::proofToHash
 
-auto VRFSecretKey::hash(std::span<const uint8_t> msg
-) -> std::array<uint8_t, VRF_PROOF_HASH_SIZE>
+auto VRFSecretKey::hash(std::span<const uint8_t> msg)
+    -> std::array<uint8_t, VRF_PROOF_HASH_SIZE>
 {
     return VRFSecretKey::proofToHash(this->constructProof(msg));
 }  // VRFSecretKey::hash

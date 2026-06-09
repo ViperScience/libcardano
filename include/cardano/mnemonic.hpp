@@ -22,7 +22,9 @@
 #define _CARDANO_MNEMONIC_HPP_
 
 // Standard Library Headers
+#include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <vector>
@@ -79,7 +81,8 @@ class Mnemonic
     /// @param lang The mnemonic language.
     /// @return A new Mnemonic object.
     static auto generate(
-        size_t mnemonic_size = 24, BIP39Language lang = BIP39Language::English
+        size_t mnemonic_size = 24,
+        BIP39Language lang = BIP39Language::English
     ) -> Mnemonic;
 
     /// @brief Constant access to the word indexes.

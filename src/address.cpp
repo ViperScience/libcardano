@@ -20,6 +20,7 @@
 
 // Standard library headers
 #include <algorithm>
+#include <cstdint>
 #include <stdexcept>
 
 // Third-party library headers
@@ -62,9 +63,10 @@ constexpr uint8_t STAKE_ADDR_STAKEKEYHASH = 0b1110;
 
 // Helper macros
 
-constexpr auto BuildHeaderByte(uint8_t addr_type, uint8_t network_tag) -> uint8_t
+constexpr auto BuildHeaderByte(uint8_t addr_type, uint8_t network_tag)
+    -> uint8_t
 {
-    return (addr_type << ADDRESS_TYPE_BIT_SHIFT) | network_tag;
+    return uint8_t(addr_type << ADDRESS_TYPE_BIT_SHIFT) | network_tag;
 }  // BuildHeaderByte
 
 constexpr auto GetAddressType(uint8_t header_byte)
@@ -77,7 +79,8 @@ constexpr auto GetNetworkTag(uint8_t header_byte)
     return header_byte & NETWORK_TAG_BIT_MASK;
 }  // GetNetworkTag
 
-auto HashPublicKey(const bip32_ed25519::PublicKey& key) -> std::array<uint8_t, KEY_HASH_LENGTH>
+auto HashPublicKey(const bip32_ed25519::PublicKey& key)
+    -> std::array<uint8_t, KEY_HASH_LENGTH>
 {
     auto hashed = std::array<uint8_t, KEY_HASH_LENGTH>();
     const auto blake2b = Botan::HashFunction::create("Blake2b(224)");
@@ -91,15 +94,15 @@ auto HashPublicKey(const bip32_ed25519::PublicKey& key) -> std::array<uint8_t, K
 auto ChainPointer::toBytes() const -> std::vector<uint8_t>
 {
     auto point = std::array<uint64_t, 3>{
-        this->certificate_index_,
-        this->transaction_index_,
-        this->slot_number_
+        this->certificate_index_, this->transaction_index_, this->slot_number_
     };
     auto output = std::vector<uint8_t>{};
-    for (auto v : point) {
+    for (auto v : point)
+    {
         output.insert(output.begin(), v & 0x7F);
         v >>= 7;
-        while (v > 0) {
+        while (v > 0)
+        {
             output.insert(output.begin(), 0x80 | (v & 0x7F));
             v >>= 7;
         }
@@ -127,26 +130,24 @@ auto cardano::BaseAddress::fromKeys(
     const bip32_ed25519::PublicKey& stake_key
 ) -> BaseAddress
 {
-    return BaseAddress(
-        nid,
-        HashPublicKey(pmt_key),
-        HashPublicKey(stake_key)
-    );
+    return BaseAddress(nid, HashPublicKey(pmt_key), HashPublicKey(stake_key));
 }  // BaseAddress::fromKeys
 
 auto BaseAddress::fromBech32(const std::string_view addr_bech32) -> BaseAddress
 {
     auto addr = BaseAddress();
     auto [hrp, data] = cardano::BECH32::decode(addr_bech32);
-    if (data.size() != KEY_HASH_LENGTH * 2 + 1) {
+    if (data.size() != KEY_HASH_LENGTH * 2 + 1)
+    {
         throw std::invalid_argument(
-           "Invalid Bech32 data for BaseAddress: expected " +
-           std::to_string(KEY_HASH_LENGTH * 2 + 1) + " bytes, got " +
-           std::to_string(data.size()) + " bytes."
-       );
+            "Invalid Bech32 data for BaseAddress: expected " +
+            std::to_string(KEY_HASH_LENGTH * 2 + 1) + " bytes, got " +
+            std::to_string(data.size()) + " bytes."
+        );
     }
     addr.header_byte_ = data[0];
-    if (GetAddressType(addr.header_byte_) != SHELLY_ADDR_PAYMENTKEYHASH_STAKEKEYHASH)
+    if (GetAddressType(addr.header_byte_) !=
+        SHELLY_ADDR_PAYMENTKEYHASH_STAKEKEYHASH)
         throw std::runtime_error("Invalid BaseAddress header byte.");
     for (size_t i = 0; i < KEY_HASH_LENGTH; i++)
     {
@@ -196,16 +197,18 @@ auto EnterpriseAddress::fromKey(
     return EnterpriseAddress(nid, HashPublicKey(key));
 }  // EnterpriseAddress::fromKeys
 
-auto EnterpriseAddress::fromBech32(const std::string_view addr_bech32) -> EnterpriseAddress
+auto EnterpriseAddress::fromBech32(const std::string_view addr_bech32)
+    -> EnterpriseAddress
 {
     auto addr = EnterpriseAddress();
     auto [hrp, data] = cardano::BECH32::decode(addr_bech32);
-    if (data.size() != KEY_HASH_LENGTH + 1) {
+    if (data.size() != KEY_HASH_LENGTH + 1)
+    {
         throw std::invalid_argument(
-           "Invalid Bech32 data for EnterpriseAddress: expected " +
-           std::to_string(KEY_HASH_LENGTH + 1) + " bytes, got " +
-           std::to_string(data.size()) + " bytes."
-       );
+            "Invalid Bech32 data for EnterpriseAddress: expected " +
+            std::to_string(KEY_HASH_LENGTH + 1) + " bytes, got " +
+            std::to_string(data.size()) + " bytes."
+        );
     }
     addr.header_byte_ = data[0];
     if (GetAddressType(addr.header_byte_) != SHELLY_ADDR_PAYMENTKEYHASH)
@@ -257,16 +260,18 @@ auto RewardsAddress::fromKey(
     return RewardsAddress(nid, HashPublicKey(stake_key));
 }  // RewardsAddress::fromKeys
 
-auto RewardsAddress::fromBech32(const std::string_view addr_bech32) -> RewardsAddress
+auto RewardsAddress::fromBech32(const std::string_view addr_bech32)
+    -> RewardsAddress
 {
     auto addr = RewardsAddress();
     auto [hrp, data] = BECH32::decode(addr_bech32);
-    if (data.size() != KEY_HASH_LENGTH + 1) {
+    if (data.size() != KEY_HASH_LENGTH + 1)
+    {
         throw std::invalid_argument(
-           "Invalid Bech32 data for RewardsAddress: expected " +
-           std::to_string(KEY_HASH_LENGTH + 1) + " bytes, got " +
-           std::to_string(data.size()) + " bytes."
-       );
+            "Invalid Bech32 data for RewardsAddress: expected " +
+            std::to_string(KEY_HASH_LENGTH + 1) + " bytes, got " +
+            std::to_string(data.size()) + " bytes."
+        );
     }
     addr.header_byte_ = data[0];
     if (GetAddressType(addr.header_byte_) != STAKE_ADDR_STAKEKEYHASH)
@@ -408,8 +413,8 @@ static auto compute_crc32(std::span<const uint8_t> bytes) -> uint32_t
 }  // compute_crc32
 
 /// Parse the CBOR bytes and return the cppbor::Item.
-static auto cbor_decode(std::span<const uint8_t> bytes
-) -> std::unique_ptr<cppbor::Item>
+static auto cbor_decode(std::span<const uint8_t> bytes)
+    -> std::unique_ptr<cppbor::Item>
 {
     auto [item, pos, message] =
         cppbor::parse(bytes.data(), bytes.data() + bytes.size());
@@ -617,8 +622,8 @@ auto ByronAddress::toBase58() const -> std::string
     return BASE58::encode(this->toCBOR());
 }  // ByronAddress::toBase58
 
-auto sha3_then_blake2b224(std::span<const uint8_t> data
-) -> std::array<uint8_t, 28>
+auto sha3_then_blake2b224(std::span<const uint8_t> data)
+    -> std::array<uint8_t, 28>
 {
     auto sha3 = Botan::HashFunction::create("SHA-3(256)");
     auto blake2b = Botan::HashFunction::create("Blake2b(224)");

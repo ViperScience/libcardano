@@ -19,6 +19,7 @@
 // THE SOFTWARE.
 
 // Standard Library Headers
+#include <algorithm>
 
 // Third-Party Library Headers
 #include <sodium.h>
@@ -66,14 +67,16 @@ auto ed25519::PrivateKey::publicKey() const -> ed25519::PublicKey
     return ed25519::PublicKey(pk);
 }  // PrivateKey::publicKey
 
-auto ed25519::PrivateKey::sign(std::span<const uint8_t> msg
-) const -> ByteArray<SIGNATURE_SIZE>
+auto ed25519::PrivateKey::sign(std::span<const uint8_t> msg) const
+    -> ByteArray<SIGNATURE_SIZE>
 {
     auto pk = ByteArray<crypto_sign_PUBLICKEYBYTES>();
     auto sk = SecureByteArray<crypto_sign_SECRETKEYBYTES>();
     crypto_sign_seed_keypair(pk.data(), sk.data(), this->prv_.data());
 
     auto sig = ByteArray<SIGNATURE_SIZE>();
-    crypto_sign_detached(sig.data(), nullptr, msg.data(), msg.size(), sk.data());
+    crypto_sign_detached(
+        sig.data(), nullptr, msg.data(), msg.size(), sk.data()
+    );
     return sig;
 }  // PrivateKey::sign
