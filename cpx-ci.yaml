@@ -80,27 +80,41 @@
 # ============================================================================
 
 runners:
-  # Build on the host (no Docker). Type omitted => native/local.
-  - name: native
+    # Build on the host (no Docker). Type omitted => native/local.
+    - name: native
 
 toolchains:
-  # Release + -O3 test build. Run with: cpx test --toolchain release
-  - name: release
-    runner: native
-    build_type: Release
-    optimization: "3"
-    # cpx's native-toolchain path does NOT auto-inject the vcpkg toolchain file
-    # (unlike `cpx build`/`cpx test`), so set it explicitly to keep this build
-    # resolving dependencies through vcpkg + the custom registry. Without it the
-    # build still works but falls back to FetchContent. Path is the cpx-bundled
-    # vcpkg — change it if your vcpkg lives elsewhere.
-    cmake_toolchain_file: /home/ubuntu/.local/vcpkg/scripts/buildsystems/vcpkg.cmake
+    # Release + -O3 test build. Run with: cpx test --toolchain release
+    - name: release
+      runner: native
+      build_type: Release
+      optimization: "3"
+      # cpx's native-toolchain path does NOT auto-inject the vcpkg toolchain file
+      # (unlike `cpx build`/`cpx test`), so set it explicitly to keep this build
+      # resolving dependencies through vcpkg + the custom registry. Without it the
+      # build still works but falls back to FetchContent. Path is the cpx-bundled
+      # vcpkg inside the dev container — change it if your vcpkg lives elsewhere.
+      cmake_toolchain_file: /home/ubuntu/.local/vcpkg/scripts/buildsystems/vcpkg.cmake
 
-  # Same Release + -O3 build, but with NO vcpkg toolchain file. CMake then
-  # resolves every dependency via FetchContent (plus system Botan/OpenSSL),
-  # exercising the pure-CMake path. Run with:
-  #   cpx test --toolchain release-fetchcontent
-  - name: release-fetchcontent
-    runner: native
-    build_type: Release
-    optimization: "3"
+    # Release with clang toolchain
+    - name: release-clang
+      runner: native
+      build_type: Release
+      optimization: "3"
+      cc: clang-22
+      cxx: clang++-22
+      # cpx's native-toolchain path does NOT auto-inject the vcpkg toolchain file
+      # (unlike `cpx build`/`cpx test`), so set it explicitly to keep this build
+      # resolving dependencies through vcpkg + the custom registry. Without it the
+      # build still works but falls back to FetchContent. Path is the cpx-bundled
+      # vcpkg inside the dev container — change it if your vcpkg lives elsewhere.
+      cmake_toolchain_file: /home/ubuntu/.local/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+    # Same Release + -O3 build, but with NO vcpkg toolchain file. CMake then
+    # resolves every dependency via FetchContent (plus system Botan/OpenSSL),
+    # exercising the pure-CMake path. Run with:
+    #   cpx test --toolchain release-fetchcontent
+    - name: release-fetchcontent
+      runner: native
+      build_type: Release
+      optimization: "3"

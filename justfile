@@ -32,6 +32,10 @@ cpx-test:
 cpx-test-release:
     cpx test --toolchain release --verbose
 
+# Build + run the test suite in Release (-O3) via the `release` toolchain (vcpkg)
+cpx-test-release-clang:
+    cpx test --toolchain release-clang --verbose
+
 # Build + run the test suite in Release (-O3) without vcpkg (FetchContent path)
 cpx-test-fetchcontent:
     cpx test --toolchain release-fetchcontent --verbose
