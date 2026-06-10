@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.25)
 # set the project name, language,  and version
 project(cardano
     DESCRIPTION "A modern C++ development kit for the Cardano blockchain."
-    VERSION 0.1.0
+    VERSION 0.2.0
     LANGUAGES C CXX
 )
 
@@ -180,6 +180,7 @@ set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/babbage/ledger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/babbage/transaction.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/conway/genesis.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/curve25519.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ed25519.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/encodings.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/kes.cpp
@@ -189,6 +190,7 @@ set(CARDANO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shelley/ledger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shelley/transaction.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/stake_pool.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tss.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/util.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vrf.cpp
 )

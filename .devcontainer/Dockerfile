@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     gnupg2 \
     just \
+    libboost-all-dev \
     libssl-dev \
     libtool \
     meson \

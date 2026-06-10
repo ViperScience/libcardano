@@ -11,6 +11,7 @@ compile_commands.json
 
 # Tools
 .claude
+.context
 .idea
 .vscode
 cmake-build*

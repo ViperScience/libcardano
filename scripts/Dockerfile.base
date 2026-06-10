@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y \
   build-essential \
   curl \
   git \
+  libboost-all-dev \
   libssl-dev \
   libtool \
   texlive-full \

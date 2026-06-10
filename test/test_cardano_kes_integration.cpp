@@ -39,7 +39,7 @@ TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
     SECTION("haskel_depth_1")
     {
         // haskell generated key
-        auto h_key = cardano_test::load_bytes("data/kes/key1.bin");
+        auto h_key = cardano_test::LoadBytes("data/kes/key1.bin");
         const auto parsed_h_key = cardano::SumKesPrivateKey<1>(h_key);
 
         auto key_buffer =
@@ -57,7 +57,7 @@ TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
     SECTION("haskel_depth_6")
     {
         // haskell generated key
-        auto h_key = cardano_test::load_bytes("data/kes/key6.bin");
+        auto h_key = cardano_test::LoadBytes("data/kes/key6.bin");
         const auto parsed_h_key = cardano::SumKesPrivateKey<6>(h_key);
 
         auto key_buffer =
@@ -75,7 +75,7 @@ TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
     SECTION("haskell_signature_6")
     {
         const auto h_signature =
-            cardano_test::load_bytes("data/kes/key6Sig.bin");
+            cardano_test::LoadBytes("data/kes/key6Sig.bin");
 
         auto key_buffer =
             std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
@@ -95,7 +95,7 @@ TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
     SECTION("haskell_signature_6_update_5")
     {
         const auto h_signature =
-            cardano_test::load_bytes("data/kes/key6Sig5.bin");
+            cardano_test::LoadBytes("data/kes/key6Sig5.bin");
 
         auto key_buffer =
             std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
@@ -120,7 +120,7 @@ TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
     SECTION("haskel_compact_depth_1")
     {
         // haskell generated key
-        auto h_key = cardano_test::load_bytes("data/kes/compactkey1.bin");
+        auto h_key = cardano_test::LoadBytes("data/kes/compactkey1.bin");
         const auto parsed_h_key = cardano::SumKesPrivateKey<1>(h_key);
 
         auto key_buffer =
@@ -138,7 +138,7 @@ TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
     SECTION("haskell_compact_depth_6")
     {
         // haskell generated key
-        auto h_key = cardano_test::load_bytes("data/kes/compactkey6.bin");
+        auto h_key = cardano_test::LoadBytes("data/kes/compactkey6.bin");
         const auto parsed_h_key = cardano::SumKesPrivateKey<6>(h_key);
 
         auto key_buffer =
@@ -155,7 +155,7 @@ TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
     SECTION("haskell_compact_signature_6")
     {
         const auto h_signature =
-            cardano_test::load_bytes("data/kes/compactkey6Sig.bin");
+            cardano_test::LoadBytes("data/kes/compactkey6Sig.bin");
 
         auto key_buffer =
             std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};
@@ -175,7 +175,7 @@ TEST_CASE("Test KES API Integration with Cardano-Node Haskell code.")
     SECTION("haskell_compact_signature_6_update_5")
     {
         const auto h_signature =
-            cardano_test::load_bytes("data/kes/compactkey6Sig5.bin");
+            cardano_test::LoadBytes("data/kes/compactkey6Sig5.bin");
 
         auto key_buffer =
             std::array<uint8_t, cardano::SumKesPrivateKey<6>::size + 4>{};

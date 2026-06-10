@@ -7,3 +7,4 @@ as required for the implementation of `libcardano`.
 * @subpage concept-encodings
 * @subpage concept-wallets
 * @subpage concept-stake-pool-keys-and-certs
+* @subpage cardano-tss-details

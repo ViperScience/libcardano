@@ -30,11 +30,37 @@ if(Catch2_FOUND)
 else()
     message(STATUS "libcardano: Catch2 provided by FetchContent")
     FetchContent_Declare(
-      Catch2
-      GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-      GIT_TAG        v3.6.0
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG        v3.6.0
     )
     FetchContent_MakeAvailable(Catch2)
+endif()
+
+# Need the boost multiprecision library (header only). It is header-only, so we
+# don't request it as a find_package COMPONENT: some Boost packages (e.g. Debian
+# Boost 1.74) don't ship a per-library CMake config for header-only libraries,
+# which makes `COMPONENTS multiprecision` fail. Finding the umbrella package and
+# aliasing the header target is sufficient.
+if(NOT CARDANO_PREFER_FETCHCONTENT)
+    find_package(Boost QUIET)
+endif()
+if(Boost_FOUND)
+    message(STATUS "libcardano: Boost found via find_package (${Boost_DIR})")
+    if(NOT TARGET Boost::multiprecision)
+        add_library(Boost::multiprecision ALIAS Boost::headers)
+    endif()
+else()
+    message(STATUS "libcardano: Boost provided by FetchContent")
+    FetchContent_Declare(
+        Boost
+        URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz
+        URL_MD5 893b5203b862eb9bbd08553e24ff146a
+        DOWNLOAD_EXTRACT_TIMESTAMP ON
+        EXCLUDE_FROM_ALL
+    )
+    set(BOOST_INCLUDE_LIBRARIES multiprecision)
+    FetchContent_MakeAvailable(Boost)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
@@ -60,7 +86,7 @@ include_directories(
 ################################################################################
 ADD_EXECUTABLE(test_cardano_encodings  test_cardano_encoding_apis.cpp)
 target_link_libraries(test_cardano_encodings PRIVATE ${TEST_LIBCARDANO_LIBS})
-ADD_TEST("Encoding APIs" test_cardano_encodings)
+ADD_TEST("Cardano Encoding APIs" test_cardano_encodings)
 
 ################################################################################
 # Test the Cardano Ed25519 API (libsodium wrapper)
@@ -75,7 +101,7 @@ ADD_TEST("Cardano Ed25519 API" test_cardano_ed25519_api)
 ADD_EXECUTABLE(test_cardano_bip32_ed25519_api
     test_cardano_bip32_ed25519_api.cpp
 )
-target_link_libraries(test_cardano_bip32_ed25519_api PRIVATE 
+target_link_libraries(test_cardano_bip32_ed25519_api PRIVATE
     ${TEST_LIBCARDANO_LIBS}
 )
 ADD_TEST("Cardano BIP32-Ed25519 API" test_cardano_bip32_ed25519_api)
@@ -160,6 +186,36 @@ ADD_TEST("Cardano Secure Memory API" test_cardano_secmem)
 ADD_EXECUTABLE(test_cardano_genesis test_cardano_genesis_api.cpp)
 target_link_libraries(test_cardano_genesis PRIVATE ${TEST_LIBCARDANO_LIBS})
 ADD_TEST("Cardano Genesis API" test_cardano_genesis)
+
+################################################################################
+# Test Cardano Curve25519 API
+################################################################################
+add_executable(test_cardano_tss_internal test_cardano_curve25519_api.cpp)
+target_link_libraries(test_cardano_tss_internal PRIVATE
+    ${TEST_LIBCARDANO_LIBS}
+    Boost::multiprecision
+)
+add_test("Cardano Curve25519 API" test_cardano_tss_internal)
+
+################################################################################
+# Test Cardano Key Splitting: Direct Key Splitting
+################################################################################
+add_executable(test_cardano_tss_direct test_cardano_tss_api_direct.cpp)
+target_link_libraries(test_cardano_tss_direct PRIVATE
+    ${TEST_LIBCARDANO_LIBS}
+    Boost::multiprecision
+)
+add_test("Cardano Direct Key Splitting API" test_cardano_tss_direct)
+
+################################################################################
+# Test Cardano Key Splitting: Shamir Secret Sharing
+################################################################################
+add_executable(test_cardano_tss_sss test_cardano_tss_api_sss.cpp)
+target_link_libraries(test_cardano_tss_sss PRIVATE
+    ${TEST_LIBCARDANO_LIBS}
+    Boost::multiprecision
+)
+add_test("Cardano Shamir Secret Sharing API" test_cardano_tss_sss)
 
 ################################################################################
 # Aggregate "cardano_tests" target
